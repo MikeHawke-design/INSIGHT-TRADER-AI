@@ -1,0 +1,9 @@
+{
+  "name": " INSIGHT TRADER FULL ACCESS",
+  "description": "An AI-powered trading chart analysis tool that provides insights based on selected trading strategies and uploaded chart images.",
+  "requestFramePermissions": [
+    "display-capture",
+    "clipboard-read"
+  ],
+  "prompt": ""
+}
