@@ -91,7 +91,7 @@ const EditIcon = (props:{className?:string}) => <svg {...props} xmlns="http://ww
 const TrashIcon = (props:{className?:string}) => <svg {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M8.75 1A2.75 2.75 0 0 0 6 3.75v.443c-.795.077-1.58.22-2.365.468a.75.75 0 1 0 .214 1.482l.025.007c.786.246 1.573.393 2.37.468v6.618A2.75 2.75 0 0 0 8.75 18h2.5A2.75 2.75 0 0 0 14 15.25V5.162c.797-.075 1.585-.222 2.37-.468a.75.75 0 1 0-.214-1.482l-.025-.007a33.58 33.58 0 0 0-2.365-.468V3.75A2.75 2.75 0 0 0 11.25 1h-2.5ZM10 4c.84 0 1.673.025 2.5.075V15.25a1.25 1.25 0 0 1-1.25 1.25h-2.5A1.25 1.25 0 0 1 7.5 15.25V4.075C8.327 4.025 9.16 4 10 4Z" clipRule="evenodd" /></svg>;
 const ChevronDownIcon = (props:{className?:string}) => <svg {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z" clipRule="evenodd" /></svg>;
 const ToggleOnIcon = (props: {className?:string}) => <svg {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path fillRule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25Zm4.28 10.28a.75.75 0 0 0 0-1.06l-3-3a.75.75 0 1 0-1.06 1.06l1.72 1.72H8.25a.75.75 0 0 0 0 1.5h5.69l-1.72 1.72a.75.75 0 1 0 1.06 1.06l3-3Z" clipRule="evenodd" /></svg>;
-const ToggleOffIcon = (props: {className?:string}) => <svg {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path fillRule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25Zm-1.72 6.97a.75.75 0 0 0-1.06 1.06L10.94 12l-1.72 1.72a.75.75 0 1 0 1.06 1.06L12 13.06l1.72 1.72a.75.75 0 1 0 1.06-1.06L13.06 12l1.72-1.72a.75.75 0 1 0-1.06-1.06L12 10.94l-1.72-1.72Z" clipRule="evenodd" /></svg>;
+const ToggleOffIcon = (props: {className?:string}) => <svg {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path fillRule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25Zm-1.72 6.97a.75.75 0 0 0-1.06 1.06L10.94 12l-1.72 1.72a.75.75 0 1 0 1.06 1.06L12 13.06l1.72 1.72a.75.75 0 1 0-1.06-1.06L13.06 12l1.72-1.72a.75.75 0 1 0-1.06-1.06L12 10.94l-1.72-1.72Z" clipRule="evenodd" /></svg>;
 const ClipboardIcon = (props: { className?: string }) => <svg {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M8 1a2.5 2.5 0 0 0-2.5 2.5V4h-2A2.5 2.5 0 0 0 1 6.5v11A2.5 2.5 0 0 0 3.5 20h13a2.5 2.5 0 0 0 2.5-2.5v-11A2.5 2.5 0 0 0 16.5 4h-2v-.5A2.5 2.5 0 0 0 12 1H8ZM6 3.5A1 1 0 0 1 7 2.5h6a1 1 0 0 1 1 1V4H6v-.5ZM3.5 5.5a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h13a1 1 0 0 0 1-1v-11a1 1 0 0 0-1-1h-13Z" clipRule="evenodd" /></svg>;
 const UploadIcon = (props: {className?: string}) => <svg {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M9.25 13.25a.75.75 0 0 0 1.5 0V4.636l2.955 3.129a.75.75 0 0 0 1.09-1.03l-4.25-4.5a.75.75 0 0 0-1.09 0l-4.25 4.5a.75.75 0 0 0 1.09 1.03L9.25 4.636V13.25Z" /><path d="M3.5 12.75a.75.75 0 0 0-1.5 0v2.5A2.75 2.75 0 0 0 4.75 18h10.5A2.75 2.75 0 0 0 18 15.25v-2.5a.75.75 0 0 0-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5Z" /></svg>;
 
@@ -167,8 +167,9 @@ export const MasterControlsView: React.FC<MasterControlsViewProps> = ({
     }, [activeTab, apiConfig.eodhdApiKey, onFetchEodhdUsage]);
 
     const getAiClient = useCallback(() => {
-        return new GoogleGenAI({ apiKey: process.env.API_KEY });
-    }, []);
+        const apiKey = apiConfig.geminiApiKey || process.env.API_KEY;
+        return new GoogleGenAI({ apiKey });
+    }, [apiConfig.geminiApiKey]);
 
     // --- Strategy CRUD Handlers ---
 
@@ -378,7 +379,8 @@ export const MasterControlsView: React.FC<MasterControlsViewProps> = ({
                 status: 'beta',
                 description: summary,
                 prompt: logic,
-                requirements: requirements.items.length > 0 ? requirements : undefined,
+                // SAFE CHECK ADDED: Ensure requirements.items is a valid array before checking length
+                requirements: (requirements && Array.isArray(requirements.items) && requirements.items.length > 0) ? requirements : undefined,
                 isEnabled: true,
                 tags: finalization.tags,
                 assetClasses: finalization.assetClasses,
@@ -696,7 +698,10 @@ export const MasterControlsView: React.FC<MasterControlsViewProps> = ({
                         <div key={key} className="bg-gray-800 p-3 rounded-md flex justify-between items-center">
                             <div>
                                 <p className="font-semibold text-white">{key}</p>
-                                <p className="text-xs text-gray-400">{(data as MarketDataCandle[]).length} candles</p>
+                                <p className="text-xs text-gray-400">
+                                    {/* SAFE CHECK ADDED: Ensure data is array before accessing length */}
+                                    {Array.isArray(data) ? (data as MarketDataCandle[]).length : 0} candles
+                                </p>
                             </div>
                             <div className="flex items-center gap-2">
                                 <button onClick={() => setViewingChartData({key, data: data as MarketDataCandle[]})} className="p-2 text-gray-400 hover:text-blue-400 rounded-full hover:bg-blue-500/10"><ViewIcon className="w-5 h-5"/></button>

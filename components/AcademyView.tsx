@@ -2,7 +2,6 @@
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { GoogleGenAI } from "@google/genai";
 import { CourseModule, CourseLesson, QuizQuestion, UserCourseProgress, User, LessonBlock, LessonBlockExercise, UserSettings, StrategyKey, StrategyLogicData, ApiConfiguration } from '../types';
-import { FOUNDATIONAL_MODULES } from '../constants';
 import { storeImage, getImage } from '../idb';
 import Logo from './Logo';
 
@@ -75,8 +74,9 @@ export const AcademyView: React.FC<AcademyViewProps> = ({ userCourseProgress, se
     };
 
     const getAiClient = useCallback(() => {
-        return new GoogleGenAI({ apiKey: process.env.API_KEY });
-    }, []);
+        const apiKey = apiConfig.geminiApiKey || process.env.API_KEY;
+        return new GoogleGenAI({ apiKey });
+    }, [apiConfig.geminiApiKey]);
 
 
     const handleSelectLesson = (lesson: CourseLesson, module: CourseModule) => {
@@ -130,7 +130,7 @@ export const AcademyView: React.FC<AcademyViewProps> = ({ userCourseProgress, se
 
         try {
             const response = await ai.models.generateContent({model: 'gemini-2.5-flash', contents: feedbackPrompt});
-            setQuizResult({ score, feedback: response.text });
+            setQuizResult({ score, feedback: response.text || "Score recorded." });
         } catch (error) {
             console.error("Failed to get quiz feedback:", error);
             setQuizResult({ score, feedback: "Your score has been recorded. Keep up the great work!" });
@@ -182,13 +182,13 @@ export const AcademyView: React.FC<AcademyViewProps> = ({ userCourseProgress, se
             });
 
             const feedback = response.text;
-            const status = feedback.startsWith("PASS:") ? 'passed' : 'failed';
+            const status = feedback && feedback.startsWith("PASS:") ? 'passed' : 'failed';
             
             setUserCourseProgress(prev => ({
                 ...prev,
                 exerciseStates: {
                     ...prev.exerciseStates,
-                    [`${lessonId}-${blockIndex}`]: { imageKey: storedKey, status, feedback }
+                    [`${lessonId}-${blockIndex}`]: { imageKey: storedKey, status, feedback: feedback || "No feedback." }
                 }
             }));
             
@@ -210,24 +210,14 @@ export const AcademyView: React.FC<AcademyViewProps> = ({ userCourseProgress, se
         }
     };
 
-    const { foundationalModules, userGeneratedModules } = useMemo(() => {
-        const userModules: CourseModule[] = [];
-        const foundationModules: CourseModule[] = [];
-    
+    const { userGeneratedModules } = useMemo(() => {
+        // Strictly only use custom modules from user strategies
+        // Removed foundational modules from here as they are no longer used
         const customModules = (Object.values(strategyLogicData) as StrategyLogicData[])
             .filter((strat: StrategyLogicData) => strat.courseModule)
             .map(strat => strat.courseModule as CourseModule);
         
-        const allModules = [...FOUNDATIONAL_MODULES, ...customModules];
-    
-        allModules.forEach(module => {
-            if (FOUNDATIONAL_MODULES.some(fm => fm.id === module.id)) {
-                foundationModules.push(module);
-            } else {
-                userModules.push(module);
-            }
-        });
-        return { foundationalModules: foundationModules, userGeneratedModules: userModules };
+        return { userGeneratedModules: customModules };
     }, [strategyLogicData]);
 
     const handleResetView = () => {
@@ -238,21 +228,30 @@ export const AcademyView: React.FC<AcademyViewProps> = ({ userCourseProgress, se
         setCurrentQuizAnswers({});
     };
 
-    const renderModuleList = (modules: CourseModule[], title: string, isUserModule: boolean) => {
-        if (modules.length === 0 && isUserModule) return null;
+    const renderModuleList = (modules: CourseModule[], title: string) => {
+        if (modules.length === 0) return (
+            <div className="text-center py-12 bg-gray-800/50 rounded-lg border border-gray-700">
+                <p className="text-gray-400">No custom strategy courses yet.</p>
+                <p className="text-sm text-gray-500 mt-2">Create a strategy in Master Controls and enable "Generate Course" to see lessons here.</p>
+            </div>
+        );
 
         return (
             <div className="bg-gray-800 rounded-lg p-4 md:p-6 border border-gray-700">
                 <h3 className="font-bold text-yellow-400 mb-4" style={{ fontSize: `${userSettings.headingFontSize}px` }}>{title}</h3>
                 <div className="space-y-3">
                     {modules.map(module => {
-                        const progress = (userCourseProgress.completedLessons.filter(id => module.lessons.some(l => l.id === id)).length / module.lessons.length) * 100;
+                        // SAFE CHECK ADDED: Ensure module.lessons exists and has length
+                        const progress = (module.lessons && module.lessons.length > 0) 
+                            ? (userCourseProgress.completedLessons.filter(id => module.lessons.some(l => l.id === id)).length / module.lessons.length) * 100
+                            : 0;
+                        
                         const quizScore = userCourseProgress.quizScores[module.id];
-                        const isExpanded = isUserModule ? !!expandedUserModules[module.id] : true; // Foundational are always expanded
+                        const isExpanded = !!expandedUserModules[module.id];
 
                         return (
                              <div key={module.id} className="bg-gray-900/50 rounded-lg border border-gray-700/50 overflow-hidden">
-                                <div className="p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 cursor-pointer" onClick={isUserModule ? () => toggleUserModule(module.id) : undefined}>
+                                <div className="p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 cursor-pointer" onClick={() => toggleUserModule(module.id)}>
                                     <div className="flex-grow">
                                         <h4 className="font-semibold text-white" style={{ fontSize: `${userSettings.headingFontSize-2}px` }}>{module.title}</h4>
                                         <p className="text-sm text-gray-400 mt-1">{module.description}</p>
@@ -268,7 +267,7 @@ export const AcademyView: React.FC<AcademyViewProps> = ({ userCourseProgress, se
                                 {isExpanded && (
                                      <div className="bg-gray-800/30 p-4 border-t border-gray-700/50">
                                         <ul className="space-y-2">
-                                            {module.lessons.map(lesson => {
+                                            {module.lessons && module.lessons.map(lesson => {
                                                 const isCompleted = userCourseProgress.completedLessons.includes(lesson.id);
                                                 return (
                                                     <li key={lesson.id} onClick={() => handleSelectLesson(lesson, module)} className="p-3 flex justify-between items-center bg-gray-700/50 rounded-md hover:bg-gray-700 cursor-pointer transition-colors">
@@ -283,12 +282,12 @@ export const AcademyView: React.FC<AcademyViewProps> = ({ userCourseProgress, se
                                         </ul>
                                         <div className="mt-4 flex flex-col sm:flex-row gap-2">
                                             <button onClick={() => handleStartQuiz(module)} className="flex-1 font-semibold py-2 px-4 rounded-lg bg-blue-600 hover:bg-blue-500 text-white">Take Quiz</button>
-                                            {isUserModule && <button onClick={() => {
+                                            <button onClick={() => {
                                                 const strategyKey = Object.keys(strategyLogicData).find(key => strategyLogicData[key].courseModule?.id === module.id);
                                                 if (strategyKey) {
                                                     onInitiateCoaching(strategyLogicData[strategyKey], 'learn_basics', strategyKey);
                                                 }
-                                            }} className="flex-1 font-semibold py-2 px-4 rounded-lg bg-purple-600 hover:bg-purple-500 text-white">Live Coach Me</button>}
+                                            }} className="flex-1 font-semibold py-2 px-4 rounded-lg bg-purple-600 hover:bg-purple-500 text-white">Live Coach Me</button>
                                         </div>
                                     </div>
                                 )}
@@ -413,8 +412,8 @@ export const AcademyView: React.FC<AcademyViewProps> = ({ userCourseProgress, se
                 <h2 className="font-bold text-white" style={{ fontSize: `${userSettings.headingFontSize + 12}px` }}>Academy</h2>
                 <p className="text-gray-400 mt-1" style={{ fontSize: `${userSettings.uiFontSize}px` }}>Learn trading concepts and master your strategies with interactive lessons.</p>
             </div>
-            {renderModuleList(foundationalModules, "Foundational Modules", false)}
-            {renderModuleList(userGeneratedModules, "Your Custom Strategy Courses", true)}
+            
+            {renderModuleList(userGeneratedModules, "Your Custom Strategy Courses")}
         </div>
     );
 };

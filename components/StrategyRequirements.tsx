@@ -1,6 +1,4 @@
 
-
-
 import React from 'react';
 import { StrategyKey, StrategyLogicData } from '../types';
 
@@ -27,11 +25,15 @@ const StrategyRequirements: React.FC<StrategyRequirementsProps> = ({ selectedStr
                 const req = strategyLogicData[key]?.requirements;
                 const stratName = strategyLogicData[key]?.name || key;
                 if (!req) return null;
+                // Safe navigation check to prevent crash if items is undefined
+                const items = req.items || [];
+                if (items.length === 0) return null;
+
                 return (
                     <div key={key}>
                          <p className="font-semibold text-blue-200 text-sm">{req.title} ({stratName}):</p>
                          <ul className="list-disc list-inside space-y-1 text-sm text-blue-200/80 pl-2">
-                             {req.items.map((item, itemIndex) => (
+                             {items.map((item, itemIndex) => (
                                  <li key={itemIndex} dangerouslySetInnerHTML={{ __html: item }}></li>
                              ))}
                          </ul>

@@ -65,7 +65,7 @@ const Dashboard: React.FC<DashboardProps> = ({
     const uploaderRef = useRef<ImageUploaderHandles>(null);
     const [uploaderPhase, setUploaderPhase] = useState<'idle' | 'gathering' | 'validating' | 'ready' | 'analyzing'>('idle');
     const [useRealTimeContext, setUseRealTimeContext] = useState<boolean>(true);
-    const [useHighRes, setUseHighRes] = useState<boolean>(true); // For Master tier toggle
+    const [isComparisonMode, setIsComparisonMode] = useState<boolean>(false);
     const [expandedConcepts, setExpandedConcepts] = useState<Record<StrategyKey, boolean>>({});
     const [tooltipState, setTooltipState] = useState<{ content: string; top: number; left: number } | null>(null);
     const [isPromptVisible, setIsPromptVisible] = useState(false);
@@ -102,7 +102,8 @@ const Dashboard: React.FC<DashboardProps> = ({
         uploaderRef.current.triggerAnalysis(useRealTimeContext);
     }
     
-    const canAnalyze = !!apiConfig.geminiApiKey;
+    // Allow analysis if API key is in config OR environment variable
+    const canAnalyze = !!apiConfig.geminiApiKey || !!process.env.API_KEY;
     
     const isSubmitDisabled = (uploaderPhase !== 'ready' && dashboardSelectedMarketData.length === 0) || isAnalyzing || !canAnalyze || dashboardSelectedStrategies.length === 0;
 
@@ -289,6 +290,37 @@ const Dashboard: React.FC<DashboardProps> = ({
 
                     <Section number={2} title="Add Context" disabled={dashboardSelectedStrategies.length === 0} fontSize={userSettings.headingFontSize}>
                         <div className="grid grid-cols-1 gap-6">
+                            <div className="bg-gray-800/50 p-3 rounded-lg border border-gray-700 mb-2">
+                                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Analysis Mode</p>
+                                <div className="flex bg-gray-900 p-1 rounded-lg border border-gray-700">
+                                    <button
+                                        onClick={() => setIsComparisonMode(false)}
+                                        className={`flex-1 py-2 px-4 rounded-md text-sm font-semibold transition-all ${
+                                            !isComparisonMode 
+                                            ? 'bg-gray-700 text-white shadow-md' 
+                                            : 'text-gray-400 hover:text-gray-200'
+                                        }`}
+                                    >
+                                        Standard Analysis
+                                    </button>
+                                    <button
+                                        onClick={() => setIsComparisonMode(true)}
+                                        className={`flex-1 py-2 px-4 rounded-md text-sm font-semibold transition-all ${
+                                            isComparisonMode 
+                                            ? 'bg-blue-700 text-white shadow-md' 
+                                            : 'text-gray-400 hover:text-gray-200'
+                                        }`}
+                                    >
+                                        Asset Comparison
+                                    </button>
+                                </div>
+                                <p className="text-xs text-gray-500 mt-2 px-1">
+                                    {isComparisonMode 
+                                        ? "Rank multiple assets against each other based on strategy criteria." 
+                                        : "Deep dive analysis into a single asset or setup with multi-timeframe context."}
+                                </p>
+                            </div>
+
                             <ImageUploader 
                                 ref={uploaderRef}
                                 onAnalysisComplete={onAnalysisComplete}
@@ -303,7 +335,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                                 onLogTokenUsage={onLogTokenUsage}
                                 marketDataCache={marketDataCache}
                                 dashboardSelectedMarketData={dashboardSelectedMarketData}
-                                analysisMode="setup"
+                                isComparisonMode={isComparisonMode}
                             />
                             
                             {Object.keys(groupedMarketData).length > 0 && (

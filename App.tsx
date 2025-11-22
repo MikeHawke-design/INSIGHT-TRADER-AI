@@ -9,6 +9,7 @@ import {
     MarketDataCache,
     TokenUsageRecord,
     SavedAssetComparison,
+    UserUsage,
 } from './types';
 import { 
     DEFAULT_USER_SETTINGS, DEFAULT_LOGGED_OUT_USER,
@@ -71,6 +72,9 @@ const App: React.FC = () => {
     const [savedAssetComparisons, setSavedAssetComparisons] = useLocalStorage<SavedAssetComparison[]>(SAVED_ASSET_COMPARISONS_LOCALSTORAGE_KEY, []);
     const [tokenUsageHistory, setTokenUsageHistory] = useLocalStorage<TokenUsageRecord[]>(TOKEN_USAGE_HISTORY_LOCALSTORAGE_KEY, []);
     const [marketDataCache, setMarketDataCache] = useLocalStorage<MarketDataCache>(MARKET_DATA_CACHE_LOCALSTORAGE_KEY, {});
+
+    // User Usage State
+    const [userUsage, setUserUsage] = useState<UserUsage>({ creditsRemaining: 9999 });
 
     // Session-only State
     const [eodhdUsage, setEodhdUsage] = useState<EodhdUsageStats | null>(null);
@@ -310,6 +314,7 @@ const App: React.FC = () => {
                     onUserSettingsChange={handleUserSettingsChange}
                     initialImages={uploadedImagesForAnalysis}
                     currentUser={currentUser}
+                    userUsage={userUsage}
                     dashboardSelectedStrategies={dashboardSelectedStrategies}
                     onDashboardStrategyChange={(key) => setDashboardSelectedStrategies(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key])}
                     onSetDashboardStrategies={setDashboardSelectedStrategies}
@@ -337,14 +342,35 @@ const App: React.FC = () => {
                         uploadedImages={uploadedImagesForAnalysis}
                         onReset={handleResetAnalysis}
                         currentUser={currentUser}
+                        userUsage={userUsage}
                         savedTrades={savedTrades}
                         onSaveTrade={handleSaveTrade}
                         strategyLogicData={strategyLogicData}
                         userSettings={userSettings}
                     />
                 ) : <Dashboard 
-                        // Fallback to dashboard props
-                        onAnalysisComplete={handleAnalysisComplete} userSettings={userSettings} onUserSettingsChange={handleUserSettingsChange} currentUser={currentUser} dashboardSelectedStrategies={dashboardSelectedStrategies} onDashboardStrategyChange={(key) => setDashboardSelectedStrategies(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key])} onSetDashboardStrategies={setDashboardSelectedStrategies} dashboardSelectedMarketData={dashboardSelectedMarketData} setDashboardSelectedMarketData={setDashboardSelectedMarketData} strategyLogicData={strategyLogicData} knowledgeBaseDocuments={knowledgeBaseDocuments} isAnalyzing={isAnalyzing} setIsAnalyzing={setIsAnalyzing} onLogTokenUsage={handleLogTokenUsage} isUnrestrictedMode={true} apiConfig={apiConfig} onInitiateCoaching={(strat, goal, key) => { setCoachingContext({ strategy: strat, goal, strategyKey: key }); setActiveView('analyze'); }} viewedStrategy={viewedStrategy} setViewedStrategy={setViewedStrategy} marketDataCache={marketDataCache} onSaveAssetComparison={(comp) => setSavedAssetComparisons(prev => [comp, ...prev])}
+                        onAnalysisComplete={handleAnalysisComplete} 
+                        userSettings={userSettings} 
+                        onUserSettingsChange={handleUserSettingsChange} 
+                        currentUser={currentUser} 
+                        userUsage={userUsage}
+                        dashboardSelectedStrategies={dashboardSelectedStrategies} 
+                        onDashboardStrategyChange={(key) => setDashboardSelectedStrategies(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key])} 
+                        onSetDashboardStrategies={setDashboardSelectedStrategies} 
+                        dashboardSelectedMarketData={dashboardSelectedMarketData} 
+                        setDashboardSelectedMarketData={setDashboardSelectedMarketData} 
+                        strategyLogicData={strategyLogicData} 
+                        knowledgeBaseDocuments={knowledgeBaseDocuments} 
+                        isAnalyzing={isAnalyzing} 
+                        setIsAnalyzing={setIsAnalyzing} 
+                        onLogTokenUsage={handleLogTokenUsage} 
+                        isUnrestrictedMode={true} 
+                        apiConfig={apiConfig} 
+                        onInitiateCoaching={(strat, goal, key) => { setCoachingContext({ strategy: strat, goal, strategyKey: key }); setActiveView('analyze'); }} 
+                        viewedStrategy={viewedStrategy} 
+                        setViewedStrategy={setViewedStrategy} 
+                        marketDataCache={marketDataCache} 
+                        onSaveAssetComparison={(comp) => setSavedAssetComparisons(prev => [comp, ...prev])}
                     />;
             case 'journal':
                  return <JournalView 

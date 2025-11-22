@@ -1,8 +1,7 @@
 
-
 import React from 'react';
 import { useState, useEffect, useMemo } from 'react';
-import { Trade, TradeFeedback, SavedTrade, EntryType, TradeOutcome, UserSettings, StrategyKey, StrategyLogicData } from '../types';
+import { Trade, TradeFeedback, SavedTrade, UserSettings, StrategyKey, StrategyLogicData, TradeOutcome } from '../types';
 import HeatMeter from './HeatMeter';
 import OracleIcon from './OracleIcon';
 import { getImage } from '../idb';
@@ -12,36 +11,25 @@ interface TradeCardProps {
   userSettings: UserSettings;
   isModified?: boolean;
   strategyLogicData: Record<StrategyKey, StrategyLogicData>;
-  
-  // For save functionality in AnalysisView
+  activeStrategies?: StrategyKey[];
   onSave?: (trade: Trade) => void;
   isSaved?: boolean;
-
-  // For handling feedback in JournalView
   feedback?: TradeFeedback;
   onFeedbackChange?: (feedback: TradeFeedback) => void;
-  isSubmittingFeedback?: boolean; // To disable buttons during submission
-
-  // For removing trades from JournalView
+  isSubmittingFeedback?: boolean;
   onRemove?: () => void;
-
-  // For opening chat and image viewer in JournalView
   onViewAndDiscussTrade?: () => void;
   onAddResultImage?: () => void;
   onViewImages?: () => void;
-  
-  // For coaching-specific actions
   onViewCoachingLog?: () => void;
 }
 
 const TRADE_CARD_ANIMATION_STYLE_ID = 'tradecard-animations';
 
-// Inject styles once
 const ensureAnimationStyles = () => {
   if (typeof document === 'undefined' || document.getElementById(TRADE_CARD_ANIMATION_STYLE_ID)) {
     return;
   }
-
   const styleElement = document.createElement('style');
   styleElement.id = TRADE_CARD_ANIMATION_STYLE_ID;
   styleElement.innerHTML = `
@@ -59,9 +47,7 @@ const ensureAnimationStyles = () => {
 const extractPrice = (priceString: string | number): number => {
     if (typeof priceString === 'number') return priceString;
     if (!priceString) return NaN;
-    // First, strip any HTML tags to get the raw text content.
     const textContent = String(priceString).replace(/<[^>]*>/g, ' ');
-    // This regex will find numbers, possibly with commas or decimals.
     const match = textContent.match(/(\d{1,3}(,\d{3})*(\.\d+)?|\d+(\.\d+)?)/g);
     if (match) {
         const lastMatch = match[match.length - 1];
@@ -72,7 +58,6 @@ const extractPrice = (priceString: string | number): number => {
 
 const formatStrategyName = (name: string = ''): string => name.replace(/^\d+-/, '').replace(/-/g, ' ');
 
-
 const InfoIcon = (props: {className?: string}) => (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" {...props}>
         <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
@@ -81,11 +66,9 @@ const InfoIcon = (props: {className?: string}) => (
 
 const AddResultImageIcon = (props: { className?: string }) => (
     <svg {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-        {/* Photo Icon background */}
         <path d="M1 5.25A2.25 2.25 0 0 1 3.25 3h13.5A2.25 2.25 0 0 1 19 5.25v5.034a.75.75 0 0 1-1.5 0V5.25a.75.75 0 0 0-.75-.75H3.25a.75.75 0 0 0-.75.75v9.5c0 .414.336.75.75.75h5.034a.75.75 0 0 1 0 1.5H3.25A2.25 2.25 0 0 1 1 14.75v-9.5Z" />
         <path d="m3.25 12.25 2.47-2.47a.75.75 0 0 1 1.06 0l2.22 2.22 1.53-2.04a.75.75 0 0 1 1.2 0l2.75 3.667a.75.75 0 0 1-.98 1.133L13.5 13.62l-1.53 2.04a.75.75 0 0 1-1.2 0L8.28 13.2l-2.47 2.47a.75.75 0 0 1-1.06 0l-1.5-1.5a.75.75 0 0 1 0-1.06Z" />
-        {/* Plus Icon foreground */}
-        <path d="M14 12.25a.75.75 0 0 1 .75.75v1.25h1.25a.75.75 0 0 1 0 1.5h-1.25v1.25a.75.75 0 0 1-1.5 0v-1.25h-1.25a.75.75 0 0 1 0-1.5h1.25v-1.25a.75.75 0 0 1 .75-.75Z" />
+        <path d="M14 12.25a.75.75 0 0 1 .75.75v1.25h1.25a.75.75 0 0 1 0 1.5h-1.25v1.25a.75.75 0 0 1-1.5 0v-1.25h-1.25a.75.75 0 0 1 .75-.75Z" />
     </svg>
 );
 
@@ -95,22 +78,6 @@ const EditIcon = (props: { className?: string }) => (
         <path d="M3.5 5.75c0-.69.56-1.25 1.25-1.25H10A.75.75 0 0 0 10 3H4.75A2.75 2.75 0 0 0 2 5.75v9.5A2.75 2.75 0 0 0 4.75 18h9.5A2.75 2.75 0 0 0 17 15.25V10a.75.75 0 0 0-1.5 0v5.25c0 .69-.56 1.25-1.25 1.25h-9.5c-.69 0-1.25-.56-1.25-1.25v-9.5Z" />
     </svg>
 );
-
-
-const IdbImage: React.FC<{ imageKey: string; className?: string, onClick?: () => void }> = ({ imageKey, className, onClick }) => {
-    const [imageUrl, setImageUrl] = useState<string | null>(null);
-    useEffect(() => {
-        let isMounted = true;
-        getImage(imageKey).then(url => {
-            if (isMounted && url) setImageUrl(url);
-        });
-        return () => { isMounted = false; };
-    }, [imageKey]);
-
-    if (!imageUrl) return <div className={`animate-pulse bg-gray-700 rounded-md ${className}`}></div>;
-
-    return <img src={imageUrl} alt="Journaled asset" className={className} onClick={onClick} />;
-}
 
 const OUTCOME_BUTTONS: { outcome: TradeOutcome; label: string; color: string }[] = [
     { outcome: 'TP1 & TP2', label: 'TP1 & TP2', color: 'green' },
@@ -135,12 +102,11 @@ const TradeCard: React.FC<TradeCardProps> = ({
     onViewImages,
     onViewCoachingLog,
     strategyLogicData,
+    activeStrategies,
 }) => {
     const isLong = trade.direction === 'Long';
     const [isExplanationOpen, setIsExplanationOpen] = useState(false);
     const [isEntryExplanationVisible, setIsEntryExplanationVisible] = useState(false);
-    
-    // Local state for feedback input text, driven by the feedback prop
     const [feedbackText, setFeedbackText] = useState(feedback?.text || '');
     const isCoachingTrade = 'isFromCoaching' in trade && trade.isFromCoaching;
 
@@ -148,19 +114,10 @@ const TradeCard: React.FC<TradeCardProps> = ({
         const entry = extractPrice(trade.entry);
         const sl = extractPrice(trade.stopLoss);
         const tp1 = extractPrice(trade.takeProfit1);
-
-        if (isNaN(entry) || isNaN(sl) || isNaN(tp1)) {
-            return 0;
-        }
-
+        if (isNaN(entry) || isNaN(sl) || isNaN(tp1)) return 0;
         const risk = Math.abs(entry - sl);
         const reward = Math.abs(tp1 - entry);
-
-        if (risk === 0) {
-            return 0;
-        }
-
-        return reward / risk;
+        return risk === 0 ? 0 : reward / risk;
     }, [trade.entry, trade.stopLoss, trade.takeProfit1]);
 
     const rrColor = useMemo(() => {
@@ -172,51 +129,8 @@ const TradeCard: React.FC<TradeCardProps> = ({
     const isEntryDescriptive = useMemo(() => String(trade.entry || '').includes(' '), [trade.entry]);
     const isSlDescriptive = useMemo(() => String(trade.stopLoss || '').includes(' '), [trade.stopLoss]);
 
-    const explanationHtml = useMemo(() => {
-        if (!trade.explanation) return '';
-
-        // Special formatting for informational "no entry" cards.
-        if (isEntryDescriptive) {
-            // Regex to find the first sentence.
-            const firstSentenceRegex = /^(.*?[.?!])(\s*)/;
-            const match = trade.explanation.match(firstSentenceRegex);
-
-            if (match) {
-                const firstSentence = match[1];
-                // Apply backtick styling to the first sentence as well
-                const styledFirstSentence = firstSentence.replace(/`([^`]+)`/g, '<strong style="color: #FBBF24; font-weight: 600;">$1</strong>');
-                const restOfText = trade.explanation.substring(match[0].length);
-
-                const formattedRest = restOfText
-                    .replace(/`([^`]+)`/g, '<strong style="color: #FBBF24; font-weight: 600;">$1</strong>')
-                    .split(/\n+/) // Split by one or more newlines
-                    .map(p => p.trim()) // Trim whitespace from each potential paragraph
-                    .filter(p => p) // Remove empty paragraphs
-                    .map(p => `<p>${p}</p>`)
-                    .join('');
-
-                return `<p class="text-yellow-300 font-semibold mb-2">${styledFirstSentence}</p>${formattedRest}`;
-            }
-        }
-
-        // Standard formatting for regular trade explanations
-        return trade.explanation
-            .replace(/`([^`]+)`/g, '<strong style="color: #FBBF24; font-weight: 600;">$1</strong>')
-            .split(/\n+/)
-            .map(p => p.trim())
-            .filter(p => p)
-            .map(p => `<p>${p}</p>`)
-            .join('');
-    }, [trade.explanation, isEntryDescriptive]);
-
-    useEffect(() => {
-        ensureAnimationStyles();
-    }, []);
-    
-    // Sync local text state if the prop changes from outside
-    useEffect(() => {
-        setFeedbackText(feedback?.text || '');
-    }, [feedback?.text]);
+    useEffect(() => { ensureAnimationStyles(); }, []);
+    useEffect(() => { setFeedbackText(feedback?.text || ''); }, [feedback?.text]);
 
     const handleToggleExplanation = () => setIsExplanationOpen(prev => !prev);
     
@@ -227,53 +141,45 @@ const TradeCard: React.FC<TradeCardProps> = ({
 
     const handleSubmitFeedback = () => {
         if (!onFeedbackChange || !feedback?.outcome || isSubmittingFeedback) return;
-        
-        // The parent component will handle the logic of marking as 'submitted'
-        // and persisting the data.
         onFeedbackChange({ outcome: feedback.outcome, text: feedbackText });
     };
 
-    const titleSymbol = trade.symbol && trade.symbol !== "N/A" ? `${trade.symbol} - ` : "";
-    const showFeedbackSection = !!onFeedbackChange; // Show feedback only in Journal view
+    const titleSymbol = trade.symbol && trade.symbol !== "N/A" ? `${trade.symbol}` : "ASSET";
+    const showFeedbackSection = !!onFeedbackChange;
     const hasResultImage = 'resultImageKey' in trade && !!trade.resultImageKey;
 
-    const formattedStrategies = 'strategiesUsed' in trade ? trade.strategiesUsed.map(s => formatStrategyName(strategyLogicData[s]?.name || s)).join(', ') : '';
+    const displayStrategies = 'strategiesUsed' in trade ? trade.strategiesUsed : (activeStrategies || []);
+    const formattedStrategies = displayStrategies.map(s => formatStrategyName(strategyLogicData[s]?.name || s)).join(', ');
+
+    // -- EXPLANATION SEGMENT PARSING --
+    // We expect the AI to output segments separated by "|||".
+    // If found, we render specific titled boxes. If not, we render the legacy text block.
+    const explanationSegments = useMemo(() => {
+        if (!trade.explanation) return [];
+        return trade.explanation.split('|||').map(seg => seg.trim()).filter(Boolean);
+    }, [trade.explanation]);
+
+    const isSegmented = explanationSegments.length >= 2; // Assume structured if at least 2 parts found.
 
     return (
         <div className="bg-[hsl(var(--color-bg-800))] border border-[hsl(var(--color-border-700))] rounded-lg p-4 flex flex-col h-full">
-            {/* Main card content */}
             <div className="space-y-4">
                 <div className="flex justify-between items-start">
                     <div className="flex-grow space-y-1">
                         <div className="flex items-center space-x-2 flex-wrap">
-                            <h3 
-                                className={`font-bold ${isLong ? 'text-teal-400' : 'text-red-400'}`}
-                                style={{ fontSize: `${userSettings.headingFontSize}px` }}
-                            >
-                                {titleSymbol}{trade.direction} {trade.type}
+                            <h3 className={`font-bold ${isLong ? 'text-teal-400' : 'text-red-400'}`} style={{ fontSize: `${userSettings.headingFontSize}px` }}>
+                                {titleSymbol} <span className="text-gray-400">-</span> {trade.direction} {trade.type}
                             </h3>
-                            {isModified && (
-                                <span className="px-2 py-0.5 text-xs font-semibold bg-purple-600 text-purple-100 rounded-full">
-                                    MODIFIED
-                                </span>
-                            )}
+                            {isModified && <span className="px-2 py-0.5 text-xs font-semibold bg-purple-600 text-purple-100 rounded-full">MODIFIED</span>}
                         </div>
-                         {'savedDate' in trade && (
-                             <p className="text-xs text-gray-500">
-                                 Journaled: {new Date(trade.savedDate).toLocaleString()}
-                             </p>
+                         {'savedDate' in trade ? (
+                             <p className="text-xs text-gray-500">Journaled: {new Date(trade.savedDate).toLocaleString()}</p>
+                         ) : (
+                             <p className="text-xs text-gray-500">Generated Just Now</p>
                          )}
                     </div>
                     {onSave && (
-                        <button
-                            onClick={() => onSave(trade)}
-                            disabled={isSaved}
-                            className={`px-3 py-1 text-sm font-semibold rounded-md transition-colors ${
-                                isSaved 
-                                ? 'bg-green-600 text-white cursor-default' 
-                                : 'bg-blue-600 text-white hover:bg-blue-500'
-                            }`}
-                        >
+                        <button onClick={() => onSave(trade)} disabled={isSaved} className={`px-3 py-1 text-sm font-semibold rounded-md transition-colors ${isSaved ? 'bg-green-600 text-white cursor-default' : 'bg-blue-600 text-white hover:bg-blue-500'}`}>
                             {isSaved ? 'Saved ✔' : 'Save Trade'}
                         </button>
                     )}
@@ -281,21 +187,17 @@ const TradeCard: React.FC<TradeCardProps> = ({
 
                 <HeatMeter level={trade.heat} />
 
-                {'savedDate' in trade && (
+                {displayStrategies.length > 0 && (
                     <div className="p-2 bg-[hsl(var(--color-bg-900)/0.5)] rounded-md border border-[hsl(var(--color-border-700)/0.5)] text-xs">
                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1 text-gray-400">
                             <span className="truncate">
-                                <span className="font-semibold text-gray-300">Strategies: </span>
-                                <span className="text-purple-300" title={formattedStrategies}>
-                                    {formattedStrategies}
-                                </span>
+                                <span className="font-semibold text-gray-300">Strategy: </span>
+                                <span className="text-purple-300" title={formattedStrategies}>{formattedStrategies}</span>
                             </span>
-                            {(trade as SavedTrade).analysisContext.realTimeContextWasUsed && (
+                            {('analysisContext' in trade) && (trade as SavedTrade).analysisContext.realTimeContextWasUsed && (
                                 <span className="text-green-400 flex items-center flex-shrink-0">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
-                                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                                    </svg>
-                                    Real-Time Context
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
+                                    Real-Time
                                 </span>
                             )}
                         </div>
@@ -305,27 +207,14 @@ const TradeCard: React.FC<TradeCardProps> = ({
                 <div className="grid grid-cols-2 gap-x-4 gap-y-3">
                     <div className="col-span-2 text-left">
                         <p className="text-gray-400 uppercase font-semibold" style={{ fontSize: `${userSettings.uiFontSize - 2}px` }}>Entry</p>
-                        <div
-                            className={`${isEntryDescriptive ? '' : 'font-mono text-center'} font-bold text-white mt-1`}
-                            style={{ fontSize: `${isEntryDescriptive ? userSettings.dataFontSize - 2 : userSettings.dataFontSize}px`, lineHeight: isEntryDescriptive ? '1.5' : '1' }}
-                            dangerouslySetInnerHTML={{ __html: trade.entry || '-' }}
-                        />
+                        <div className={`${isEntryDescriptive ? '' : 'font-mono text-center'} font-bold text-white mt-1`} style={{ fontSize: `${isEntryDescriptive ? userSettings.dataFontSize - 2 : userSettings.dataFontSize}px`, lineHeight: isEntryDescriptive ? '1.5' : '1' }} dangerouslySetInnerHTML={{ __html: trade.entry || '-' }} />
                          <div className={`mt-1 flex items-center ${isEntryDescriptive ? 'justify-start' : 'justify-center'} space-x-2`}>
-                             <span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${trade.entryType === 'Limit Order' ? 'bg-blue-600 text-blue-100' : 'bg-orange-600 text-orange-100'}`}>
-                                {trade.entryType}
-                            </span>
+                             <span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${trade.entryType === 'Limit Order' ? 'bg-blue-600 text-blue-100' : 'bg-orange-600 text-orange-100'}`}>{trade.entryType}</span>
                             {trade.entryType === 'Confirmation Entry' && trade.entryExplanation && (
                                 <div className="relative">
-                                    <button onMouseEnter={() => setIsEntryExplanationVisible(true)} onMouseLeave={() => setIsEntryExplanationVisible(false)} className="text-gray-400 hover:text-yellow-300">
-                                        <InfoIcon className="w-4 h-4" />
-                                    </button>
+                                    <button onMouseEnter={() => setIsEntryExplanationVisible(true)} onMouseLeave={() => setIsEntryExplanationVisible(false)} className="text-gray-400 hover:text-yellow-300"><InfoIcon className="w-4 h-4" /></button>
                                     {isEntryExplanationVisible && (
-                                        <div 
-                                            className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-max max-w-[240px] bg-[hsl(var(--color-bg-900))] text-white rounded-lg py-2 px-3 z-10 border border-[hsl(var(--color-border-600))] shadow-lg text-left animate-fadeIn whitespace-normal" 
-                                            style={{ fontSize: `${userSettings.uiFontSize - 1}px` }}
-                                        >
-                                            {trade.entryExplanation}
-                                        </div>
+                                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-max max-w-[240px] bg-[hsl(var(--color-bg-900))] text-white rounded-lg py-2 px-3 z-10 border border-[hsl(var(--color-border-600))] shadow-lg text-left animate-fadeIn whitespace-normal" style={{ fontSize: `${userSettings.uiFontSize - 1}px` }}>{trade.entryExplanation}</div>
                                     )}
                                 </div>
                             )}
@@ -333,33 +222,19 @@ const TradeCard: React.FC<TradeCardProps> = ({
                     </div>
                     <div className="col-span-2 text-left">
                         <p className="text-red-400 uppercase font-semibold" style={{ fontSize: `${userSettings.uiFontSize - 2}px` }}>Stop Loss</p>
-                         <div
-                            className={`${isSlDescriptive ? '' : 'font-mono text-center'} font-bold text-white mt-1`}
-                            style={{ fontSize: `${isSlDescriptive ? userSettings.dataFontSize - 2 : userSettings.dataFontSize}px`, lineHeight: isSlDescriptive ? '1.5' : '1' }}
-                            dangerouslySetInnerHTML={{ __html: trade.stopLoss || '-' }}
-                        />
+                         <div className={`${isSlDescriptive ? '' : 'font-mono text-center'} font-bold text-white mt-1`} style={{ fontSize: `${isSlDescriptive ? userSettings.dataFontSize - 2 : userSettings.dataFontSize}px`, lineHeight: isSlDescriptive ? '1.5' : '1' }} dangerouslySetInnerHTML={{ __html: trade.stopLoss || '-' }} />
                     </div>
-
                     <div className="col-span-2 text-center py-2 my-1 border-y-2 border-[hsl(var(--color-border-700)/0.5)]">
                         <p className={`font-mono font-bold ${rrColor}`} style={{ fontSize: `${userSettings.dataFontSize + 8}px` }}>{rr.toFixed(2)} : 1</p>
                         <p className="text-gray-400 uppercase font-semibold" style={{ fontSize: `${userSettings.uiFontSize - 2}px` }}>Risk / Reward Ratio <span className="normal-case">(to TP1)</span></p>
                     </div>
-
                     <div className="text-center">
                         <p className="text-green-400 uppercase font-semibold" style={{ fontSize: `${userSettings.uiFontSize - 2}px` }}>TP 1</p>
-                        <p 
-                            className="font-mono font-bold text-white" 
-                            style={{ fontSize: `${userSettings.dataFontSize}px` }}
-                            dangerouslySetInnerHTML={{ __html: trade.takeProfit1 }}
-                        />
+                        <p className="font-mono font-bold text-white" style={{ fontSize: `${userSettings.dataFontSize}px` }} dangerouslySetInnerHTML={{ __html: trade.takeProfit1 }} />
                     </div>
                     <div className="text-center">
                         <p className="text-green-400 uppercase font-semibold" style={{ fontSize: `${userSettings.uiFontSize - 2}px` }}>TP 2</p>
-                        <p 
-                            className="font-mono font-bold text-white" 
-                            style={{ fontSize: `${userSettings.dataFontSize}px` }}
-                             dangerouslySetInnerHTML={{ __html: trade.takeProfit2 }}
-                        />
+                        <p className="font-mono font-bold text-white" style={{ fontSize: `${userSettings.dataFontSize}px` }} dangerouslySetInnerHTML={{ __html: trade.takeProfit2 }} />
                     </div>
                 </div>
 
@@ -381,25 +256,51 @@ const TradeCard: React.FC<TradeCardProps> = ({
                         tabIndex={0}
                         aria-expanded={isExplanationOpen}
                     >
-                        <p className="text-xs text-gray-400 font-semibold mb-1">AI Explanation:</p>
-                        <span className="ml-2 text-yellow-400 transition-transform duration-200" style={{ transform: isExplanationOpen ? 'rotate(90deg)' : 'rotate(0deg)' }}>
-                            ▶
-                        </span>
+                        <p className="text-xs text-gray-400 font-semibold mb-1">Analysis Reasoning:</p>
+                        <span className="ml-2 text-yellow-400 transition-transform duration-200" style={{ transform: isExplanationOpen ? 'rotate(90deg)' : 'rotate(0deg)' }}>▶</span>
                     </div>
+                    
                     {isExplanationOpen && (
-                        <div 
-                            className="text-gray-300 bg-[hsl(var(--color-bg-900)/0.5)] p-3 rounded-md border border-[hsl(var(--color-border-700)/0.5)] mt-1 animate-fadeIn prose prose-sm prose-invert max-w-none" 
-                            style={{ fontSize: `${userSettings.uiFontSize}px` }}
-                            dangerouslySetInnerHTML={{ __html: explanationHtml }}
-                        ></div>
+                        <div className="animate-fadeIn mt-2 space-y-2">
+                            {isSegmented ? (
+                                <>
+                                    {/* 1. Strategy Match Box */}
+                                    <div className="bg-blue-900/10 border border-blue-500/30 rounded-md p-3">
+                                        <div className="text-blue-300 text-xs font-bold uppercase tracking-wider mb-1">Strategy Match</div>
+                                        <div className="text-gray-300 text-sm" dangerouslySetInnerHTML={{ __html: explanationSegments[0].replace('Strategy Match:', '').trim() }} />
+                                    </div>
+                                    
+                                    {/* 2. Evidence Box */}
+                                    {explanationSegments[1] && (
+                                        <div className="bg-yellow-900/10 border border-yellow-500/30 rounded-md p-3">
+                                            <div className="text-yellow-400 text-xs font-bold uppercase tracking-wider mb-1">Chart Evidence</div>
+                                            <div className="text-gray-300 text-sm" dangerouslySetInnerHTML={{ __html: explanationSegments[1].replace('Evidence:', '').trim() }} />
+                                        </div>
+                                    )}
+
+                                    {/* 3. Execution/Risk Box */}
+                                    {explanationSegments[2] && (
+                                        <div className="bg-red-900/10 border border-red-500/30 rounded-md p-3">
+                                            <div className="text-red-400 text-xs font-bold uppercase tracking-wider mb-1">Execution & Risk</div>
+                                            <div className="text-gray-300 text-sm" dangerouslySetInnerHTML={{ __html: explanationSegments[2].replace('Execution & Risk:', '').trim() }} />
+                                        </div>
+                                    )}
+                                </>
+                            ) : (
+                                // Legacy Fallback for older trades without segmentation
+                                <div 
+                                    className="text-gray-300 bg-[hsl(var(--color-bg-900)/0.5)] p-3 rounded-md border border-[hsl(var(--color-border-700)/0.5)] mt-1 prose prose-sm prose-invert max-w-none" 
+                                    style={{ fontSize: `${userSettings.uiFontSize}px` }}
+                                    dangerouslySetInnerHTML={{ __html: trade.explanation }}
+                                ></div>
+                            )}
+                        </div>
                     )}
                 </div>
             </div>
 
-            {/* Spacer to push feedback to the bottom */}
             <div className="flex-grow"></div>
 
-            {/* Feedback Section (only for Journal) */}
             {showFeedbackSection && (
                 <div className="pt-4 mt-4 border-t border-[hsl(var(--color-border-700)/0.5)]">
                     <div className="space-y-3">
@@ -413,21 +314,12 @@ const TradeCard: React.FC<TradeCardProps> = ({
                                     red: `bg-red-500/20 border-red-500 text-red-300`,
                                     blue: `bg-blue-500/20 border-blue-500 text-blue-300`,
                                 };
-                                const hoverClasses = {
-                                    green: 'hover:border-green-500',
-                                    red: 'hover:border-red-500',
-                                    blue: 'hover:border-blue-500',
-                                }
                                 return (
                                      <button
                                         key={outcome}
                                         onClick={() => handleOutcomeChange(outcome)}
                                         disabled={isSubmittingFeedback}
-                                        className={`flex-grow p-2 rounded-md border-2 transition-colors text-xs font-semibold disabled:opacity-50 ${
-                                            isSelected
-                                            ? colorClasses[color as keyof typeof colorClasses]
-                                            : `bg-[hsl(var(--color-bg-700)/0.5)] border-[hsl(var(--color-border-600))] text-gray-400 ${hoverClasses[color as keyof typeof hoverClasses]}`
-                                        }`}
+                                        className={`flex-grow p-2 rounded-md border-2 transition-colors text-xs font-semibold disabled:opacity-50 ${isSelected ? colorClasses[color as keyof typeof colorClasses] : 'bg-[hsl(var(--color-bg-700)/0.5)] border-[hsl(var(--color-border-600))] text-gray-400 hover:border-gray-500'}`}
                                         aria-pressed={isSelected}
                                     >
                                         {label}
@@ -440,12 +332,11 @@ const TradeCard: React.FC<TradeCardProps> = ({
                             <textarea
                                 value={feedbackText}
                                 onChange={(e) => setFeedbackText(e.target.value)}
-                                onBlur={handleSubmitFeedback} // Save text on blur
+                                onBlur={handleSubmitFeedback}
                                 placeholder="Optional: Add journaling notes..."
                                 rows={2}
                                 className="w-full bg-[hsl(var(--color-bg-900)/0.7)] p-2 rounded-md text-gray-300 border border-[hsl(var(--color-border-600))] focus:ring-yellow-500 focus:border-yellow-500 transition-colors disabled:opacity-50"
                                 style={{ fontSize: `${userSettings.uiFontSize}px` }}
-                                aria-label="Feedback comment"
                                 disabled={isSubmittingFeedback}
                             />
                         </div>
@@ -470,11 +361,7 @@ const TradeCard: React.FC<TradeCardProps> = ({
                                         </button>
                                     )}
                                     {onAddResultImage && (
-                                        <button
-                                            onClick={onAddResultImage}
-                                            className="p-2 rounded-full text-gray-400 hover:text-yellow-400 hover:bg-yellow-500/10"
-                                            title={hasResultImage ? "Replace Result Image" : "Add Result Image"}
-                                        >
+                                        <button onClick={onAddResultImage} className="p-2 rounded-full text-gray-400 hover:text-yellow-400 hover:bg-yellow-500/10" title={hasResultImage ? "Replace Result Image" : "Add Result Image"}>
                                             {hasResultImage ? <EditIcon className="w-5 h-5" /> : <AddResultImageIcon className="w-5 h-5" />}
                                         </button>
                                     )}
@@ -482,15 +369,8 @@ const TradeCard: React.FC<TradeCardProps> = ({
                             )}
                             
                             {onRemove && (
-                                <button
-                                    onClick={onRemove}
-                                    className="p-2 rounded-full text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-colors"
-                                    aria-label="Remove from journal"
-                                    title="Remove from Journal"
-                                >
-                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                                       <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                    </svg>
+                                <button onClick={onRemove} className="p-2 rounded-full text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-colors" aria-label="Remove from journal" title="Remove from Journal">
+                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                                 </button>
                             )}
                         </div>

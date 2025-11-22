@@ -28,24 +28,12 @@ import {
 import ClarityFeedback from './ClarityFeedback';
 import Logo from './Logo';
 import ScreenCaptureModal from './ScreenCaptureModal';
+import { storeImage } from '../idb';
 
 // --- SYSTEM PROMPTS ---
 
 // System prompt for the new AI-driven guided chart acquisition
-const generateGuidedAcquisitionSystemPrompt = (strategy: StrategyLogicData, isComparison: boolean): string => {
-    if (isComparison) {
-        return `You are an AI data acquisition specialist helping a user compare multiple assets.
-**CONTEXT:**
-- Strategy: ${strategy.name}
-- Goal: Gather one chart for EACH asset the user wants to compare.
-
-**PROTOCOL:**
-1. **Initial Request:** Ask the user to upload a chart for the first asset they want to analyze (e.g. "Please upload the chart for the first asset...").
-2. **Loop:** When a chart is uploaded, acknowledge it and ask if there are more assets to compare.
-3. **Completion:** If the user says "that's all", "finished", or if you have at least 2-3 assets and the user stops, output EXACTLY: \`[ANALYSIS_READY]\`.
-4. **Validation:** Ensure the image looks like a chart. If not, ask them to retry.`;
-    }
-
+const generateGuidedAcquisitionSystemPrompt = (strategy: StrategyLogicData): string => {
     return `You are an AI data acquisition specialist for a trading analysis tool. Your sole purpose is to guide a user, step-by-step, to provide the necessary chart screenshots for a specific trading strategy.
 
 **CONTEXT:**
@@ -75,7 +63,7 @@ const generateSystemInstructionContent = (
     strategyLogicData: Record<StrategyKey, StrategyLogicData>,
     selectedMarketData: Record < string, any[] > ,
     currentPrice: number | null,
-    analysisMode: 'setup' | 'comparison'
+    isComparisonMode: boolean
 ): string => {
     const strategyDetails = selectedStrategies.map(key => {
         const logic = strategyLogicData[key];
@@ -87,60 +75,24 @@ ${logic.prompt}
     `;
     }).join('\n\n');
 
-    if (analysisMode === 'comparison') {
-        return `You are The Oracle, a sophisticated asset selector AI.
-**GOAL:** Compare the provided asset charts based on the user's selected strategy and rank them by suitability.
-
-**STRATEGY LOGIC:**
-${strategyDetails}
-
-**USER SETTINGS:**
-- Risk Profile: ${userSettings.riskAppetite}
-- Preferred Duration: ${userSettings.preferredTradeDuration}
-
-**INSTRUCTIONS:**
-1.  **Identify Assets:** For each provided image, attempt to identify the asset symbol/ticker from the chart text/header. If ambiguous, label as "Asset 1", "Asset 2", etc.
-2.  **Analyze Suitability:** Evaluate each asset's chart against the STRATEGY LOGIC. Does it meet the criteria for a trade?
-3.  **Rank & Rate:** Assign a "Heat" score (1-5, where 5 is a perfect setup match) and a Sentiment (Bullish/Bearish/Neutral).
-4.  **Output Format (JSON Only):**
-{
-  "assetComparisonResults": [
-    {
-      "asset": "BTCUSD",
-      "sentiment": "Bullish",
-      "heat": 5,
-      "brief": "Perfect retest of the 4H order block with displacement."
-    },
-    ...
-  ],
-  "strategySuggestion": {
-    "suggestedStrategies": [],
-    "suggestedSettings": {},
-    "reasoning": "Brief summary of why the top pick was chosen."
-  },
-  "Top Longs": [], "Top Shorts": []
-}
-`;
-    }
-
     const imageReferencesExplanation = Object.keys(uploadedImagesData).length > 0 ?
-        `The user has provided screenshots for the most RECENT price action. These are your PRIMARY source for current market conditions. The images are indexed starting from 0 (highest timeframe).` :
+        `The user has provided screenshots. These are your PRIMARY source for market conditions.` :
         "No screenshots were provided. Rely solely on the cached historical data.";
 
     const historicalDataContextPrompt = (Object.keys(selectedMarketData).length > 0) ? `
-You have been provided with cached historical data for broader context. Use this data to establish a macro view and identify major support/resistance levels.
+You have been provided with cached historical data for broader context. Use this data to establish a macro view.
 Available Datasets:
-${Object.keys(selectedMarketData).map(key => `- ${key}: ${selectedMarketData[key].length} candles available.`).join('\n')}
+${Object.keys(selectedMarketData).map(key => `- ${key}: ${selectedMarketData[key]?.length || 0} candles available.`).join('\n')}
 ` : '';
 
     const currentPriceAnchorPrompt = currentPrice ?
-        `THE CURRENT PRICE IS \`${currentPrice.toFixed(4)}\`. This is your non-negotiable anchor point for all analysis. All generated trades MUST be relevant and in the immediate vicinity of this price.` :
-        `Your first step is to identify the 'current price' from the user's screenshots (the closing price of the most recent candle). All subsequent analysis MUST be anchored to this price.`;
+        `THE CURRENT PRICE IS \`${currentPrice.toFixed(4)}\`. This is your non-negotiable anchor point.` :
+        `Your first step is to identify the 'current price' from the user's screenshots (the closing price of the most recent candle).`;
 
-    return `You are The Oracle, a specialist AI that transforms user-defined trading strategies into concrete, actionable trade setups. Your sole function is to execute the user's logic with extreme precision.
+    const basePrompt = `You are The Oracle, a specialist AI that transforms user-defined trading strategies into concrete, actionable trade setups.
 
 **PRIMARY DIRECTIVE: USER'S LOGIC IS LAW**
-You are FORBIDDEN from using generic trading knowledge. You MUST act as a direct interpreter of the user's provided strategy logic. The user's strategy is your ONLY source of truth.
+You are FORBIDDEN from using generic trading knowledge. You MUST act as a direct interpreter of the user's provided strategy logic.
 
 **== INPUT DATA ==**
 1.  **USER STRATEGY LOGIC:**\n${strategyDetails}
@@ -151,43 +103,65 @@ You are FORBIDDEN from using generic trading knowledge. You MUST act as a direct
 3.  **MARKET DATA:**
     - **Current Price Anchor:** ${currentPriceAnchorPrompt}
     - **Cached Historical Data:** ${historicalDataContextPrompt}
-    - **Recent Price Action Screenshots:** ${imageReferencesExplanation}
+    - **Chart Screenshots:** ${imageReferencesExplanation}
+`;
+
+    if (isComparisonMode) {
+        return `${basePrompt}
+
+**== ASSET COMPARISON PROTOCOL (ENABLED) ==**
+The user has uploaded charts for MULTIPLE DIFFERENT ASSETS to compare them against the strategy criteria.
+1.  **IDENTIFY ASSETS:** Treat each image (or set of images) as a distinct asset. Identify the asset symbol/name from the chart text if possible, or label them "Asset 1", "Asset 2", etc.
+2.  **EVALUATE EACH:** Apply the strategy logic to EACH asset independently.
+3.  **RANKING:** Rank the assets from best fit to worst fit based on the strategy requirements.
+4.  **OUTPUT:** Your response MUST still be valid JSON.
+    - Leave "Top Longs" and "Top Shorts" empty or include specific setups if they are exceptionally good.
+    - **CRITICALLY:** Fill the \`assetComparisonResults\` array in the JSON output.
+    
+    **Output JSON Structure for Comparison:**
+    {
+      "Top Longs": [],
+      "Top Shorts": [],
+      "strategySuggestion": { ... },
+      "assetComparisonResults": [
+         {
+            "asset": "Asset Name",
+            "sentiment": "Bullish" | "Bearish" | "Neutral",
+            "heat": 1-5 (integer),
+            "brief": "Short explanation of why this asset ranks here."
+         },
+         ...
+      ]
+    }
+`;
+    }
+
+    return `${basePrompt}
 
 **== EXECUTION PROTOCOL (NON-NEGOTIABLE) ==**
 
-1.  **MANDATORY PRE-FLIGHT INDICATOR CHECK (CRITICAL FIRST STEP):**
-    - First, analyze the USER STRATEGY LOGIC to identify ALL required indicators (e.g., "ADX", "DMI", "RSI", "Moving Average").
-    - Next, use your computer vision capabilities to meticulously scan ALL provided user screenshots.
-    - **GATEKEEPING RULE:** If ANY of the required indicators are missing from the charts, you MUST ABORT the analysis. Your entire response MUST be a JSON object with "Top Longs" and "Top Shorts" as empty arrays, and the "strategySuggestion.reasoning" field MUST explain exactly which indicators are missing and instruct the user to upload new charts containing them.
-    - **EXAMPLE REASONING:** "Analysis aborted. The 'Core ADX/DMI Trend Analysis' strategy requires the ADX, +DI, and -DI indicators to be visible, but they were not found on your charts. Please upload charts that include these indicators to proceed."
-    - **DO NOT PROCEED to step 2 if this check fails. Do not analyze price action. Do not invent setups.**
+1.  **MANDATORY PRE-FLIGHT INDICATOR CHECK:**
+    - Analyze the STRATEGY LOGIC for required indicators (e.g., ADX, RSI).
+    - Scan charts. If indicators are missing, ABORT. Return empty trades and explain in "strategySuggestion.reasoning".
 
-2.  **APPLY LOGIC & JUSTIFY:** If and only if the indicator check passes, proceed. For EACH trade you generate, you MUST write an 'explanation' that:
-    - Explicitly quotes or paraphrases a specific rule from the USER STRATEGY LOGIC.
-    - Connects that rule to specific evidence on the chart (e.g., price levels, candle patterns).
-    - **EXAMPLE:** "Entry is based on the 'Bullish Order Block' rule from your strategy; the price has returned to the last down-candle at \`<strong style='color: #FBBF24;'>112000</strong>\` before the break of structure, as required."
+2.  **APPLY LOGIC & JUSTIFY:**
+    - For EACH trade, you MUST write an 'explanation' that quotes specific strategy rules and connects them to chart evidence.
 
-3.  **PROXIMITY GATEKEEPER:** Every generated trade's entry price MUST be within a reasonable distance of the current price anchor. Discard any trades that are far from the current price.
+3.  **PROXIMITY GATEKEEPER:** Entry must be near current price.
 
 **== OUTPUT FORMAT (NON-NEGOTIABLE) ==**
-Your response MUST be a single, valid JSON object. Adhere strictly to this structure:
+Your response MUST be a single, valid JSON object.
 {
-  "Top Longs": [/* Array of Trade objects or empty */],
-  "Top Shorts": [/* Array of Trade objects or empty */],
+  "Top Longs": [/* Array of Trade objects */],
+  "Top Shorts": [/* Array of Trade objects */],
   "strategySuggestion": {
-    "suggestedStrategies": [/* Array of strategy key strings or empty */],
-    "suggestedSettings": { /* A UserSettings object or empty object {} */ },
-    "reasoning": "A string explanation. THIS IS A MANDATORY FIELD."
+    "suggestedStrategies": [],
+    "suggestedSettings": {},
+    "reasoning": "Mandatory explanation string."
   }
 }
-
-- **CRITICAL:** The \`strategySuggestion\` object and its \`reasoning\` field are mandatory. If no trades are found, use the \`reasoning\` field to explain why (e.g., "Market is consolidating, no clear setups..."). If you abort due to the Pre-Flight Indicator Check, state the reason here.
-- **'heat':** Every trade MUST have a 'heat' score (integer 1-5).
-- **'explanation':** Every trade MUST have a detailed 'explanation' quoting strategy rules. Format key concepts with styled \`<strong>\` tags (e.g., \`<strong style='color: #60A5FA;'>break of structure</strong>\`).
 `;
 };
-
-const ScreenIcon = (props: { className?: string }) => <svg {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M3.25 3A2.25 2.25 0 0 0 1 5.25v9.5A2.25 2.25 0 0 0 3.25 17h13.5A2.25 2.25 0 0 0 19 14.75v-9.5A2.25 2.25 0 0 0 16.75 3H3.25Zm12.5 11.5H4.25a.75.75 0 0 1-.75-.75V6.25a.75.75 0 0 1 .75-.75h11.5a.75.75 0 0 1 .75.75v8.5a.75.75 0 0 1-.75-.75Z" clipRule="evenodd" /></svg>;
 
 type Phase = 'idle' | 'gathering' | 'validating' | 'ready' | 'analyzing';
 
@@ -196,7 +170,7 @@ export interface ImageUploaderHandles {
 }
 
 interface ImageUploaderProps {
-  onAnalysisComplete: (results: AnalysisResults, strategies: StrategyKey[], images: UploadedImageKeys, useRealTimeContext: boolean) => void;
+  onAnalysisComplete: (results: AnalysisResults, strategies: StrategyKey[], images: UploadedImageKeys, useRealTimeContext: boolean, tokenCount: number) => void;
   selectedStrategies: StrategyKey[];
   userSettings: UserSettings;
   initialImages?: UploadedImageKeys | null;
@@ -208,7 +182,7 @@ interface ImageUploaderProps {
   onLogTokenUsage: (tokens: number) => void;
   marketDataCache: MarketDataCache;
   dashboardSelectedMarketData: string[];
-  analysisMode: 'setup' | 'comparison';
+  isComparisonMode: boolean;
 }
 
 const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
@@ -224,7 +198,7 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
   onLogTokenUsage,
   marketDataCache,
   dashboardSelectedMarketData,
-  analysisMode,
+  isComparisonMode,
 }, ref) => {
     
     const [phase, setPhase] = useState<Phase>('idle');
@@ -232,21 +206,22 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
     const [uploadedImagesData, setUploadedImagesData] = useState<UploadedImageKeys>({});
     const [error, setError] = useState<string | null>(null);
     
+    // Screen Capture State
     const [isCaptureModalOpen, setIsCaptureModalOpen] = useState(false);
     const [captureStream, setCaptureStream] = useState<MediaStream | null>(null);
     const [captureError, setCaptureError] = useState<string | null>(null);
     const streamRef = useRef<MediaStream | null>(null);
-
+    
     const fileInputRef = useRef<HTMLInputElement>(null);
     const chatSessionRef = useRef<Chat | null>(null);
 
     const getAiClient = useCallback(() => {
-        // Directly use process.env.API_KEY as per instructions
-        if (!process.env.API_KEY) {
+        const apiKey = apiConfig.geminiApiKey || process.env.API_KEY;
+        if (!apiKey) {
             return null;
         }
-        return new GoogleGenAI({ apiKey: process.env.API_KEY });
-    }, []);
+        return new GoogleGenAI({ apiKey });
+    }, [apiConfig.geminiApiKey]);
 
     useEffect(() => {
         onPhaseChange(phase);
@@ -282,17 +257,17 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
 
         resetState();
         setIsAnalyzing(true);
-        setPhase('validating'); // Show loading state immediately
+        setPhase('validating');
 
         const ai = getAiClient();
         if (!ai) {
-            setError("API Key not configured/available.");
+            setError("API Key not configured.");
             setIsAnalyzing(false);
             return;
         }
 
         try {
-            const systemInstruction = generateGuidedAcquisitionSystemPrompt(primaryStrategy, analysisMode === 'comparison');
+            const systemInstruction = generateGuidedAcquisitionSystemPrompt(primaryStrategy);
             chatSessionRef.current = ai.chats.create({
                 model: 'gemini-2.5-flash',
                 config: { systemInstruction },
@@ -301,7 +276,7 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
             const response = await chatSessionRef.current.sendMessage({ message: "Start." });
             onLogTokenUsage(response.usageMetadata?.totalTokenCount || 0);
             
-            setConversation([{ sender: 'ai', text: response.text }]);
+            setConversation([{ sender: 'ai', text: response.text || "" }]);
             setPhase('gathering');
         } catch (e) {
             const errorMessage = e instanceof Error ? e.message : "An unknown error occurred.";
@@ -314,7 +289,15 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
 
 
     const handleImageUpload = useCallback(async (imageData: UploadedImageData) => {
-        if (phase !== 'gathering' || isAnalyzing || !chatSessionRef.current) return;
+        // If in simple mode (no guided chat yet), add the image to list and render it
+        if (!chatSessionRef.current) {
+             setUploadedImagesData(prev => ({ ...prev, [Object.keys(prev).length]: imageData.dataUrl }));
+             setConversation(prev => [...prev, { sender: 'user', image: imageData.dataUrl }]); // CRITICAL FIX: Add to conversation so it shows in UI
+             setPhase('ready');
+             return;
+        }
+
+        if (phase !== 'gathering' || isAnalyzing) return;
 
         setConversation(prev => [...prev, { sender: 'user', image: imageData.dataUrl }]);
         setPhase('validating');
@@ -333,7 +316,7 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
         try {
             const response = await chatSessionRef.current.sendMessage({ message: [imagePart] });
             onLogTokenUsage(response.usageMetadata?.totalTokenCount || 0);
-            const responseText = response.text.trim();
+            const responseText = (response.text || "").trim();
 
             if (responseText === '[ANALYSIS_READY]') {
                 setUploadedImagesData(prev => ({ ...prev, [Object.keys(prev).length]: imageData.dataUrl }));
@@ -357,46 +340,21 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
             const file = e.target.files[0];
             const reader = new FileReader();
             reader.onload = (event) => {
-                handleImageUpload({
-                    name: file.name,
-                    type: file.type,
-                    dataUrl: event.target?.result as string
-                });
+                const result = event.target?.result;
+                if (typeof result === 'string') {
+                    handleImageUpload({
+                        name: file.name,
+                        type: file.type,
+                        dataUrl: result
+                    });
+                }
             };
             reader.readAsDataURL(file);
         }
-        e.target.value = ''; // Allow re-selecting the same file
+        e.target.value = '';
     };
 
-    useEffect(() => {
-        const handlePaste = (event: ClipboardEvent) => {
-            if (phase !== 'gathering') return;
-            const items = event.clipboardData?.items;
-            if (!items) return;
-            for (let i = 0; i < items.length; i++) {
-                if (items[i].type.indexOf('image') !== -1) {
-                    const file = items[i].getAsFile();
-                    if (file) {
-                        event.preventDefault();
-                        const reader = new FileReader();
-                        reader.onload = (e) => {
-                            handleImageUpload({
-                                name: `pasted_image_${Date.now()}.png`,
-                                type: file.type,
-                                dataUrl: e.target?.result as string
-                            });
-                        };
-                        reader.readAsDataURL(file);
-                        return;
-                    }
-                }
-            }
-        };
-        document.addEventListener('paste', handlePaste);
-        return () => document.removeEventListener('paste', handlePaste);
-    }, [phase, handleImageUpload]);
-
-    // --- Screen Capture Logic ---
+    // Screen Share Logic
     const stopMediaStream = useCallback(() => {
         if (streamRef.current) {
             streamRef.current.getTracks().forEach(track => track.stop());
@@ -430,13 +388,46 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
 
     const handleCaptureSubmit = (dataUrl: string) => {
         handleImageUpload({
-            name: `capture_${Date.now()}.jpg`,
+            name: `screen_capture_${Date.now()}.jpg`,
             type: 'image/jpeg',
-            dataUrl
+            dataUrl: dataUrl
         });
         setIsCaptureModalOpen(false);
         stopMediaStream();
     };
+
+    useEffect(() => {
+        const handlePaste = (event: ClipboardEvent) => {
+            // Enable paste if in gathering phase OR if in idle phase (to start)
+            if (phase !== 'gathering' && phase !== 'idle' && phase !== 'ready') return;
+            
+            const items = event.clipboardData?.items;
+            if (!items) return;
+            for (let i = 0; i < items.length; i++) {
+                if (items[i].type.indexOf('image') !== -1) {
+                    const file = items[i].getAsFile();
+                    if (file) {
+                        event.preventDefault();
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                            const result = e.target?.result;
+                            if (typeof result === 'string') {
+                                handleImageUpload({
+                                    name: `pasted_image_${Date.now()}.png`,
+                                    type: file.type,
+                                    dataUrl: result
+                                });
+                            }
+                        };
+                        reader.readAsDataURL(file);
+                        return;
+                    }
+                }
+            }
+        };
+        document.addEventListener('paste', handlePaste);
+        return () => document.removeEventListener('paste', handlePaste);
+    }, [phase, handleImageUpload]);
     
     const triggerAnalysis = async (useRealTimeContext: boolean) => {
         setIsAnalyzing(true);
@@ -450,7 +441,7 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
 
         const ai = getAiClient();
         if (!ai) {
-            setError("API Key not configured/available.");
+            setError("API Key not configured. Please set it in Master Controls.");
             setIsAnalyzing(false);
             return;
         }
@@ -482,7 +473,7 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
         try {
             const systemInstruction = generateSystemInstructionContent(
                 selectedStrategies, userSettings, uploadedImagesData, strategyLogicData,
-                selectedMarketData, currentPrice, analysisMode
+                selectedMarketData, currentPrice, isComparisonMode
             );
 
             const imageParts: Part[] = [];
@@ -502,7 +493,7 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
             
             const requestContents = imageParts.length > 0
                 ? { parts: imageParts }
-                : { parts: [{text: "Analyze the provided cached historical data based on the system instructions."}]};
+                : "Analyze the provided cached historical data based on the system instructions.";
 
             const response: GenerateContentResponse = await ai.models.generateContent({
                 model: 'gemini-2.5-flash',
@@ -516,14 +507,14 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
             const totalTokenCount = response.usageMetadata?.totalTokenCount || 0;
             onLogTokenUsage(totalTokenCount);
             
-            let jsonText = response.text.trim();
+            let jsonText = (response.text || "").trim();
             const fenceRegex = /^```(\w*)?\s*\n?(.*?)\n?\s*```$/s;
             const match = jsonText.match(fenceRegex);
             if (match && match[2]) jsonText = match[2].trim();
 
             const results: AnalysisResults = JSON.parse(jsonText);
 
-            onAnalysisComplete(results, selectedStrategies, uploadedImagesData, useRealTimeContext);
+            onAnalysisComplete(results, selectedStrategies, uploadedImagesData, useRealTimeContext, totalTokenCount);
 
         } catch (e) {
             const errorMessage = e instanceof Error ? e.message : "An unknown error occurred during analysis.";
@@ -539,25 +530,32 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
 
     return (
         <div className="bg-gray-800/70 p-4 rounded-lg border border-gray-700">
+             {/* Simplified Interaction for Direct Upload */}
              {phase === 'idle' && (
                 <div>
-                    <h4 className="font-bold text-gray-200">
-                        {analysisMode === 'comparison' ? "Provide Asset Charts" : "Provide Screenshots for Recent Price Action"}
-                    </h4>
-                    <p className="text-sm text-gray-400 mb-2">
-                        {analysisMode === 'comparison' 
-                            ? "Upload one chart for each asset you wish to compare against the strategy."
-                            : "Upload screenshots to give the AI the most current view of the market, which supplements the cached historical data."
-                        }
-                    </p>
-                     <div className="mt-4">
-                        <button onClick={handleStartGuidedUpload} disabled={selectedStrategies.length === 0 || isAnalyzing} className="w-full font-bold py-2 px-4 rounded-lg transition-colors bg-blue-600 hover:bg-blue-500 text-white disabled:bg-gray-600 disabled:cursor-not-allowed">
-                            {isAnalyzing ? "Initializing..." : "Start Guided Chart Upload"}
+                    <h4 className="font-bold text-gray-200">Provide Market Context</h4>
+                    <p className="text-sm text-gray-400 mb-4">Upload screenshots of your charts for analysis.</p>
+                     
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        <button onClick={() => fileInputRef.current?.click()} className="text-sm font-semibold p-3 rounded-md bg-blue-600 hover:bg-blue-500 text-white transition-colors">
+                            Upload Image
+                        </button>
+                        <button className="text-sm font-semibold p-3 rounded-md bg-blue-600 hover:bg-blue-500 text-white transition-colors" title="Paste from Clipboard">
+                            Paste Image
+                        </button>
+                        <button onClick={handleInitiateScreenCapture} className="text-sm font-semibold p-3 rounded-md bg-blue-600 hover:bg-blue-500 text-white transition-colors">
+                            Share Screen
                         </button>
                     </div>
+                    
+                    {/* Guided Option Link */}
+                    <button onClick={handleStartGuidedUpload} disabled={selectedStrategies.length === 0 || isAnalyzing} className="mt-4 text-xs text-yellow-500 hover:underline disabled:text-gray-600">
+                        {isAnalyzing ? "Initializing..." : "Or start Guided Acquisition Assistant"}
+                    </button>
                 </div>
             )}
 
+            {/* Chat Interface for Guided Mode OR Result Display */}
             {phase !== 'idle' && (
                 <>
                     <div className="space-y-3 min-h-[100px] max-h-[300px] overflow-y-auto pr-2">
@@ -580,17 +578,13 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
                         )}
                     </div>
 
-                    {phase === 'gathering' && (
-                        <div className="mt-4 p-3 bg-yellow-900/20 border-l-4 border-yellow-500">
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                                <button onClick={() => fileInputRef.current?.click()} className="text-sm font-semibold p-2 rounded-md bg-blue-600 hover:bg-blue-500 text-white">Upload Image</button>
-                                <button onClick={handleInitiateScreenCapture} className="text-sm font-semibold p-2 rounded-md bg-blue-600 hover:bg-blue-500 text-white flex items-center justify-center gap-1">
-                                    <ScreenIcon className="w-4 h-4"/> Capture
-                                </button>
-                                <button className="text-sm font-semibold p-2 rounded-md bg-blue-600 hover:bg-blue-500 text-white" title="Press Ctrl+V or Cmd+V to paste an image">Paste Image</button>
-                            </div>
+                    <div className="mt-4 p-3 bg-gray-900/50 border-t border-gray-700">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                            <button onClick={() => fileInputRef.current?.click()} className="text-xs font-semibold p-2 rounded-md bg-gray-700 hover:bg-gray-600 text-white">Upload</button>
+                            <button className="text-xs font-semibold p-2 rounded-md bg-gray-700 hover:bg-gray-600 text-white" title="Press Ctrl+V">Paste</button>
+                            <button onClick={handleInitiateScreenCapture} className="text-xs font-semibold p-2 rounded-md bg-gray-700 hover:bg-gray-600 text-white">Screen Share</button>
                         </div>
-                    )}
+                    </div>
                 </>
             )}
             
