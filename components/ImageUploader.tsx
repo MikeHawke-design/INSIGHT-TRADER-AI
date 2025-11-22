@@ -1,34 +1,32 @@
 
 import React, {
-  useState,
-  useRef,
-  useEffect,
-  useCallback,
-  forwardRef,
-  useImperativeHandle,
+    useState,
+    useRef,
+    useEffect,
+    useCallback,
+    forwardRef,
+    useImperativeHandle,
 } from 'react';
 import {
-  GoogleGenAI,
-  GenerateContentResponse,
-  Part,
-  Chat
+    GoogleGenAI,
+    GenerateContentResponse,
+    Part,
+    Chat
 } from "@google/genai";
 import {
-  AnalysisResults,
-  StrategyKey,
-  StrategyLogicData,
-  UserSettings,
-  UploadedImageKeys,
-  UploadedImageData,
-  ApiConfiguration,
-  MarketDataCache,
-  MarketDataCandle,
-  Trade,
+    AnalysisResults,
+    StrategyKey,
+    StrategyLogicData,
+    UserSettings,
+    UploadedImageKeys,
+    UploadedImageData,
+    ApiConfiguration,
+    MarketDataCache,
+    MarketDataCandle,
 } from '../types';
 import ClarityFeedback from './ClarityFeedback';
 import Logo from './Logo';
 import ScreenCaptureModal from './ScreenCaptureModal';
-import { storeImage } from '../idb';
 
 // --- SYSTEM PROMPTS ---
 
@@ -61,7 +59,7 @@ const generateSystemInstructionContent = (
     userSettings: UserSettings,
     uploadedImagesData: UploadedImageKeys,
     strategyLogicData: Record<StrategyKey, StrategyLogicData>,
-    selectedMarketData: Record < string, any[] > ,
+    selectedMarketData: Record<string, any[]>,
     currentPrice: number | null,
     isComparisonMode: boolean
 ): string => {
@@ -166,57 +164,57 @@ Your response MUST be a single, valid JSON object.
 type Phase = 'idle' | 'gathering' | 'validating' | 'ready' | 'analyzing';
 
 export interface ImageUploaderHandles {
-  triggerAnalysis: (useRealTimeContext: boolean) => void;
+    triggerAnalysis: (useRealTimeContext: boolean) => void;
 }
 
 interface ImageUploaderProps {
-  onAnalysisComplete: (results: AnalysisResults, strategies: StrategyKey[], images: UploadedImageKeys, useRealTimeContext: boolean, tokenCount: number) => void;
-  selectedStrategies: StrategyKey[];
-  userSettings: UserSettings;
-  initialImages?: UploadedImageKeys | null;
-  strategyLogicData: Record<StrategyKey, StrategyLogicData>;
-  isAnalyzing: boolean;
-  setIsAnalyzing: (isAnalyzing: boolean) => void;
-  onPhaseChange: (phase: Phase) => void;
-  apiConfig: ApiConfiguration;
-  onLogTokenUsage: (tokens: number) => void;
-  marketDataCache: MarketDataCache;
-  dashboardSelectedMarketData: string[];
-  isComparisonMode: boolean;
+    onAnalysisComplete: (results: AnalysisResults, strategies: StrategyKey[], images: UploadedImageKeys, useRealTimeContext: boolean, tokenCount: number) => void;
+    selectedStrategies: StrategyKey[];
+    userSettings: UserSettings;
+    initialImages?: UploadedImageKeys | null;
+    strategyLogicData: Record<StrategyKey, StrategyLogicData>;
+    isAnalyzing: boolean;
+    setIsAnalyzing: (isAnalyzing: boolean) => void;
+    onPhaseChange: (phase: Phase) => void;
+    apiConfig: ApiConfiguration;
+    onLogTokenUsage: (tokens: number) => void;
+    marketDataCache: MarketDataCache;
+    dashboardSelectedMarketData: string[];
+    isComparisonMode: boolean;
 }
 
 const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
-  onAnalysisComplete,
-  selectedStrategies,
-  userSettings,
-  initialImages,
-  strategyLogicData,
-  isAnalyzing,
-  setIsAnalyzing,
-  onPhaseChange,
-  apiConfig,
-  onLogTokenUsage,
-  marketDataCache,
-  dashboardSelectedMarketData,
-  isComparisonMode,
+    onAnalysisComplete,
+    selectedStrategies,
+    userSettings,
+    initialImages,
+    strategyLogicData,
+    isAnalyzing,
+    setIsAnalyzing,
+    onPhaseChange,
+    apiConfig,
+    onLogTokenUsage,
+    marketDataCache,
+    dashboardSelectedMarketData,
+    isComparisonMode,
 }, ref) => {
-    
+
     const [phase, setPhase] = useState<Phase>('idle');
-    const [conversation, setConversation] = useState<{sender: 'ai' | 'user', text?: string, image?: string}[]>([]);
+    const [conversation, setConversation] = useState<{ sender: 'ai' | 'user', text?: string, image?: string }[]>([]);
     const [uploadedImagesData, setUploadedImagesData] = useState<UploadedImageKeys>({});
     const [error, setError] = useState<string | null>(null);
-    
+
     // Screen Capture State
     const [isCaptureModalOpen, setIsCaptureModalOpen] = useState(false);
     const [captureStream, setCaptureStream] = useState<MediaStream | null>(null);
     const [captureError, setCaptureError] = useState<string | null>(null);
     const streamRef = useRef<MediaStream | null>(null);
-    
+
     const fileInputRef = useRef<HTMLInputElement>(null);
     const chatSessionRef = useRef<Chat | null>(null);
 
     const getAiClient = useCallback(() => {
-        const apiKey = apiConfig.geminiApiKey || process.env.API_KEY;
+        const apiKey = apiConfig.geminiApiKey || import.meta.env.VITE_API_KEY;
         if (!apiKey) {
             return null;
         }
@@ -234,7 +232,7 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
         setError(null);
         chatSessionRef.current = null;
     }, []);
-    
+
     useEffect(() => {
         if (phase !== 'idle') return;
         if (initialImages && Object.keys(initialImages).length > 0) {
@@ -272,10 +270,10 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
                 model: 'gemini-2.5-flash',
                 config: { systemInstruction },
             });
-            
+
             const response = await chatSessionRef.current.sendMessage({ message: "Start." });
             onLogTokenUsage(response.usageMetadata?.totalTokenCount || 0);
-            
+
             setConversation([{ sender: 'ai', text: response.text || "" }]);
             setPhase('gathering');
         } catch (e) {
@@ -291,17 +289,17 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
     const handleImageUpload = useCallback(async (imageData: UploadedImageData) => {
         // If in simple mode (no guided chat yet), add the image to list and render it
         if (!chatSessionRef.current) {
-             setUploadedImagesData(prev => ({ ...prev, [Object.keys(prev).length]: imageData.dataUrl }));
-             setConversation(prev => [...prev, { sender: 'user', image: imageData.dataUrl }]); // CRITICAL FIX: Add to conversation so it shows in UI
-             setPhase('ready');
-             return;
+            setUploadedImagesData(prev => ({ ...prev, [Object.keys(prev).length]: imageData.dataUrl }));
+            setConversation(prev => [...prev, { sender: 'user', image: imageData.dataUrl }]); // CRITICAL FIX: Add to conversation so it shows in UI
+            setPhase('ready');
+            return;
         }
 
         if (phase !== 'gathering' || isAnalyzing) return;
 
         setConversation(prev => [...prev, { sender: 'user', image: imageData.dataUrl }]);
         setPhase('validating');
-        
+
         const prefixMatch = imageData.dataUrl.match(/^data:(image\/(?:png|jpeg|webp));base64,/);
         if (!prefixMatch) {
             setConversation(prev => [...prev, { sender: 'ai', text: "Invalid image format. Please try again." }]);
@@ -333,7 +331,7 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
             setPhase('gathering');
         }
     }, [phase, isAnalyzing, onLogTokenUsage]);
-    
+
 
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
@@ -400,7 +398,7 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
         const handlePaste = (event: ClipboardEvent) => {
             // Enable paste if in gathering phase OR if in idle phase (to start)
             if (phase !== 'gathering' && phase !== 'idle' && phase !== 'ready') return;
-            
+
             const items = event.clipboardData?.items;
             if (!items) return;
             for (let i = 0; i < items.length; i++) {
@@ -428,7 +426,7 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
         document.addEventListener('paste', handlePaste);
         return () => document.removeEventListener('paste', handlePaste);
     }, [phase, handleImageUpload]);
-    
+
     const triggerAnalysis = async (useRealTimeContext: boolean) => {
         setIsAnalyzing(true);
         setError(null);
@@ -452,7 +450,7 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
         const selectedMarketData = dashboardSelectedMarketData.reduce((acc, key) => {
             if (marketDataCache[key]) acc[key] = marketDataCache[key];
             return acc;
-        }, {} as Record < string, MarketDataCandle[] > );
+        }, {} as Record<string, MarketDataCandle[]>);
 
         if (Object.keys(selectedMarketData).length > 0) {
             Object.values(selectedMarketData).forEach(candlesUntyped => {
@@ -490,7 +488,7 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
                     }
                 }
             }
-            
+
             const requestContents = imageParts.length > 0
                 ? { parts: imageParts }
                 : "Analyze the provided cached historical data based on the system instructions.";
@@ -506,7 +504,7 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
 
             const totalTokenCount = response.usageMetadata?.totalTokenCount || 0;
             onLogTokenUsage(totalTokenCount);
-            
+
             let jsonText = (response.text || "").trim();
             const fenceRegex = /^```(\w*)?\s*\n?(.*?)\n?\s*```$/s;
             const match = jsonText.match(fenceRegex);
@@ -523,19 +521,19 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
             setIsAnalyzing(false);
         }
     };
-    
+
     useImperativeHandle(ref, () => ({
         triggerAnalysis,
     }));
 
     return (
         <div className="bg-gray-800/70 p-4 rounded-lg border border-gray-700">
-             {/* Simplified Interaction for Direct Upload */}
-             {phase === 'idle' && (
+            {/* Simplified Interaction for Direct Upload */}
+            {phase === 'idle' && (
                 <div>
                     <h4 className="font-bold text-gray-200">Provide Market Context</h4>
                     <p className="text-sm text-gray-400 mb-4">Upload screenshots of your charts for analysis.</p>
-                     
+
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                         <button onClick={() => fileInputRef.current?.click()} className="text-sm font-semibold p-3 rounded-md bg-blue-600 hover:bg-blue-500 text-white transition-colors">
                             Upload Image
@@ -547,7 +545,7 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
                             Share Screen
                         </button>
                     </div>
-                    
+
                     {/* Guided Option Link */}
                     <button onClick={handleStartGuidedUpload} disabled={selectedStrategies.length === 0 || isAnalyzing} className="mt-4 text-xs text-yellow-500 hover:underline disabled:text-gray-600">
                         {isAnalyzing ? "Initializing..." : "Or start Guided Acquisition Assistant"}
@@ -587,13 +585,13 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
                     </div>
                 </>
             )}
-            
+
             {error && (
                 <div className="mt-4">
-                     <ClarityFeedback message={error} onDismiss={() => setError(null)} />
+                    <ClarityFeedback message={error} onDismiss={() => setError(null)} />
                 </div>
             )}
-            
+
             <input type="file" ref={fileInputRef} onChange={handleFileSelect} accept="image/*" className="hidden" />
             <ScreenCaptureModal isOpen={isCaptureModalOpen} stream={captureStream} onCapture={handleCaptureSubmit} onClose={() => { setIsCaptureModalOpen(false); stopMediaStream(); }} error={captureError} />
         </div>

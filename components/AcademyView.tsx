@@ -55,7 +55,7 @@ export const AcademyView: React.FC<AcademyViewProps> = ({ userCourseProgress, se
     const [activeView, setActiveView] = useState<'modules' | 'lesson' | 'quiz'>('modules');
     const [selectedModule, setSelectedModule] = useState<CourseModule | null>(null);
     const [selectedLesson, setSelectedLesson] = useState<CourseLesson | null>(null);
-    
+
     // Quiz State
     const [currentQuizAnswers, setCurrentQuizAnswers] = useState<Record<number, string>>({});
     const [quizResult, setQuizResult] = useState<{ score: number; feedback: string } | null>(null);
@@ -66,7 +66,7 @@ export const AcademyView: React.FC<AcademyViewProps> = ({ userCourseProgress, se
     const [isProcessingExercise, setIsProcessingExercise] = useState(false);
     const [exerciseError, setExerciseError] = useState<string | null>(null);
     const exerciseFileRef = useRef<HTMLInputElement>(null);
-    
+
     const [expandedUserModules, setExpandedUserModules] = useState<Record<string, boolean>>({});
 
     const toggleUserModule = (moduleId: string) => {
@@ -74,7 +74,7 @@ export const AcademyView: React.FC<AcademyViewProps> = ({ userCourseProgress, se
     };
 
     const getAiClient = useCallback(() => {
-        const apiKey = apiConfig.geminiApiKey || process.env.API_KEY;
+        const apiKey = apiConfig.geminiApiKey || import.meta.env.VITE_API_KEY;
         return new GoogleGenAI({ apiKey });
     }, [apiConfig.geminiApiKey]);
 
@@ -92,14 +92,14 @@ export const AcademyView: React.FC<AcademyViewProps> = ({ userCourseProgress, se
         });
         setActiveView('modules');
     };
-    
+
     const handleStartQuiz = (module: CourseModule) => {
         setSelectedModule(module);
         setQuizResult(null);
         setCurrentQuizAnswers({});
         setActiveView('quiz');
     };
-    
+
     const handleAnswerQuestion = (questionIndex: number, answer: string) => {
         setCurrentQuizAnswers(prev => ({ ...prev, [questionIndex]: answer }));
     };
@@ -125,11 +125,11 @@ export const AcademyView: React.FC<AcademyViewProps> = ({ userCourseProgress, se
             ...prev,
             quizScores: { ...prev.quizScores, [selectedModule.id]: score }
         }));
-        
+
         const feedbackPrompt = `The user just scored ${score.toFixed(0)}% on the "${selectedModule.title}" quiz. Provide a brief, encouraging, and constructive feedback summary based on this score. If the score is low, suggest revisiting specific lessons.`;
 
         try {
-            const response = await ai.models.generateContent({model: 'gemini-2.5-flash', contents: feedbackPrompt});
+            const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: feedbackPrompt });
             setQuizResult({ score, feedback: response.text || "Score recorded." });
         } catch (error) {
             console.error("Failed to get quiz feedback:", error);
@@ -148,7 +148,7 @@ export const AcademyView: React.FC<AcademyViewProps> = ({ userCourseProgress, se
             reader.readAsDataURL(e.target.files[0]);
         }
     };
-    
+
     const handleSubmitExercise = async (lessonId: string, blockIndex: number, validationPrompt: string) => {
         const ai = getAiClient();
         if (!exerciseImage || !ai) {
@@ -168,7 +168,7 @@ export const AcademyView: React.FC<AcademyViewProps> = ({ userCourseProgress, se
                     [`${lessonId}-${blockIndex}`]: { imageKey: storedKey, status: 'pending' }
                 }
             }));
-            
+
             const prefixMatch = exerciseImage.match(/^data:(image\/(?:png|jpeg|webp));base64,/);
             if (!prefixMatch) throw new Error("Invalid image format");
 
@@ -181,9 +181,9 @@ export const AcademyView: React.FC<AcademyViewProps> = ({ userCourseProgress, se
                 config: { systemInstruction: validationPrompt }
             });
 
-            const feedback = response.text;
+            const feedback = response.text || "";
             const status = feedback && feedback.startsWith("PASS:") ? 'passed' : 'failed';
-            
+
             setUserCourseProgress(prev => ({
                 ...prev,
                 exerciseStates: {
@@ -191,7 +191,7 @@ export const AcademyView: React.FC<AcademyViewProps> = ({ userCourseProgress, se
                     [`${lessonId}-${blockIndex}`]: { imageKey: storedKey, status, feedback: feedback || "No feedback." }
                 }
             }));
-            
+
             // Clear image for next exercise
             setExerciseImage(null);
 
@@ -200,11 +200,11 @@ export const AcademyView: React.FC<AcademyViewProps> = ({ userCourseProgress, se
             const message = err instanceof Error ? err.message : "An unknown error occurred.";
             setExerciseError(`AI Validation Failed: ${message}`);
             // Clear the pending state on error
-             setUserCourseProgress(prev => {
-                const newStates = {...prev.exerciseStates};
+            setUserCourseProgress(prev => {
+                const newStates = { ...prev.exerciseStates };
                 delete newStates[`${lessonId}-${blockIndex}`];
-                return {...prev, exerciseStates: newStates};
-             });
+                return { ...prev, exerciseStates: newStates };
+            });
         } finally {
             setIsProcessingExercise(false);
         }
@@ -216,7 +216,7 @@ export const AcademyView: React.FC<AcademyViewProps> = ({ userCourseProgress, se
         const customModules = (Object.values(strategyLogicData) as StrategyLogicData[])
             .filter((strat: StrategyLogicData) => strat.courseModule)
             .map(strat => strat.courseModule as CourseModule);
-        
+
         return { userGeneratedModules: customModules };
     }, [strategyLogicData]);
 
@@ -242,22 +242,22 @@ export const AcademyView: React.FC<AcademyViewProps> = ({ userCourseProgress, se
                 <div className="space-y-3">
                     {modules.map(module => {
                         // SAFE CHECK ADDED: Ensure module.lessons exists and has length
-                        const progress = (module.lessons && module.lessons.length > 0) 
+                        const progress = (module.lessons && module.lessons.length > 0)
                             ? (userCourseProgress.completedLessons.filter(id => module.lessons.some(l => l.id === id)).length / module.lessons.length) * 100
                             : 0;
-                        
+
                         const quizScore = userCourseProgress.quizScores[module.id];
                         const isExpanded = !!expandedUserModules[module.id];
 
                         return (
-                             <div key={module.id} className="bg-gray-900/50 rounded-lg border border-gray-700/50 overflow-hidden">
+                            <div key={module.id} className="bg-gray-900/50 rounded-lg border border-gray-700/50 overflow-hidden">
                                 <div className="p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 cursor-pointer" onClick={() => toggleUserModule(module.id)}>
                                     <div className="flex-grow">
-                                        <h4 className="font-semibold text-white" style={{ fontSize: `${userSettings.headingFontSize-2}px` }}>{module.title}</h4>
+                                        <h4 className="font-semibold text-white" style={{ fontSize: `${userSettings.headingFontSize - 2}px` }}>{module.title}</h4>
                                         <p className="text-sm text-gray-400 mt-1">{module.description}</p>
                                     </div>
                                     <div className="flex items-center gap-4 flex-shrink-0">
-                                        {quizScore !== undefined && ( <div className={`text-sm font-bold ${quizScore >= 70 ? 'text-green-400' : 'text-red-400'}`}>Quiz: {quizScore.toFixed(0)}%</div> )}
+                                        {quizScore !== undefined && (<div className={`text-sm font-bold ${quizScore >= 70 ? 'text-green-400' : 'text-red-400'}`}>Quiz: {quizScore.toFixed(0)}%</div>)}
                                         <div className="w-24">
                                             <p className="text-xs text-gray-400 text-right mb-1">{progress.toFixed(0)}%</p>
                                             <div className="w-full bg-gray-600 rounded-full h-2"><div className="bg-yellow-400 h-2 rounded-full" style={{ width: `${progress}%` }}></div></div>
@@ -265,7 +265,7 @@ export const AcademyView: React.FC<AcademyViewProps> = ({ userCourseProgress, se
                                     </div>
                                 </div>
                                 {isExpanded && (
-                                     <div className="bg-gray-800/30 p-4 border-t border-gray-700/50">
+                                    <div className="bg-gray-800/30 p-4 border-t border-gray-700/50">
                                         <ul className="space-y-2">
                                             {module.lessons && module.lessons.map(lesson => {
                                                 const isCompleted = userCourseProgress.completedLessons.includes(lesson.id);
@@ -298,20 +298,20 @@ export const AcademyView: React.FC<AcademyViewProps> = ({ userCourseProgress, se
             </div>
         )
     };
-    
+
     const renderLessonView = () => {
         if (!selectedLesson || !selectedModule) return null;
-        
+
         return (
             <div className="max-w-4xl mx-auto">
                 <button onClick={handleResetView} className="mb-4 text-sm font-semibold text-yellow-400 hover:text-yellow-300">← Back to Modules</button>
                 <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
                     <h2 className="text-3xl font-bold text-white">{selectedLesson.title}</h2>
                     <p className="text-gray-400 mt-1 mb-6">From: {selectedModule.title}</p>
-                    
+
                     <div className="space-y-8">
                         {selectedLesson.blocks.map((block, index) => {
-                             const exerciseState = userCourseProgress.exerciseStates[`${selectedLesson.id}-${index}`];
+                            const exerciseState = userCourseProgress.exerciseStates[`${selectedLesson.id}-${index}`];
                             if (block.type === 'text') {
                                 return <div key={index} className="prose prose-sm prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: block.content }} />;
                             }
@@ -320,10 +320,10 @@ export const AcademyView: React.FC<AcademyViewProps> = ({ userCourseProgress, se
                                     <div key={index} className="p-4 bg-gray-900/50 rounded-lg border border-gray-700/50 space-y-4">
                                         <div className="prose prose-sm prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: block.prompt }} />
                                         {exerciseState?.status === 'passed' ? (
-                                             <div className="p-3 bg-green-900/30 border border-green-500/50 rounded-md">
+                                            <div className="p-3 bg-green-900/30 border border-green-500/50 rounded-md">
                                                 <h5 className="font-bold text-green-300">✓ Passed!</h5>
                                                 <p className="text-sm text-gray-300 mt-1">{exerciseState.feedback}</p>
-                                             </div>
+                                            </div>
                                         ) : (
                                             <>
                                                 {exerciseState?.status === 'failed' && (
@@ -344,7 +344,7 @@ export const AcademyView: React.FC<AcademyViewProps> = ({ userCourseProgress, se
                                                 <button onClick={() => handleSubmitExercise(selectedLesson.id, index, block.validationPrompt)} disabled={!exerciseImage || isProcessingExercise} className="w-full font-semibold py-2 px-4 rounded-lg bg-yellow-500 hover:bg-yellow-400 text-gray-900 disabled:bg-gray-600 flex items-center justify-center">
                                                     {isProcessingExercise ? <><Logo className="w-5 h-5 mr-2" isLoading /> Submitting...</> : 'Submit for Feedback'}
                                                 </button>
-                                                 {exerciseError && <p className="text-sm text-red-400">{exerciseError}</p>}
+                                                {exerciseError && <p className="text-sm text-red-400">{exerciseError}</p>}
                                             </>
                                         )}
                                     </div>
@@ -353,30 +353,30 @@ export const AcademyView: React.FC<AcademyViewProps> = ({ userCourseProgress, se
                             return null;
                         })}
                     </div>
-                     <button onClick={() => handleMarkLessonComplete(selectedLesson.id)} className="mt-8 w-full font-semibold py-2 px-4 rounded-lg bg-green-600 hover:bg-green-500 text-white">Mark as Complete & Return</button>
+                    <button onClick={() => handleMarkLessonComplete(selectedLesson.id)} className="mt-8 w-full font-semibold py-2 px-4 rounded-lg bg-green-600 hover:bg-green-500 text-white">Mark as Complete & Return</button>
                 </div>
             </div>
         )
     };
 
     const renderQuizView = () => {
-         if (!selectedModule) return null;
+        if (!selectedModule) return null;
 
-         if (quizResult) {
-             return (
+        if (quizResult) {
+            return (
                 <div className="max-w-2xl mx-auto text-center">
-                     <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
-                         <h2 className="text-2xl font-bold text-white">Quiz Complete!</h2>
-                         <p className="text-5xl font-bold my-4" style={{ color: quizResult.score >= 70 ? '#34D399' : '#F87171' }}>{quizResult.score.toFixed(0)}%</p>
-                         <p className="text-gray-300">{quizResult.feedback}</p>
-                         <button onClick={handleResetView} className="mt-6 font-semibold py-2 px-6 rounded-lg bg-blue-600 hover:bg-blue-500 text-white">Back to Modules</button>
-                     </div>
+                    <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+                        <h2 className="text-2xl font-bold text-white">Quiz Complete!</h2>
+                        <p className="text-5xl font-bold my-4" style={{ color: quizResult.score >= 70 ? '#34D399' : '#F87171' }}>{quizResult.score.toFixed(0)}%</p>
+                        <p className="text-gray-300">{quizResult.feedback}</p>
+                        <button onClick={handleResetView} className="mt-6 font-semibold py-2 px-6 rounded-lg bg-blue-600 hover:bg-blue-500 text-white">Back to Modules</button>
+                    </div>
                 </div>
-             )
-         }
+            )
+        }
 
         return (
-             <div className="max-w-4xl mx-auto">
+            <div className="max-w-4xl mx-auto">
                 <button onClick={handleResetView} className="mb-4 text-sm font-semibold text-yellow-400 hover:text-yellow-300">← Back to Modules</button>
                 <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
                     <h2 className="text-2xl font-bold text-white">Quiz: {selectedModule.title}</h2>
@@ -387,7 +387,7 @@ export const AcademyView: React.FC<AcademyViewProps> = ({ userCourseProgress, se
                                 <div className="mt-3 space-y-2">
                                     {q.options.map(option => (
                                         <label key={option} className="flex items-center p-2 rounded-md bg-gray-700/50 hover:bg-gray-700 cursor-pointer">
-                                            <input type="radio" name={`q-${index}`} value={option} checked={currentQuizAnswers[index] === option} onChange={() => handleAnswerQuestion(index, option)} className="w-4 h-4 accent-yellow-400 bg-gray-600 border-gray-500"/>
+                                            <input type="radio" name={`q-${index}`} value={option} checked={currentQuizAnswers[index] === option} onChange={() => handleAnswerQuestion(index, option)} className="w-4 h-4 accent-yellow-400 bg-gray-600 border-gray-500" />
                                             <span className="ml-3 text-gray-300">{option}</span>
                                         </label>
                                     ))}
@@ -395,14 +395,14 @@ export const AcademyView: React.FC<AcademyViewProps> = ({ userCourseProgress, se
                             </div>
                         ))}
                     </div>
-                     <button onClick={handleSubmitQuiz} disabled={isSubmittingQuiz} className="mt-8 w-full font-semibold py-2 px-4 rounded-lg bg-green-600 hover:bg-green-500 text-white disabled:bg-gray-600 flex items-center justify-center">
+                    <button onClick={handleSubmitQuiz} disabled={isSubmittingQuiz} className="mt-8 w-full font-semibold py-2 px-4 rounded-lg bg-green-600 hover:bg-green-500 text-white disabled:bg-gray-600 flex items-center justify-center">
                         {isSubmittingQuiz ? <><Logo className="w-5 h-5 mr-2" isLoading /> Submitting...</> : 'Submit Quiz'}
                     </button>
                 </div>
             </div>
         )
     }
-    
+
     if (activeView === 'lesson') return renderLessonView();
     if (activeView === 'quiz') return renderQuizView();
 
@@ -412,7 +412,7 @@ export const AcademyView: React.FC<AcademyViewProps> = ({ userCourseProgress, se
                 <h2 className="font-bold text-white" style={{ fontSize: `${userSettings.headingFontSize + 12}px` }}>Academy</h2>
                 <p className="text-gray-400 mt-1" style={{ fontSize: `${userSettings.uiFontSize}px` }}>Learn trading concepts and master your strategies with interactive lessons.</p>
             </div>
-            
+
             {renderModuleList(userGeneratedModules, "Your Custom Strategy Courses")}
         </div>
     );

@@ -26,12 +26,12 @@ const UserManualView: React.FC = () => {
                 <h2 className="text-4xl font-display font-bold text-white tracking-wider mb-2">INSIGHT TRADER</h2>
                 <p className="text-yellow-500/60 font-mono text-sm tracking-widest uppercase">Operational Manual v3.0</p>
             </div>
-            
+
             <Section title="🚀 Full Access Enabled">
                 <p>Welcome to INSIGHT TRADER. The platform has been unlocked to provide full, unrestricted access to all AI analysis and educational tools.</p>
                 <p>To get started:</p>
                 <ol>
-                    <li><strong>Data Feed (Optional):</strong> Navigate to <Highlight>System > Data Management</Highlight> to fetch EODHD market data if you have a key, or simply use image uploads for analysis.</li>
+                    <li><strong>Data Feed (Optional):</strong> Navigate to <Highlight>System &gt; Data Management</Highlight> to fetch EODHD market data if you have a key, or simply use image uploads for analysis.</li>
                     <li><strong>Terminal Access:</strong> Enter the <Highlight>Terminal</Highlight> view.</li>
                     <li><strong>Configuration:</strong>
                         <ul>
@@ -52,7 +52,7 @@ const UserManualView: React.FC = () => {
                     <li><strong>Parameters:</strong> Adjust risk profile and R:R targets.</li>
                     <li><strong>Context:</strong> Inject market data via Image Upload (screenshots of your chart) or Cached Data.</li>
                 </ol>
-                
+
                 <h4>Guided Learning</h4>
                 <p>Interactive coaching module to master specific strategies via the AI interface.</p>
             </Section>

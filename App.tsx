@@ -1,9 +1,9 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { 
-    ActiveView, AnalysisResults, StrategyKey, UserSettings, UploadedImageKeys, User, 
-    ChatMessage, Trade, StrategyLogicData, SavedTrade, TradeFeedback, 
-    KnowledgeBaseDocument, UserCourseProgress, SavedCoachingSession, 
+import {
+    ActiveView, AnalysisResults, StrategyKey, UserSettings, UploadedImageKeys, User,
+    ChatMessage, Trade, StrategyLogicData, SavedTrade, TradeFeedback,
+    KnowledgeBaseDocument, UserCourseProgress, SavedCoachingSession,
     ApiConfiguration,
     EodhdUsageStats,
     MarketDataCache,
@@ -11,11 +11,11 @@ import {
     SavedAssetComparison,
     UserUsage,
 } from './types';
-import { 
+import {
     DEFAULT_USER_SETTINGS, DEFAULT_LOGGED_OUT_USER,
-    DASHBOARD_STRATEGIES_LOCALSTORAGE_KEY, USER_SETTINGS_LOCALSTORAGE_KEY, SAVED_TRADES_LOCALSTORAGE_KEY, 
-    STRATEGY_LOGIC_LOCALSTORAGE_KEY, AUTH_SESSION_LOCALSTORAGE_KEY, KB_DOCS_LOCALSTORAGE_KEY, 
-    COURSE_PROGRESS_LOCALSTORAGE_KEY, 
+    DASHBOARD_STRATEGIES_LOCALSTORAGE_KEY, USER_SETTINGS_LOCALSTORAGE_KEY, SAVED_TRADES_LOCALSTORAGE_KEY,
+    STRATEGY_LOGIC_LOCALSTORAGE_KEY, AUTH_SESSION_LOCALSTORAGE_KEY, KB_DOCS_LOCALSTORAGE_KEY,
+    COURSE_PROGRESS_LOCALSTORAGE_KEY,
     API_CONFIG_LOCALSTORAGE_KEY, DEFAULT_API_CONFIGURATION, MARKET_DATA_CACHE_LOCALSTORAGE_KEY,
     ADJECTIVES, NOUNS,
     COACHING_SESSIONS_LOCALSTORAGE_KEY, TOKEN_USAGE_HISTORY_LOCALSTORAGE_KEY,
@@ -58,7 +58,7 @@ const App: React.FC = () => {
     const [uploadedImagesForAnalysis, setUploadedImagesForAnalysis] = useState<UploadedImageKeys | null>(null);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [tokenCountForAnalysis, setTokenCountForAnalysis] = useState<number>(0);
-    
+
     // Persistent App State
     const [userSettings, setUserSettings] = useLocalStorage<UserSettings>(USER_SETTINGS_LOCALSTORAGE_KEY, DEFAULT_USER_SETTINGS);
     const [apiConfig, setApiConfig] = useLocalStorage<ApiConfiguration>(API_CONFIG_LOCALSTORAGE_KEY, DEFAULT_API_CONFIGURATION);
@@ -92,7 +92,23 @@ const App: React.FC = () => {
         window.addEventListener('scroll', handleScroll);
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
-    
+
+    // Apply UI Darkness
+    useEffect(() => {
+        const root = document.documentElement;
+        // Default bg-900 is 222 47% 6%
+        // We map uiDarkness (-5 to 5) to Lightness
+        // 5 (Maximum Dark) -> 0% Lightness (Pure Black)
+        // 0 (Default) -> 6% Lightness
+        // -5 (Mild Dark) -> 11% Lightness
+
+        const baseLightness = 6;
+        const darkness = userSettings.uiDarkness || 0;
+        const newLightness = Math.max(0, baseLightness - darkness);
+
+        root.style.setProperty('--color-bg-900', `222 47% ${newLightness}%`);
+    }, [userSettings.uiDarkness]);
+
     // --- Handlers ---
     const handleUserSettingsChange = (key: keyof UserSettings, value: any) => {
         setUserSettings(prev => ({ ...prev, [key]: value }));
@@ -121,13 +137,23 @@ const App: React.FC = () => {
         window.scrollTo(0, 0);
     }, []);
 
-    const handleAnalysisComplete = useCallback((results: AnalysisResults, strategies: StrategyKey[], images: UploadedImageKeys, useRealTimeContext: boolean, tokenCount: number) => {
+    const handleAnalysisComplete = useCallback((results: AnalysisResults, strategies: StrategyKey[], images: UploadedImageKeys, useRealTimeContext: boolean, tokenCount: number = 0) => {
         setAnalysisResults(results);
         setSelectedStrategiesForAnalysis(strategies);
         setUploadedImagesForAnalysis(images);
         setTokenCountForAnalysis(tokenCount);
         setModifiedAnalysis(null);
         setActiveView('analyze_new');
+    }, []);
+
+    const handlePerformRedo = useCallback((strategies?: StrategyKey[], settings?: Partial<UserSettings>) => {
+        if (settings) {
+            setUserSettings(prev => ({ ...prev, ...settings }));
+        }
+        if (strategies) {
+            setDashboardSelectedStrategies(strategies);
+        }
+        setActiveView('analyze');
     }, []);
 
     const handleResetAnalysis = useCallback(() => {
@@ -152,16 +178,16 @@ const App: React.FC = () => {
         };
         setSavedTrades(prev => [newSavedTrade, ...prev]);
     }, [uploadedImagesForAnalysis, setSavedTrades, analysisResults]);
-    
-    
+
+
     const handleUpdateTradeFeedback = useCallback((tradeId: string, feedback: TradeFeedback) => {
         setSavedTrades(prev => prev.map(t => t.id === tradeId ? { ...t, feedback } : t));
     }, [setSavedTrades]);
-    
+
     const handleRemoveTrade = useCallback((tradeId: string) => {
         setSavedTrades(prev => prev.filter(t => t.id !== tradeId));
     }, [setSavedTrades]);
-    
+
     const handleAddResultImageToTrade = (tradeId: string, imageKey: string) => {
         setSavedTrades(prev => prev.map(t => t.id === tradeId ? { ...t, resultImageKey: imageKey } : t));
     };
@@ -197,7 +223,7 @@ const App: React.FC = () => {
             alert(`Restore failed: ${msg}`);
         }
     };
-    
+
     const handleFetchEodhdUsage = useCallback(async () => {
         if (!apiConfig.eodhdApiKey) return;
         try {
@@ -222,7 +248,7 @@ const App: React.FC = () => {
         // ... (Existing implementation)
         return { count: 0, key: '' }; // Placeholder for brevity, full implementation assumed
     };
-    
+
     return (
         <div className="bg-[hsl(var(--color-bg-900))] text-gray-100 min-h-screen flex flex-col">
             {isAuthenticated && currentUser && (
@@ -245,12 +271,12 @@ const App: React.FC = () => {
                     <Footer onOpenLegal={setActiveLegalModal} />
                 </>
             )}
-            
+
             <PrivacyPolicyModal isOpen={activeLegalModal === 'privacy'} onClose={() => setActiveLegalModal(null)} />
             <TermsOfUseModal isOpen={activeLegalModal === 'terms'} onClose={() => setActiveLegalModal(null)} />
 
             {isAuthenticated && currentUser && (
-                <AvatarSelectionModal 
+                <AvatarSelectionModal
                     isOpen={isAvatarModalOpen}
                     onClose={() => setIsAvatarModalOpen(false)}
                     onAvatarSelect={(avatarDataUrl) => {
@@ -263,15 +289,15 @@ const App: React.FC = () => {
             )}
         </div>
     );
-    
+
     function renderCurrentView() {
         if (!isAuthenticated) return <AccessGate onAuthSuccess={handleAuthSuccess} onOpenLegal={setActiveLegalModal} />;
         if (coachingContext) {
-            return <CoachingView 
-                context={coachingContext} 
-                onClose={() => setCoachingContext(null)} 
-                apiConfig={apiConfig} 
-                userSettings={userSettings} 
+            return <CoachingView
+                context={coachingContext}
+                onClose={() => setCoachingContext(null)}
+                apiConfig={apiConfig}
+                userSettings={userSettings}
                 onLogTokenUsage={handleLogTokenUsage}
                 onSaveSession={(sessionId, title, history, goal) => {
                     if (sessionId) {
@@ -290,7 +316,7 @@ const App: React.FC = () => {
                     }
                 }}
                 onSaveTrade={(trade, strategies, history) => {
-                     const newSavedTrade: SavedTrade = {
+                    const newSavedTrade: SavedTrade = {
                         ...trade,
                         id: `trade_${Date.now()}`,
                         savedDate: new Date().toISOString(),
@@ -341,6 +367,9 @@ const App: React.FC = () => {
                         selectedStrategies={selectedStrategiesForAnalysis}
                         uploadedImages={uploadedImagesForAnalysis}
                         onReset={handleResetAnalysis}
+                        onPerformRedo={handlePerformRedo}
+                        onSaveAssetComparison={(comp) => setSavedAssetComparisons(prev => [comp, ...prev])}
+                        onAnalyzeAsset={() => setActiveView('analyze')}
                         currentUser={currentUser}
                         userUsage={userUsage}
                         savedTrades={savedTrades}
@@ -348,41 +377,41 @@ const App: React.FC = () => {
                         strategyLogicData={strategyLogicData}
                         userSettings={userSettings}
                     />
-                ) : <Dashboard 
-                        onAnalysisComplete={handleAnalysisComplete} 
-                        userSettings={userSettings} 
-                        onUserSettingsChange={handleUserSettingsChange} 
-                        currentUser={currentUser} 
-                        userUsage={userUsage}
-                        dashboardSelectedStrategies={dashboardSelectedStrategies} 
-                        onDashboardStrategyChange={(key) => setDashboardSelectedStrategies(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key])} 
-                        onSetDashboardStrategies={setDashboardSelectedStrategies} 
-                        dashboardSelectedMarketData={dashboardSelectedMarketData} 
-                        setDashboardSelectedMarketData={setDashboardSelectedMarketData} 
-                        strategyLogicData={strategyLogicData} 
-                        knowledgeBaseDocuments={knowledgeBaseDocuments} 
-                        isAnalyzing={isAnalyzing} 
-                        setIsAnalyzing={setIsAnalyzing} 
-                        onLogTokenUsage={handleLogTokenUsage} 
-                        isUnrestrictedMode={true} 
-                        apiConfig={apiConfig} 
-                        onInitiateCoaching={(strat, goal, key) => { setCoachingContext({ strategy: strat, goal, strategyKey: key }); setActiveView('analyze'); }} 
-                        viewedStrategy={viewedStrategy} 
-                        setViewedStrategy={setViewedStrategy} 
-                        marketDataCache={marketDataCache} 
-                        onSaveAssetComparison={(comp) => setSavedAssetComparisons(prev => [comp, ...prev])}
-                    />;
+                ) : <Dashboard
+                    onAnalysisComplete={handleAnalysisComplete}
+                    userSettings={userSettings}
+                    onUserSettingsChange={handleUserSettingsChange}
+                    currentUser={currentUser}
+                    userUsage={userUsage}
+                    dashboardSelectedStrategies={dashboardSelectedStrategies}
+                    onDashboardStrategyChange={(key) => setDashboardSelectedStrategies(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key])}
+                    onSetDashboardStrategies={setDashboardSelectedStrategies}
+                    dashboardSelectedMarketData={dashboardSelectedMarketData}
+                    setDashboardSelectedMarketData={setDashboardSelectedMarketData}
+                    strategyLogicData={strategyLogicData}
+                    knowledgeBaseDocuments={knowledgeBaseDocuments}
+                    isAnalyzing={isAnalyzing}
+                    setIsAnalyzing={setIsAnalyzing}
+                    onLogTokenUsage={handleLogTokenUsage}
+                    isUnrestrictedMode={true}
+                    apiConfig={apiConfig}
+                    onInitiateCoaching={(strat, goal, key) => { setCoachingContext({ strategy: strat, goal, strategyKey: key }); setActiveView('analyze'); }}
+                    viewedStrategy={viewedStrategy}
+                    setViewedStrategy={setViewedStrategy}
+                    marketDataCache={marketDataCache}
+                    onSaveAssetComparison={(comp) => setSavedAssetComparisons(prev => [comp, ...prev])}
+                />;
             case 'journal':
-                 return <JournalView 
-                    savedTrades={savedTrades} 
-                    onUpdateTradeFeedback={handleUpdateTradeFeedback} 
+                return <JournalView
+                    savedTrades={savedTrades}
+                    onUpdateTradeFeedback={handleUpdateTradeFeedback}
                     onRemoveTrade={handleRemoveTrade}
                     onAddResultImageToTrade={handleAddResultImageToTrade}
                     strategyLogicData={strategyLogicData}
                     savedCoachingSessions={savedCoachingSessions}
                     onUpdateCoachingSessionNotes={(sid, n) => setSavedCoachingSessions(prev => prev.map(s => s.id === sid ? { ...s, userNotes: n } : s))}
                     onDeleteCoachingSession={(sid) => setSavedCoachingSessions(prev => prev.filter(s => s.id !== sid))}
-                    onStartNewCoachingSession={() => {setActiveView('analyze'); setTimeout(() => document.getElementById('tab-learn')?.click(), 100)}}
+                    onStartNewCoachingSession={() => { setActiveView('analyze'); setTimeout(() => document.getElementById('tab-learn')?.click(), 100) }}
                     userSettings={userSettings}
                     onResumeCoachingSession={(session) => {
                         const strategy = strategyLogicData[session.strategyKey];
@@ -393,13 +422,13 @@ const App: React.FC = () => {
                     onDeleteAssetComparison={(id) => setSavedAssetComparisons(prev => prev.filter(c => c.id !== id))}
                 />;
             case 'settings':
-                return <MasterControlsView 
+                return <MasterControlsView
                     strategyLogicData={strategyLogicData} setStrategyLogicData={setStrategyLogicData} apiConfig={apiConfig} setApiConfig={setApiConfig} userSettings={userSettings} onUserSettingsChange={handleUserSettingsChange} currentUser={currentUser} tokenUsageHistory={tokenUsageHistory} onLogTokenUsage={handleLogTokenUsage} onOpenLegal={setActiveLegalModal} marketDataCache={marketDataCache} onFetchAndLoadData={async (s, t, f, to) => {
                         throw new Error("Please implement handleFetchAndLoadData logic fully");
-                    }} onRemoveMarketData={(k) => setMarketDataCache(prev => { const n = {...prev}; delete n[k]; return n; })} onRestoreData={handleRestoreData} eodhdUsage={eodhdUsage} onFetchEodhdUsage={handleFetchEodhdUsage} onNavClick={handleNavClick}
+                    }} onRemoveMarketData={(k) => setMarketDataCache(prev => { const n = { ...prev }; delete n[k]; return n; })} onRestoreData={handleRestoreData} eodhdUsage={eodhdUsage} onFetchEodhdUsage={handleFetchEodhdUsage} onNavClick={handleNavClick}
                 />;
-             case 'academy':
-                return <AcademyView 
+            case 'academy':
+                return <AcademyView
                     userCourseProgress={userCourseProgress}
                     setUserCourseProgress={setUserCourseProgress}
                     currentUser={currentUser}
@@ -409,8 +438,8 @@ const App: React.FC = () => {
                     onInitiateCoaching={(strat, goal, key) => { setCoachingContext({ strategy: strat, goal, strategyKey: key }); setActiveView('analyze'); }}
                 />;
             case 'profile':
-                return currentUser ? <ProfileView 
-                    currentUser={currentUser} 
+                return currentUser ? <ProfileView
+                    currentUser={currentUser}
                     apiConfig={apiConfig}
                     onOpenAvatarSelection={() => setIsAvatarModalOpen(true)}
                     userSettings={userSettings}

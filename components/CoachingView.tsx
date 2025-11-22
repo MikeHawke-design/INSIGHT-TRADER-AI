@@ -22,7 +22,7 @@ interface CoachingViewProps {
 }
 
 // --- Helper Components & Icons ---
-const UploadIcon = (props: {className?: string}) => <svg {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M9.25 13.25a.75.75 0 0 0 1.5 0V4.636l2.955 3.129a.75.75 0 0 0 1.09-1.03l-4.25-4.5a.75.75 0 0 0-1.09 0l-4.25 4.5a.75.75 0 0 0 1.09 1.03L9.25 4.636V13.25Z" /><path d="M3.5 12.75a.75.75 0 0 0-1.5 0v2.5A2.75 2.75 0 0 0 4.75 18h10.5A2.75 2.75 0 0 0 18 15.25v-2.5a.75.75 0 0 0-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5Z" /></svg>;
+const UploadIcon = (props: { className?: string }) => <svg {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M9.25 13.25a.75.75 0 0 0 1.5 0V4.636l2.955 3.129a.75.75 0 0 0 1.09-1.03l-4.25-4.5a.75.75 0 0 0-1.09 0l-4.25 4.5a.75.75 0 0 0 1.09 1.03L9.25 4.636V13.25Z" /><path d="M3.5 12.75a.75.75 0 0 0-1.5 0v2.5A2.75 2.75 0 0 0 4.75 18h10.5A2.75 2.75 0 0 0 18 15.25v-2.5a.75.75 0 0 0-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5Z" /></svg>;
 const ScreenIcon = (props: { className?: string }) => <svg {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M3.25 3A2.25 2.25 0 0 0 1 5.25v9.5A2.25 2.25 0 0 0 3.25 17h13.5A2.25 2.25 0 0 0 19 14.75v-9.5A2.25 2.25 0 0 0 16.75 3H3.25Zm12.5 11.5H4.25a.75.75 0 0 1-.75-.75V6.25a.75.75 0 0 1 .75-.75h11.5a.75.75 0 0 1 .75.75v8.5a.75.75 0 0 1-.75-.75Z" clipRule="evenodd" /></svg>;
 const SaveIcon = (props: { className?: string }) => <svg {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M5 4.5a2.5 2.5 0 0 1 5 0v2.086a.25.25 0 0 0 .25.25h3.5a.25.25 0 0 0 .25-.25V4.5a2.5 2.5 0 0 1 5 0v11a2.5 2.5 0 0 1-5 0V9.75a.75.75 0 0 0-1.5 0v5.75a.25.25 0 0 0 .25.25h3.5a.25.25 0 0 0 .25-.25V13.5a2.5 2.5 0 0 1 5 0v2a2.5 2.5 0 0 1-2.5 2.5h-10A2.5 2.5 0 0 1 2.5 17.5v-10A2.5 2.5 0 0 1 5 4.5Z" /></svg>;
 
@@ -40,7 +40,7 @@ const IdbImageDisplay: React.FC<{ imageKey: string, onZoom: (src: string) => voi
     if (!imageUrl) return <div className="not-prose rounded-md my-2 animate-pulse bg-gray-600 h-32 w-48"></div>;
 
     return (
-        <img 
+        <img
             src={imageUrl}
             alt="Example illustration"
             className="not-prose rounded-md my-2 max-w-xs cursor-pointer transition-transform hover:scale-105"
@@ -63,19 +63,19 @@ async function transformHistoryForApi(chatHistory: ChatMessage[]): Promise<Conte
             const text = tempDiv.textContent || msg.text;
             parts.push({ text });
         }
-        
+
         if (msg.imageKeys && msg.imageKeys.length > 0) {
             for (const key of msg.imageKeys) {
                 const base64 = await getImage(key);
                 if (base64) {
-                     const prefixMatch = base64.match(/^data:(image\/(?:png|jpeg|webp));base64,/);
-                     if (prefixMatch) {
-                         parts.push({ inlineData: { mimeType: prefixMatch[1], data: base64.substring(prefixMatch[0].length) } });
-                     }
+                    const prefixMatch = base64.match(/^data:(image\/(?:png|jpeg|webp));base64,/);
+                    if (prefixMatch) {
+                        parts.push({ inlineData: { mimeType: prefixMatch[1], data: base64.substring(prefixMatch[0].length) } });
+                    }
                 }
             }
         }
-        
+
         if (parts.length > 0) {
             history.push({ role, parts });
         }
@@ -87,10 +87,10 @@ const CoachingView: React.FC<CoachingViewProps> = ({
     context,
     onClose,
     apiConfig,
-    userSettings,
+    userSettings: _userSettings,
     onLogTokenUsage,
     onSaveSession,
-    onSaveTrade,
+    onSaveTrade: _onSaveTrade,
 }) => {
     const [chatHistory, setChatHistory] = useState<ChatMessage[]>(context.session?.chatHistory || []);
     const [input, setInput] = useState('');
@@ -109,10 +109,10 @@ const CoachingView: React.FC<CoachingViewProps> = ({
     useEffect(() => {
         if (chatHistory.length === 0) {
             // Initial greeting based on goal
-            const greeting = context.goal === 'learn_basics' 
+            const greeting = context.goal === 'learn_basics'
                 ? `Hello! I'm your AI coach for the <strong style="color: #FBBF24;">${context.strategy.name}</strong> strategy. I'm here to help you master the core concepts. What specific part would you like to tackle first?`
                 : `Ready to build a trade setup using <strong style="color: #FBBF24;">${context.strategy.name}</strong>? Upload a chart or describe the market, and we'll find the edge.`;
-            
+
             setChatHistory([{
                 id: 'init',
                 sender: 'oracle',
@@ -130,7 +130,7 @@ const CoachingView: React.FC<CoachingViewProps> = ({
     const handleSendMessage = async (forcedInput?: string, imageKey?: string) => {
         const textToSend = forcedInput || input;
         if (!textToSend.trim() && !imageKey && !isSending) return;
-        
+
         const userMsg: ChatMessage = {
             id: Date.now().toString(),
             sender: 'user',
@@ -139,19 +139,19 @@ const CoachingView: React.FC<CoachingViewProps> = ({
             type: 'text',
             imageKeys: imageKey ? [imageKey] : undefined
         };
-        
+
         const newHistory = [...chatHistory, userMsg];
         setChatHistory(newHistory);
         setInput('');
         setIsSending(true);
 
         try {
-            // Use environment variable directly as per requirements
-            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-            
+            // Use API key from config
+            const ai = new GoogleGenAI({ apiKey: apiConfig.geminiApiKey || import.meta.env.VITE_API_KEY });
+
             // Transform history for API
             const apiHistory = await transformHistoryForApi(newHistory);
-            
+
             // Separate previous history and the new message
             const historyForChat = apiHistory.slice(0, -1);
             const lastMessageContent = apiHistory[apiHistory.length - 1];
@@ -185,12 +185,12 @@ ${context.strategy.prompt}`;
             });
 
             // Send the new message
-            const response = await chat.sendMessage({ 
-                message: lastMessageContent.parts 
+            const response = await chat.sendMessage({
+                message: lastMessageContent.parts || []
             });
-            
-            const text = response.text;
-            
+
+            const text = response.text || "";
+
             onLogTokenUsage(response.usageMetadata?.totalTokenCount || 0);
 
             const botMsg: ChatMessage = {
@@ -280,9 +280,9 @@ ${context.strategy.prompt}`;
             {/* Header */}
             <div className="flex justify-between items-center mb-4 border-b border-gray-700 pb-4">
                 <div>
-                    <input 
-                        type="text" 
-                        value={sessionTitle} 
+                    <input
+                        type="text"
+                        value={sessionTitle}
                         onChange={(e) => setSessionTitle(e.target.value)}
                         className="bg-transparent text-xl font-bold text-yellow-400 border-none focus:ring-0 w-full"
                     />
@@ -329,18 +329,18 @@ ${context.strategy.prompt}`;
                     <ScreenIcon className="w-6 h-6" />
                 </button>
                 <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileUpload} />
-                
-                <input 
-                    type="text" 
-                    value={input} 
+
+                <input
+                    type="text"
+                    value={input}
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
                     placeholder="Type your message..."
                     className="flex-grow bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
                     disabled={isSending}
                 />
-                <button 
-                    onClick={() => handleSendMessage()} 
+                <button
+                    onClick={() => handleSendMessage()}
                     disabled={isSending || !input.trim()}
                     className="bg-yellow-500 hover:bg-yellow-400 text-gray-900 font-bold py-2 px-4 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
                 >
@@ -353,7 +353,7 @@ ${context.strategy.prompt}`;
                     <img src={zoomedImage} alt="Zoomed" className="max-w-full max-h-full object-contain" />
                 </div>
             )}
-            
+
             <ScreenCaptureModal isOpen={isCaptureModalOpen} stream={captureStream} onCapture={handleCaptureSubmit} onClose={() => { setIsCaptureModalOpen(false); stopMediaStream(); }} error={captureError} />
         </div>
     );

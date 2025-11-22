@@ -1,40 +1,41 @@
 
 import React from 'react';
-import { AnalysisResults, StrategyKey, UploadedImageKeys, User, Trade, UserSettings, SavedTrade, UserUsage, StrategyLogicData, AssetComparisonResult } from '../types';
+import { AnalysisResults, StrategyKey, UploadedImageKeys, User, Trade, UserSettings, SavedTrade, UserUsage, StrategyLogicData, AssetComparisonResult, SavedAssetComparison } from '../types';
 import { TIME_FRAMES_STEPS, CREDIT_COSTS, USER_TIERS } from '../constants';
 import TradeCard from './TradeCard';
 import AISuggestionCard from './AISuggestionCard';
 import HeatMeter from './HeatMeter';
 
 interface AnalysisViewProps {
-  analysisResults: AnalysisResults;
-  modifiedAnalysis: AnalysisResults | null;
-  selectedStrategies: StrategyKey[];
-  uploadedImages: UploadedImageKeys | null;
-  onReset: () => void;
-  onPerformRedo: (strategies?: StrategyKey[], settings?: UserSettings) => void;
-  currentUser: User | null;
-  userUsage: UserUsage;
-  savedTrades: SavedTrade[];
-  onSaveTrade: (trade: Trade, strategiesUsed: StrategyKey[]) => void;
-  strategyLogicData: Record<StrategyKey, StrategyLogicData>;
-  userSettings: UserSettings;
+    analysisResults: AnalysisResults;
+    modifiedAnalysis: AnalysisResults | null;
+    selectedStrategies: StrategyKey[];
+    uploadedImages: UploadedImageKeys | null;
+    onReset: () => void;
+    onPerformRedo: (strategies?: StrategyKey[], settings?: Partial<UserSettings>) => void;
+    currentUser: User | null;
+    userUsage: UserUsage;
+    savedTrades: SavedTrade[];
+    onSaveTrade: (trade: Trade, strategiesUsed: StrategyKey[]) => void;
+    strategyLogicData: Record<StrategyKey, StrategyLogicData>;
+    userSettings: UserSettings;
+    onSaveAssetComparison: (comparison: SavedAssetComparison) => void;
+    onAnalyzeAsset: (asset: string) => void;
 }
 
 const TRADE_CATEGORIES: Array<keyof AnalysisResults> = ['Top Longs', 'Top Shorts'];
 
 const formatStrategyName = (name: string = ''): string => name.replace(/^\d+-/, '').replace(/-/g, ' ');
 
-const ComparisonResultCard: React.FC<{ result: AssetComparisonResult; userSettings: UserSettings }> = ({ result, userSettings }) => {
+const ComparisonResultCard: React.FC<{ result: AssetComparisonResult; userSettings: UserSettings; onAnalyze: () => void }> = ({ result, userSettings, onAnalyze }) => {
     return (
         <div className="bg-[hsl(var(--color-bg-800))] border border-[hsl(var(--color-border-700))] rounded-lg p-4 flex flex-col h-full">
             <div className="flex justify-between items-start mb-3">
                 <div>
-                    <h3 className="font-bold text-white text-xl">{result.asset}</h3>
-                    <span className={`inline-block px-2 py-0.5 text-xs font-semibold rounded-full mt-1 ${
-                        result.sentiment === 'Bullish' ? 'bg-green-500/20 text-green-400' : 
+                    <h3 className="font-bold text-white text-xl cursor-pointer hover:text-yellow-400 transition-colors" onClick={onAnalyze}>{result.asset}</h3>
+                    <span className={`inline-block px-2 py-0.5 text-xs font-semibold rounded-full mt-1 ${result.sentiment === 'Bullish' ? 'bg-green-500/20 text-green-400' :
                         result.sentiment === 'Bearish' ? 'bg-red-500/20 text-red-400' : 'bg-gray-500/20 text-gray-400'
-                    }`}>
+                        }`}>
                         {result.sentiment}
                     </span>
                 </div>
@@ -43,25 +44,52 @@ const ComparisonResultCard: React.FC<{ result: AssetComparisonResult; userSettin
             <p className="text-gray-300 text-sm flex-grow" style={{ fontSize: `${userSettings.uiFontSize}px` }}>
                 {result.brief}
             </p>
+            <button
+                onClick={onAnalyze}
+                className="mt-3 w-full py-2 bg-gray-700 hover:bg-gray-600 text-gray-200 text-sm font-semibold rounded transition-colors flex items-center justify-center gap-2"
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M3 3a1 1 0 000 2v8a2 2 0 002 2h2.586l-1.293 1.293a1 1 0 101.414 1.414L10 15.414l2.293 2.293a1 1 0 001.414-1.414L12.414 15H15a2 2 0 002-2V5a1 1 0 00-1-1H3zm11 4a1 1 0 10-2 0v4a1 1 0 102 0V7zm-3 1a1 1 0 10-2 0v3a1 1 0 102 0V8zM8 9a1 1 0 10-2 0v2a1 1 0 102 0V9z" clipRule="evenodd" />
+                </svg>
+                Analyze Setup
+            </button>
         </div>
     );
 };
 
-const AnalysisView: React.FC<AnalysisViewProps> = ({ 
-    analysisResults, 
+const AnalysisView: React.FC<AnalysisViewProps> = ({
+    analysisResults,
     modifiedAnalysis,
-    selectedStrategies, 
-    uploadedImages, 
-    onReset, 
+    selectedStrategies,
+    uploadedImages,
+    onReset,
     onPerformRedo,
     currentUser,
     userUsage,
     savedTrades,
     onSaveTrade,
     strategyLogicData,
-    userSettings
+    userSettings,
+    onSaveAssetComparison,
+    onAnalyzeAsset
 }) => {
-    
+    const [isComparisonSaved, setIsComparisonSaved] = React.useState(false);
+
+    const handleSaveComparison = () => {
+        if (!analysisResults.assetComparisonResults) return;
+
+        const comparison: SavedAssetComparison = {
+            id: `comp_${Date.now()}`,
+            savedDate: new Date().toISOString(),
+            strategyKey: selectedStrategies[0] || 'unknown',
+            results: analysisResults.assetComparisonResults,
+            imageKeys: uploadedImages || {},
+            userNotes: ''
+        };
+        onSaveAssetComparison(comparison);
+        setIsComparisonSaved(true);
+    };
+
     const getDisplayTrades = (category: keyof AnalysisResults): Trade[] => {
         if (!analysisResults || !analysisResults[category]) return [];
         const originalTradesForCategory = (analysisResults[category] as Trade[]) || [];
@@ -81,7 +109,7 @@ const AnalysisView: React.FC<AnalysisViewProps> = ({
             return modifiedTrade || origTrade;
         });
     };
-    
+
     const normalizePrice = (priceString: string | number): string => {
         if (typeof priceString === 'number') return priceString.toFixed(5);
         if (!priceString) return "INVALID_PRICE";
@@ -105,7 +133,7 @@ const AnalysisView: React.FC<AnalysisViewProps> = ({
 
         if ([tradeEntryStr, tradeSlStr, tradeTp1Str].includes("INVALID_PRICE")) return false;
 
-        return savedTrades.some(saved => 
+        return savedTrades.some(saved =>
             saved.symbol === trade.symbol &&
             saved.direction === trade.direction &&
             saved.type === trade.type &&
@@ -115,148 +143,164 @@ const AnalysisView: React.FC<AnalysisViewProps> = ({
         );
     };
 
-    const isApprentice = currentUser?.tier === USER_TIERS.APPRENTICE;
-    const analysisCreditCost = CREDIT_COSTS.ANALYSIS;
-    const canPayWithCredits = userUsage.creditsRemaining >= analysisCreditCost;
 
-    const canRedo = isApprentice || canPayWithCredits;
-    
-    let redoButtonText = "Redo Analysis";
-    if (isApprentice) {
-        redoButtonText = "Redo Analysis";
-    } else if (canPayWithCredits) {
-        redoButtonText = `Redo for ${analysisCreditCost} Credit`;
-    } else {
-        redoButtonText = "Not enough Credits";
-    }
-    
+
     const hasTrades = (analysisResults['Top Longs']?.length ?? 0) > 0 || (analysisResults['Top Shorts']?.length ?? 0) > 0;
     const strategyDisplayNames = selectedStrategies.map(s => formatStrategyName(strategyLogicData[s]?.name || s)).join(' + ');
     const hasComparisonResults = analysisResults.assetComparisonResults && analysisResults.assetComparisonResults.length > 0;
 
     return (
-    <div className="p-4 md:p-6 space-y-6">
-        <div className="text-center">
-            <h2 className="font-bold text-white" style={{ fontSize: `${userSettings.headingFontSize + 4}px` }}>Analysis Complete</h2>
-            <p className="text-gray-400" style={{ fontSize: `${userSettings.uiFontSize}px` }}>Using <span className="font-semibold text-yellow-400">
-                {selectedStrategies.length > 1 
-                    ? `Confluent (${strategyDisplayNames})` 
-                    : strategyDisplayNames}
-            </span> Strategy</p>
-        </div>
+        <div className="p-4 md:p-6 space-y-6">
+            <div className="text-center">
+                <h2 className="font-bold text-white" style={{ fontSize: `${userSettings.headingFontSize + 4}px` }}>Analysis Complete</h2>
+                <p className="text-gray-400" style={{ fontSize: `${userSettings.uiFontSize}px` }}>Using <span className="font-semibold text-yellow-400">
+                    {selectedStrategies.length > 1
+                        ? `Confluent (${strategyDisplayNames})`
+                        : strategyDisplayNames}
+                </span> Strategy</p>
+            </div>
 
-        {analysisResults.strategySuggestion && (
-            <AISuggestionCard 
-                suggestion={analysisResults.strategySuggestion}
-                onApply={(strategies, settings) => onPerformRedo(strategies, settings)}
-                userUsage={userUsage}
-                selectedStrategies={selectedStrategies}
-                strategyLogicData={strategyLogicData}
-                userSettings={userSettings}
-                currentUser={currentUser}
-                hasTrades={hasTrades}
-            />
-        )}
+            {analysisResults.strategySuggestion && (
+                <AISuggestionCard
+                    suggestion={analysisResults.strategySuggestion}
+                    onApply={(strategies, settings) => onPerformRedo(strategies, settings)}
 
-        {/* Conditional Rendering for Asset Comparison vs Standard Trade Setup */}
-        {hasComparisonResults ? (
-            <div>
-                <h3 className="font-semibold text-white mb-3 border-b-2 border-yellow-500 pb-2" style={{ fontSize: `${userSettings.headingFontSize}px` }}>Asset Comparison Ranking</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {analysisResults.assetComparisonResults?.map((result, index) => (
-                        <ComparisonResultCard key={index} result={result} userSettings={userSettings} />
-                    ))}
-                </div>
-                <div className="mt-6 p-4 bg-gray-900/50 rounded-lg border border-gray-700">
-                    <h4 className="text-gray-300 font-semibold mb-2">Charts Analyzed</h4>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                        {uploadedImages && Object.values(uploadedImages).map((imgSrc, idx) => (
-                            imgSrc ? <img key={idx} src={imgSrc} alt="Analyzed Asset" className="rounded-md border border-gray-600" /> : null
+                    selectedStrategies={selectedStrategies}
+                    strategyLogicData={strategyLogicData}
+                    userSettings={userSettings}
+                    currentUser={currentUser}
+                    hasTrades={hasTrades}
+                />
+            )}
+
+            {/* Conditional Rendering for Asset Comparison vs Standard Trade Setup */}
+            {hasComparisonResults ? (
+                <div>
+                    <h3 className="font-semibold text-white mb-3 border-b-2 border-yellow-500 pb-2" style={{ fontSize: `${userSettings.headingFontSize}px` }}>Asset Comparison Ranking</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {analysisResults.assetComparisonResults?.map((result, index) => (
+                            <ComparisonResultCard
+                                key={index}
+                                result={result}
+                                userSettings={userSettings}
+                                onAnalyze={() => onAnalyzeAsset(result.asset)}
+                            />
                         ))}
                     </div>
-                </div>
-            </div>
-        ) : (
-            <>
-                {uploadedImages && Object.keys(uploadedImages).length > 0 && (
-                    <div className="my-6">
-                        <h3 className="font-semibold text-white mb-3 border-b-2 border-yellow-500 pb-2 text-center" style={{ fontSize: `${userSettings.headingFontSize}px` }}>Analyzed Charts</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 p-4 bg-gray-800/50 rounded-lg">
-                             {Object.keys(uploadedImages).map((key) => {
-                                const index = parseInt(key, 10);
-                                const imageSrc = uploadedImages[index as keyof typeof uploadedImages];
-                                const detectedLabel = analysisResults.chartMetadata?.[key] || TIME_FRAMES_STEPS.find(s => s.step === index + 1)?.title || `Chart ${index + 1}`;
-                                
-                                if (imageSrc) {
-                                    return (
-                                        <div className="text-center" key={key}>
-                                            <h4 className="text-sm font-semibold text-gray-300 mb-1">{detectedLabel}</h4>
-                                            <img 
-                                                src={imageSrc} 
-                                                alt={`Uploaded chart ${index + 1}`}
-                                                className="w-full h-auto rounded-md border-2 border-gray-700"
-                                                style={{ objectFit: 'contain', maxHeight: '200px' }}
-                                            />
-                                        </div>
-                                    );
-                                }
-                                return null;
-                            })}
+                    <div className="mt-6 p-4 bg-gray-900/50 rounded-lg border border-gray-700">
+                        <h4 className="text-gray-300 font-semibold mb-2">Charts Analyzed</h4>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                            {uploadedImages && Object.values(uploadedImages).map((imgSrc, idx) => (
+                                imgSrc ? <div key={idx} className="relative group perspective">
+                                    <img
+                                        src={imgSrc}
+                                        alt="Analyzed Asset"
+                                        className="rounded-md border border-gray-600 transition-all duration-300 transform hover:scale-[2.5] hover:z-50 hover:shadow-2xl cursor-pointer relative z-10 origin-center"
+                                    />
+                                </div> : null
+                            ))}
                         </div>
                     </div>
-                )}
-                
-                {TRADE_CATEGORIES.map(category => {
-                    const tradesToDisplay = getDisplayTrades(category);
-                    const title = category === 'Top Longs' ? 'Top Long Setups' : 'Top Short Setups';
-                    return (
-                        <div key={category}>
-                            <h3 className="font-semibold text-white mb-3 border-b-2 border-yellow-500 pb-2" style={{ fontSize: `${userSettings.headingFontSize}px` }}>{title}</h3>
-                            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-                                {tradesToDisplay.length > 0 ? tradesToDisplay.map((trade, index) => (
-                                    <TradeCard 
-                                        key={`${trade.symbol}-${trade.direction}-${trade.type}-${index}`} 
-                                        trade={trade} 
-                                        userSettings={userSettings}
-                                        isModified={trade.isModified}
-                                        onSave={() => onSaveTrade(trade, selectedStrategies)}
-                                        isSaved={isTradeSaved(trade)}
-                                        strategyLogicData={strategyLogicData}
-                                        activeStrategies={selectedStrategies}
-                                    />
-                                )) : (
-                                     <p className="text-gray-400 col-span-full text-center py-4" style={{ fontSize: `${userSettings.uiFontSize}px` }}>No {category === 'Top Longs' ? 'long' : 'short'} setups generated by the AI for this analysis.</p>
-                                )}
+                </div>
+            ) : (
+                <>
+                    {uploadedImages && Object.keys(uploadedImages).length > 0 && (
+                        <div className="my-6">
+                            <h3 className="font-semibold text-white mb-3 border-b-2 border-yellow-500 pb-2 text-center" style={{ fontSize: `${userSettings.headingFontSize}px` }}>Analyzed Charts</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 p-4 bg-gray-800/50 rounded-lg">
+                                {Object.keys(uploadedImages).map((key) => {
+                                    const index = parseInt(key, 10);
+                                    const imageSrc = uploadedImages[index as keyof typeof uploadedImages];
+                                    const detectedLabel = analysisResults.chartMetadata?.[key] || TIME_FRAMES_STEPS.find(s => s.step === index + 1)?.title || `Chart ${index + 1}`;
+
+                                    if (imageSrc) {
+                                        return (
+                                            <div className="text-center" key={key}>
+                                                <h4 className="text-sm font-semibold text-gray-300 mb-1">{detectedLabel}</h4>
+                                                <img
+                                                    src={imageSrc}
+                                                    alt={`Uploaded chart ${index + 1}`}
+                                                    className="w-full h-auto rounded-md border-2 border-gray-700"
+                                                    style={{ objectFit: 'contain', maxHeight: '200px' }}
+                                                />
+                                            </div>
+                                        );
+                                    }
+                                    return null;
+                                })}
                             </div>
                         </div>
-                    )
-                })}
-            </>
-        )}
-        
-        <div className="text-center pt-4 flex flex-col sm:flex-row flex-wrap justify-center items-center gap-4">
-            <button
-                onClick={onReset}
-                className="bg-yellow-500 text-gray-900 font-bold py-2 px-6 rounded-lg hover:bg-yellow-400 transition-colors"
-                disabled={!currentUser}
-            >
-                Start New Analysis
-            </button>
-            <div className="flex flex-col items-center">
+                    )}
+
+                    {TRADE_CATEGORIES.map(category => {
+                        const tradesToDisplay = getDisplayTrades(category);
+                        const title = category === 'Top Longs' ? 'Top Long Setups' : 'Top Short Setups';
+                        return (
+                            <div key={category}>
+                                <h3 className="font-semibold text-white mb-3 border-b-2 border-yellow-500 pb-2" style={{ fontSize: `${userSettings.headingFontSize}px` }}>{title}</h3>
+                                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+                                    {tradesToDisplay.length > 0 ? tradesToDisplay.map((trade, index) => (
+                                        <TradeCard
+                                            key={`${trade.symbol}-${trade.direction}-${trade.type}-${index}`}
+                                            trade={trade}
+                                            userSettings={userSettings}
+                                            isModified={trade.isModified}
+                                            onSave={() => onSaveTrade(trade, selectedStrategies)}
+                                            isSaved={isTradeSaved(trade)}
+                                            strategyLogicData={strategyLogicData}
+                                            activeStrategies={selectedStrategies}
+                                        />
+                                    )) : (
+                                        <p className="text-gray-400 col-span-full text-center py-4" style={{ fontSize: `${userSettings.uiFontSize}px` }}>No {category === 'Top Longs' ? 'long' : 'short'} setups generated by the AI for this analysis.</p>
+                                    )}
+                                </div>
+                            </div>
+                        )
+                    })}
+                </>
+            )}
+
+            <div className="text-center pt-4 flex flex-col sm:flex-row flex-wrap justify-center items-center gap-4">
                 <button
-                    onClick={() => onPerformRedo()}
-                    className="bg-blue-500 text-white font-bold py-2 px-6 rounded-lg hover:bg-blue-400 transition-colors disabled:bg-gray-600 disabled:cursor-not-allowed"
-                    disabled={!canRedo}
+                    onClick={onReset}
+                    className="bg-yellow-500 text-gray-900 font-bold py-2 px-6 rounded-lg hover:bg-yellow-400 transition-colors"
+                    disabled={!currentUser}
                 >
-                   {redoButtonText}
+                    Start New Analysis
                 </button>
+                {hasComparisonResults && (
+                    <button
+                        onClick={handleSaveComparison}
+                        disabled={isComparisonSaved}
+                        className={`font-bold py-2 px-6 rounded-lg transition-colors flex items-center gap-2 ${isComparisonSaved
+                            ? 'bg-green-600/50 text-green-200 cursor-default'
+                            : 'bg-purple-600 hover:bg-purple-500 text-white'
+                            }`}
+                    >
+                        {isComparisonSaved ? (
+                            <>
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                </svg>
+                                Saved to Journal
+                            </>
+                        ) : (
+                            <>
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path d="M7 9a2 2 0 012-2h6a2 2 0 012 2v6a2 2 0 01-2 2H9a2 2 0 01-2-2V9z" />
+                                    <path d="M5 3a2 2 0 00-2 2v6a2 2 0 002 2V5h8a2 2 0 00-2-2H5z" />
+                                </svg>
+                                Save Comparison
+                            </>
+                        )}
+                    </button>
+                )}
+            </div>
+
+            <div className="text-center text-xs text-gray-500 mt-6 border-t border-gray-700 pt-4">
+                <p><strong>Disclaimer: Not Financial Advice.</strong> The analysis provided is AI-generated for educational and paper trading purposes only. All trade setups are hypothetical and should not be used for live trading. Trading involves significant risk, and you are solely responsible for your own decisions. Always do your own research.</p>
             </div>
         </div>
-
-        <div className="text-center text-xs text-gray-500 mt-6 border-t border-gray-700 pt-4">
-            <p><strong>Disclaimer: Not Financial Advice.</strong> The analysis provided is AI-generated for educational and paper trading purposes only. All trade setups are hypothetical and should not be used for live trading. Trading involves significant risk, and you are solely responsible for your own decisions. Always do your own research.</p>
-        </div>
-    </div>
     );
 };
 

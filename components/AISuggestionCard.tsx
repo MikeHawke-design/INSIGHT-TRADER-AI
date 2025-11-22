@@ -4,7 +4,7 @@ import { StrategySuggestion, UserSettings, StrategyKey, User, StrategyLogicData 
 
 interface AISuggestionCardProps {
   suggestion: StrategySuggestion;
-  onApply: (strategies: StrategyKey[], settings: UserSettings) => void;
+  onApply: (strategies: StrategyKey[], settings: Partial<UserSettings>) => void;
   selectedStrategies: StrategyKey[];
   strategyLogicData: Record<StrategyKey, StrategyLogicData>;
   userSettings: UserSettings;
@@ -16,8 +16,10 @@ const LightbulbIcon = (props: { className?: string }) => <svg {...props} xmlns="
 const InfoIcon = (props: { className?: string }) => <svg {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-7-4a1 1 0 1 1-2 0 1 1 0 0 1 2 0ZM9 9a1 1 0 0 0 0 2v3a1 1 0 0 0 1 1h1a1 1 0 1 0 0-2v-3a1 1 0 0 0-1-1H9Z" clipRule="evenodd" /></svg>;
 
 const AISuggestionCard: React.FC<AISuggestionCardProps> = ({ suggestion, onApply, selectedStrategies, strategyLogicData, userSettings, currentUser, hasTrades }) => {
-  const { suggestedStrategies, suggestedSettings, reasoning } = suggestion;
-  
+  const suggestedStrategies = suggestion.suggestedStrategies || [];
+  const suggestedSettings = suggestion.suggestedSettings || {};
+  const reasoning = suggestion.reasoning || "";
+
   const isActualSuggestion = suggestedStrategies.length > 0 || Object.keys(suggestedSettings).length > 0;
 
   // If no trades were found AND no new strategies/settings were suggested, it's an informational message.
@@ -28,13 +30,13 @@ const AISuggestionCard: React.FC<AISuggestionCardProps> = ({ suggestion, onApply
     border: 'border-blue-500/50',
     iconColor: 'text-blue-300',
     title: "Market Conditions Update",
-    icon: <InfoIcon/>
+    icon: <InfoIcon />
   } : {
     bg: 'bg-purple-900/20',
     border: 'border-purple-500/50',
     iconColor: 'text-purple-300',
     title: "Oracle's Suggestion",
-    icon: <LightbulbIcon/>
+    icon: <LightbulbIcon />
   };
 
   return (
@@ -43,13 +45,13 @@ const AISuggestionCard: React.FC<AISuggestionCardProps> = ({ suggestion, onApply
         {React.cloneElement(cardTheme.icon, { className: `h-6 w-6 ${cardTheme.iconColor} mr-3 flex-shrink-0` })}
         <h3 className={`font-bold ${cardTheme.iconColor}`} style={{ fontSize: `${userSettings.headingFontSize}px` }}>{cardTheme.title}</h3>
       </div>
-      
-      <div 
+
+      <div
         className="text-gray-300 prose prose-sm prose-invert max-w-none [&_ul]:list-disc [&_ul]:ml-4 [&_strong]:font-semibold"
         style={{ fontSize: `${userSettings.uiFontSize}px` }}
         dangerouslySetInnerHTML={{ __html: reasoning }}
       />
-      
+
       {isActualSuggestion && (
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-5 mb-5 pt-4 border-t border-gray-700/50">
@@ -67,17 +69,17 @@ const AISuggestionCard: React.FC<AISuggestionCardProps> = ({ suggestion, onApply
               <h4 className="font-semibold text-gray-200 mb-2" style={{ fontSize: `${userSettings.uiFontSize}px` }}>Suggested Preferences:</h4>
               <ul className="text-gray-300/90 space-y-1" style={{ fontSize: `${userSettings.uiFontSize}px` }}>
                 {Object.entries(suggestedSettings).map(([key, value]) => {
-                    if (!userSettings.hasOwnProperty(key)) return null;
-                    const originalValue = userSettings[key as keyof UserSettings];
-                    const hasChanged = String(originalValue) !== String(value);
-                    const formattedKey = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
-                    
-                    return (
-                        <li key={key}>
-                            <strong>{formattedKey}:</strong> {String(value)}
-                            {hasChanged && <span className="text-xs text-gray-400 ml-2">(was {String(originalValue)})</span>}
-                        </li>
-                    );
+                  if (!userSettings.hasOwnProperty(key)) return null;
+                  const originalValue = userSettings[key as keyof UserSettings];
+                  const hasChanged = String(originalValue) !== String(value);
+                  const formattedKey = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+
+                  return (
+                    <li key={key}>
+                      <strong>{formattedKey}:</strong> {String(value)}
+                      {hasChanged && <span className="text-xs text-gray-400 ml-2">(was {String(originalValue)})</span>}
+                    </li>
+                  );
                 })}
               </ul>
             </div>
@@ -88,7 +90,7 @@ const AISuggestionCard: React.FC<AISuggestionCardProps> = ({ suggestion, onApply
             className="w-full bg-yellow-500 text-gray-900 font-bold py-3 px-6 rounded-lg hover:bg-yellow-400 transition-colors flex items-center justify-center"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
+              <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
             </svg>
             Apply & Redo Analysis
           </button>

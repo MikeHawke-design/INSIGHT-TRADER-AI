@@ -20,7 +20,7 @@ const AvatarSelectionModal: React.FC<AvatarSelectionModalProps> = ({ isOpen, onC
     const [regenAttempts, setRegenAttempts] = useState(3);
 
     const getAiClient = () => {
-        return new GoogleGenAI({ apiKey: process.env.API_KEY });
+        return new GoogleGenAI({ apiKey: import.meta.env.VITE_API_KEY });
     };
     
     const handleGenerate = async () => {

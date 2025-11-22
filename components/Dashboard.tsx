@@ -103,7 +103,7 @@ const Dashboard: React.FC<DashboardProps> = ({
     }
     
     // Allow analysis if API key is in config OR environment variable
-    const canAnalyze = !!apiConfig.geminiApiKey || !!process.env.API_KEY;
+    const canAnalyze = !!apiConfig.geminiApiKey || !!import.meta.env.VITE_API_KEY;
     
     const isSubmitDisabled = (uploaderPhase !== 'ready' && dashboardSelectedMarketData.length === 0) || isAnalyzing || !canAnalyze || dashboardSelectedStrategies.length === 0;
 
