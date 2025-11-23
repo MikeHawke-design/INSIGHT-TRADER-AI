@@ -24,6 +24,7 @@ import {
     ApiConfiguration,
     MarketDataCache,
     MarketDataCandle,
+    Trade,
 } from './types';
 import ClarityFeedback from './components/ClarityFeedback';
 import ScreenCaptureModal from './components/ScreenCaptureModal';
@@ -426,6 +427,16 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>((prop
             if (match && match[2]) jsonText = match[2].trim();
 
             const results: AnalysisResults = JSON.parse(jsonText);
+
+            // Ensure every trade has an entry price. If missing, use the current price (if known) or a placeholder.
+            const fillMissingEntry = (trades: Trade[]) =>
+                trades.map(trade => ({
+                    ...trade,
+                    entry: trade.entry && trade.entry.trim() ? trade.entry : (currentPrice !== null ? currentPrice.toFixed(4) : 'N/A')
+                }));
+
+            results['Top Longs'] = fillMissingEntry(results['Top Longs'] ?? []);
+            results['Top Shorts'] = fillMissingEntry(results['Top Shorts'] ?? []);
 
             onAnalysisComplete(results, selectedStrategies, uploadedImagesData, useRealTimeContext);
 

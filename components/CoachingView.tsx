@@ -1,4 +1,4 @@
-
+/// <reference types="vite/client" />
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { GoogleGenAI, Part, Content } from "@google/genai";
 import { StrategyLogicData, UserSettings, ApiConfiguration, ChatMessage, Trade, SavedCoachingSession, StrategyKey } from '../types';
