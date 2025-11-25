@@ -22,7 +22,7 @@ const AvatarSelectionModal: React.FC<AvatarSelectionModalProps> = ({ isOpen, onC
     const getAiClient = () => {
         return new GoogleGenAI({ apiKey: import.meta.env.VITE_API_KEY });
     };
-    
+
     const handleGenerate = async () => {
         const ai = getAiClient();
         if (!ai || regenAttempts <= 0) {
@@ -45,8 +45,8 @@ const AvatarSelectionModal: React.FC<AvatarSelectionModalProps> = ({ isOpen, onC
                     aspectRatio: '1:1',
                 },
             });
-            
-            const images = response.generatedImages.map(img => `data:image/png;base64,${img.image.imageBytes}`);
+
+            const images = response.generatedImages?.map(img => `data:image/png;base64,${img.image?.imageBytes}`) || [];
             setGeneratedAvatars(images);
         } catch (e) {
             const errorMessage = e instanceof Error ? e.message : 'Failed to generate avatars.';
@@ -56,7 +56,7 @@ const AvatarSelectionModal: React.FC<AvatarSelectionModalProps> = ({ isOpen, onC
             setIsLoading(false);
         }
     };
-    
+
     useEffect(() => {
         if (isOpen) {
             // Reset state when opening
@@ -101,23 +101,22 @@ const AvatarSelectionModal: React.FC<AvatarSelectionModalProps> = ({ isOpen, onC
                                 <button
                                     key={index}
                                     onClick={() => setSelectedIndex(index)}
-                                    className={`rounded-full p-1 border-2 transition-all duration-200 ${
-                                        selectedIndex === index
+                                    className={`rounded-full p-1 border-2 transition-all duration-200 ${selectedIndex === index
                                             ? 'border-yellow-400 scale-105'
                                             : 'border-transparent hover:border-gray-500'
-                                    }`}
+                                        }`}
                                 >
                                     <img src={avatarSrc} alt={`Generated Avatar ${index + 1}`} className="w-full h-auto object-cover rounded-full" />
                                 </button>
                             ))}
                         </div>
                     ) : (
-                         <div className="flex items-center justify-center h-full">
+                        <div className="flex items-center justify-center h-full">
                             <p className="text-gray-500">Click "Generate" to create your avatars.</p>
                         </div>
                     )}
                 </div>
-                
+
                 {/* Action Buttons */}
                 <div className="flex justify-center items-center gap-4 mt-6">
                     <button

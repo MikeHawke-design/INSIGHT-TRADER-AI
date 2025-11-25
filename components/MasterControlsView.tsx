@@ -642,13 +642,8 @@ export const MasterControlsView: React.FC<MasterControlsViewProps> = ({
                 <h4 className="font-semibold text-white mb-3">Market Data Feed (EODHD)</h4>
                 {!apiConfig.eodhdApiKey ? (
                     <div className="space-y-2">
-                        <p className="text-sm text-yellow-300">To fetch historical market data, please add your EODHD API key.</p>
-                        <input
-                            type="password"
-                            placeholder="Enter EODHD API Key"
-                            className="w-full bg-gray-800 border border-gray-600 p-2 rounded-md text-sm"
-                            onChange={(e) => setApiConfig(prev => ({ ...prev, eodhdApiKey: e.target.value }))}
-                        />
+                        <p className="text-sm text-yellow-300">To fetch historical market data, please configure your EODHD API key in the <strong>Settings</strong> tab.</p>
+                        <button onClick={() => setActiveTab('settings')} className="text-blue-400 hover:text-blue-300 text-sm underline">Go to Settings</button>
                     </div>
                 ) : (
                     <>

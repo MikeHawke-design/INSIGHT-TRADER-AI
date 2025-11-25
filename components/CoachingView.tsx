@@ -90,7 +90,7 @@ const CoachingView: React.FC<CoachingViewProps> = ({
     userSettings: _userSettings,
     onLogTokenUsage,
     onSaveSession,
-    onSaveTrade: _onSaveTrade,
+    onSaveTrade,
 }) => {
     const [chatHistory, setChatHistory] = useState<ChatMessage[]>(context.session?.chatHistory || []);
     const [input, setInput] = useState('');
@@ -105,6 +105,11 @@ const CoachingView: React.FC<CoachingViewProps> = ({
     const [captureError, setCaptureError] = useState<string | null>(null);
     const streamRef = useRef<MediaStream | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // Annotation State
+    const [isAnnotationModalOpen, setIsAnnotationModalOpen] = useState(false);
+    const [pendingImage, setPendingImage] = useState<string | null>(null);
+    const [annotationText, setAnnotationText] = useState('');
 
     useEffect(() => {
         if (chatHistory.length === 0) {
@@ -228,12 +233,24 @@ ${context.strategy.prompt}`;
         if (e.target.files && e.target.files[0]) {
             const file = e.target.files[0];
             const reader = new FileReader();
-            reader.onload = async (event) => {
+            reader.onload = (event) => {
                 const dataUrl = event.target?.result as string;
-                const key = await storeImage(dataUrl);
-                handleSendMessage("Here is a chart for analysis.", key);
+                setPendingImage(dataUrl);
+                setAnnotationText('');
+                setIsAnnotationModalOpen(true);
             };
             reader.readAsDataURL(file);
+        }
+        e.target.value = ''; // Reset input
+    };
+
+    const handleAnnotationSubmit = async () => {
+        if (pendingImage) {
+            const key = await storeImage(pendingImage);
+            handleSendMessage(annotationText || "Here is a chart for analysis.", key);
+            setIsAnnotationModalOpen(false);
+            setPendingImage(null);
+            setAnnotationText('');
         }
     };
 
@@ -289,6 +306,29 @@ ${context.strategy.prompt}`;
                     <p className="text-sm text-gray-400">Goal: {context.goal === 'learn_basics' ? 'Learn Concepts' : 'Build Setup'}</p>
                 </div>
                 <div className="flex gap-2">
+                    <button onClick={() => {
+                        // Save as a Trade Entry in Journal
+                        const dummyTrade: Trade = {
+                            type: 'Coaching Session',
+                            direction: 'Long', // Default
+                            symbol: context.strategy.name,
+                            entry: '0',
+                            entryType: 'Confirmation Entry',
+                            entryExplanation: 'Coaching Session Log',
+                            stopLoss: '0',
+                            takeProfit1: '0',
+                            takeProfit2: '0',
+                            heat: 1,
+                            explanation: `Coaching Session: ${sessionTitle}`,
+                            tradeManagement: { move_to_breakeven_condition: '', partial_take_profit_1: '', partial_take_profit_2: '' }
+                        };
+                        onSaveTrade(dummyTrade, [context.strategyKey], chatHistory);
+                        onClose();
+                    }} className="p-2 bg-green-600 rounded-full hover:bg-green-500" title="Save to Journal">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 text-white">
+                            <path d="M10.75 4.75a.75.75 0 0 0-1.5 0v4.5h-4.5a.75.75 0 0 0 0 1.5h4.5v4.5a.75.75 0 0 0 1.5 0v-4.5h4.5a.75.75 0 0 0 0-1.5h-4.5v-4.5Z" />
+                        </svg>
+                    </button>
                     <button onClick={handleSave} className="p-2 bg-blue-600 rounded-full hover:bg-blue-500" title="Save Session">
                         <SaveIcon className="w-5 h-5 text-white" />
                     </button>
@@ -305,7 +345,7 @@ ${context.strategy.prompt}`;
                         <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${msg.sender === 'oracle' ? 'bg-gray-700' : 'bg-blue-600'}`}>
                             {msg.sender === 'oracle' ? <Logo className="w-5 h-5" /> : <span className="font-bold text-xs">YOU</span>}
                         </div>
-                        <div className={`max-w-[90%] p-3 rounded-lg text-sm ${msg.sender === 'oracle' ? 'bg-gray-800' : 'bg-blue-900/50'}`}>
+                        <div className={`max-w-[85%] p-3 rounded-lg text-sm ${msg.sender === 'oracle' ? 'bg-gray-800' : 'bg-blue-900/50'}`}>
                             {msg.imageKeys?.map(key => <IdbImageDisplay key={key} imageKey={key} onZoom={setZoomedImage} />)}
                             <div className="prose prose-sm prose-invert max-w-none leading-relaxed" dangerouslySetInnerHTML={{ __html: msg.text }} />
                         </div>
@@ -355,6 +395,27 @@ ${context.strategy.prompt}`;
             )}
 
             <ScreenCaptureModal isOpen={isCaptureModalOpen} stream={captureStream} onCapture={handleCaptureSubmit} onClose={() => { setIsCaptureModalOpen(false); stopMediaStream(); }} error={captureError} />
+
+            {/* Annotation Modal */}
+            {isAnnotationModalOpen && (
+                <div className="fixed inset-0 z-[200] bg-black/90 flex items-center justify-center p-4">
+                    <div className="bg-gray-800 p-4 rounded-lg max-w-lg w-full flex flex-col gap-4">
+                        <h3 className="text-lg font-bold text-white">Add Context to Image</h3>
+                        {pendingImage && <img src={pendingImage} alt="Preview" className="max-h-64 object-contain rounded-md bg-black" />}
+                        <textarea
+                            value={annotationText}
+                            onChange={(e) => setAnnotationText(e.target.value)}
+                            placeholder="Describe what you see or ask a specific question..."
+                            className="w-full bg-gray-700 text-white p-2 rounded-md border border-gray-600 focus:ring-2 focus:ring-yellow-500"
+                            rows={3}
+                        />
+                        <div className="flex justify-end gap-2">
+                            <button onClick={() => { setIsAnnotationModalOpen(false); setPendingImage(null); }} className="px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded-md text-white">Cancel</button>
+                            <button onClick={handleAnnotationSubmit} className="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-md text-white font-bold">Send</button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

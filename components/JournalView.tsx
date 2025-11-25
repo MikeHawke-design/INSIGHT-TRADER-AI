@@ -1,7 +1,7 @@
 
 // ... (Previous imports and components remain the same until JournalView main component)
 import React, { useMemo, useState, useEffect, useRef, useCallback } from 'react';
-import { SavedTrade, TradeFeedback, StrategyLogicData, StrategyKey, SavedCoachingSession, ChatMessage, TradeOutcome, UserSettings, SavedAssetComparison, AssetComparisonResult } from '../types';
+import { SavedTrade, TradeFeedback, StrategyLogicData, StrategyKey, SavedCoachingSession, UserSettings, SavedAssetComparison } from '../types';
 import TradeCard from './TradeCard';
 import PerformanceChart from './PerformanceChart';
 import ConfirmationModal from './ConfirmationModal';
@@ -11,9 +11,9 @@ import ScreenCaptureModal from './ScreenCaptureModal';
 import { getImage, storeImage } from '../idb';
 
 // ... (Helper components: TrashIcon, ContinueIcon, UploadIcon, ScreenIcon, HeatMeter, ChatMessageImage, IdbImage, ExpandIcon, CompressIcon, ScreenCaptureModal - keep unchanged)
-const TrashIcon = (props:{className?:string}) => <svg {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M8.75 1A2.75 2.75 0 0 0 6 3.75v.443c-.795.077-1.58.22-2.365.468a.75.75 0 1 0 .214 1.482l.025.007c.786.246 1.573.393 2.37.468v6.618A2.75 2.75 0 0 0 8.75 18h2.5A2.75 2.75 0 0 0 14 15.25V5.162c.797-.075 1.585-.222 2.37-.468a.75.75 0 1 0-.214-1.482l-.025-.007a33.58 33.58 0 0 0-2.365-.468V3.75A2.75 2.75 0 0 0 11.25 1h-2.5ZM10 4c.84 0 1.673.025 2.5.075V15.25a1.25 1.25 0 0 1-1.25 1.25h-2.5A1.25 1.25 0 0 1 7.5 15.25V4.075C8.327 4.025 9.16 4 10 4Z" clipRule="evenodd" /></svg>;
-const ContinueIcon = (props:{className?:string}) => <svg {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M6.3 2.841A1.5 1.5 0 0 0 4 4.11V15.89a1.5 1.5 0 0 0 2.3 1.269l9.344-5.89a1.5 1.5 0 0 0 0-2.538L6.3 2.84Z" /></svg>;
-const UploadIcon = (props: {className?: string}) => <svg {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M9.25 13.25a.75.75 0 0 0 1.5 0V4.636l2.955 3.129a.75.75 0 0 0 1.09-1.03l-4.25-4.5a.75.75 0 0 0-1.09 0l-4.25 4.5a.75.75 0 0 0 1.09 1.03L9.25 4.636V13.25Z" /><path d="M3.5 12.75a.75.75 0 0 0-1.5 0v2.5A2.75 2.75 0 0 0 4.75 18h10.5A2.75 2.75 0 0 0 18 15.25v-2.5a.75.75 0 0 0-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5Z" /></svg>;
+const TrashIcon = (props: { className?: string }) => <svg {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M8.75 1A2.75 2.75 0 0 0 6 3.75v.443c-.795.077-1.58.22-2.365.468a.75.75 0 1 0 .214 1.482l.025.007c.786.246 1.573.393 2.37.468v6.618A2.75 2.75 0 0 0 8.75 18h2.5A2.75 2.75 0 0 0 14 15.25V5.162c.797-.075 1.585-.222 2.37-.468a.75.75 0 1 0-.214-1.482l-.025-.007a33.58 33.58 0 0 0-2.365-.468V3.75A2.75 2.75 0 0 0 11.25 1h-2.5ZM10 4c.84 0 1.673.025 2.5.075V15.25a1.25 1.25 0 0 1-1.25 1.25h-2.5A1.25 1.25 0 0 1 7.5 15.25V4.075C8.327 4.025 9.16 4 10 4Z" clipRule="evenodd" /></svg>;
+
+const UploadIcon = (props: { className?: string }) => <svg {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M9.25 13.25a.75.75 0 0 0 1.5 0V4.636l2.955 3.129a.75.75 0 0 0 1.09-1.03l-4.25-4.5a.75.75 0 0 0-1.09 0l-4.25 4.5a.75.75 0 0 0 1.09 1.03L9.25 4.636V13.25Z" /><path d="M3.5 12.75a.75.75 0 0 0-1.5 0v2.5A2.75 2.75 0 0 0 4.75 18h10.5A2.75 2.75 0 0 0 18 15.25v-2.5a.75.75 0 0 0-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5Z" /></svg>;
 const ScreenIcon = (props: { className?: string }) => <svg {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M3.25 3A2.25 2.25 0 0 0 1 5.25v9.5A2.25 2.25 0 0 0 3.25 17h13.5A2.25 2.25 0 0 0 19 14.75v-9.5A2.25 2.25 0 0 0 16.75 3H3.25Zm12.5 11.5H4.25a.75.75 0 0 1-.75-.75V6.25a.75.75 0 0 1 .75-.75h11.5a.75.75 0 0 1 .75.75v8.5a.75.75 0 0 1-.75-.75Z" clipRule="evenodd" /></svg>;
 const HeatMeter: React.FC<{ level: number; }> = ({ level }) => {
     const colors = ['bg-gray-600', 'bg-red-500', 'bg-orange-500', 'bg-yellow-400', 'bg-green-500', 'bg-teal-400'];
@@ -92,15 +92,13 @@ interface AnalyticsData {
 interface JournalViewProps {
     savedTrades: SavedTrade[];
     onUpdateTradeFeedback: (tradeId: string, feedback: TradeFeedback) => void;
-    onRemoveTrade: (tradeId:string) => void;
+    onRemoveTrade: (tradeId: string) => void;
     onAddResultImageToTrade: (tradeId: string, imageKey: string) => void;
     strategyLogicData: Record<StrategyKey, StrategyLogicData>;
     savedCoachingSessions: SavedCoachingSession[];
     onUpdateCoachingSessionNotes: (sessionId: string, notes: string) => void;
     onDeleteCoachingSession: (sessionId: string) => void;
-    onStartNewCoachingSession: () => void;
     userSettings: UserSettings;
-    onResumeCoachingSession: (session: SavedCoachingSession) => void;
     savedAssetComparisons: SavedAssetComparison[];
     onUpdateAssetComparisonNotes: (id: string, notes: string) => void;
     onDeleteAssetComparison: (id: string) => void;
@@ -113,7 +111,7 @@ const calculateRR = (trade: SavedTrade, target: 'TP1' | 'TP2'): number => {
     const tp = parseFloat(String(target === 'TP1' ? trade.takeProfit1 : trade.takeProfit2).replace(/,/g, ''));
 
     if (isNaN(entry) || isNaN(sl) || isNaN(tp)) return 0;
-    
+
     const risk = Math.abs(entry - sl);
     if (risk === 0) return 0;
 
@@ -123,7 +121,7 @@ const calculateRR = (trade: SavedTrade, target: 'TP1' | 'TP2'): number => {
 
 const calculateTradeResultInR = (trade: SavedTrade): number => {
     if (!trade.feedback.outcome) return 0;
-    const partialExitPercentage = 0.5; 
+    const partialExitPercentage = 0.5;
 
     switch (trade.feedback.outcome) {
         case 'SL': return -1;
@@ -139,28 +137,26 @@ const calculateTradeResultInR = (trade: SavedTrade): number => {
 };
 
 
-const JournalView: React.FC<JournalViewProps> = ({ 
-    savedTrades, 
-    onUpdateTradeFeedback, 
+const JournalView: React.FC<JournalViewProps> = ({
+    savedTrades,
+    onUpdateTradeFeedback,
     onRemoveTrade,
     onAddResultImageToTrade,
     strategyLogicData,
     savedCoachingSessions,
     onUpdateCoachingSessionNotes,
     onDeleteCoachingSession,
-    onStartNewCoachingSession,
     userSettings,
-    onResumeCoachingSession,
     savedAssetComparisons,
     onUpdateAssetComparisonNotes,
     onDeleteAssetComparison
 }) => {
-    const [activeTab, setActiveTab] = useState<'trades' | 'sessions' | 'comparisons'>('trades');
-    
+    const [activeTab, setActiveTab] = useState<'trades' | 'comparisons'>('trades');
+
     const [tradeToRemove, setTradeToRemove] = useState<SavedTrade | null>(null);
     const [viewingImagesForTrade, setViewingImagesForTrade] = useState<SavedTrade | null>(null);
     const [viewingCoachingLogForTrade, setViewingCoachingLogForTrade] = useState<SavedTrade | null>(null);
-    
+
     const [tradeForResultImage, setTradeForResultImage] = useState<string | null>(null);
     const resultImageInputRef = useRef<HTMLInputElement>(null);
 
@@ -170,7 +166,7 @@ const JournalView: React.FC<JournalViewProps> = ({
     const [captureStream, setCaptureStream] = useState<MediaStream | null>(null);
     const [captureError, setCaptureError] = useState<string | null>(null);
     const streamRef = useRef<MediaStream | null>(null);
-    
+
     const [expandedSessionId, setExpandedSessionId] = useState<string | null>(null);
     const [sessionNotes, setSessionNotes] = useState<Record<string, string>>({});
     const [sessionToDelete, setSessionToDelete] = useState<SavedCoachingSession | SavedAssetComparison | null>(null);
@@ -192,7 +188,7 @@ const JournalView: React.FC<JournalViewProps> = ({
             setTradeToRemove(null);
         }
     };
-    
+
     const handleConfirmSessionRemove = () => {
         if (sessionToDelete) {
             if ('chatHistory' in sessionToDelete) {
@@ -218,7 +214,7 @@ const JournalView: React.FC<JournalViewProps> = ({
             setTradeForResultImage(null);
         }
     };
-    
+
     const handleTriggerResultImageUpload = (tradeId: string) => {
         setTradeForResultImage(tradeId);
         setIsAddImageOptionsOpen(true);
@@ -253,7 +249,7 @@ const JournalView: React.FC<JournalViewProps> = ({
                         uploadAndSaveResultImage(e.target?.result as string);
                     };
                     reader.readAsDataURL(blob);
-                    return; 
+                    return;
                 }
             }
             alert("No image found on the clipboard.");
@@ -303,7 +299,7 @@ const JournalView: React.FC<JournalViewProps> = ({
 
 
     const handleNotesChange = (sessionId: string, text: string) => {
-        setSessionNotes(prev => ({...prev, [sessionId]: text}));
+        setSessionNotes(prev => ({ ...prev, [sessionId]: text }));
     };
 
     const handleSaveNotes = (sessionId: string, type: 'coaching' | 'comparison') => {
@@ -315,7 +311,7 @@ const JournalView: React.FC<JournalViewProps> = ({
             }
         }
     };
-    
+
     const handleToggleExpandSession = (sessionId: string, type: 'coaching' | 'comparison') => {
         setExpandedSessionId(prev => {
             const newId = `${type}-${sessionId}`;
@@ -323,11 +319,11 @@ const JournalView: React.FC<JournalViewProps> = ({
                 handleSaveNotes(sessionId, type);
                 return null;
             } else {
-                const session = type === 'coaching' 
+                const session = type === 'coaching'
                     ? savedCoachingSessions.find(s => s.id === sessionId)
                     : savedAssetComparisons.find(c => c.id === sessionId);
                 if (session) {
-                    setSessionNotes(prev => ({...prev, [sessionId]: session.userNotes}));
+                    setSessionNotes(prev => ({ ...prev, [sessionId]: session.userNotes }));
                 }
                 return newId;
             }
@@ -336,13 +332,13 @@ const JournalView: React.FC<JournalViewProps> = ({
 
     const analytics: AnalyticsData = useMemo(() => {
         const tradesWithOutcome = savedTrades.filter(t => t.feedback.outcome);
-        
+
         const winCount = tradesWithOutcome.filter(t => (t.feedback.outcome?.startsWith('TP'))).length;
         const lossCount = tradesWithOutcome.filter(t => t.feedback.outcome === 'SL').length;
         const breakevenCount = tradesWithOutcome.filter(t => t.feedback.outcome === 'B/E').length;
-        
+
         const totalRatedForWinRate = winCount + lossCount;
-        
+
         const strategyFrequency: Record<string, number> = {};
         tradesWithOutcome
             .filter(t => t.feedback.outcome?.startsWith('TP'))
@@ -373,18 +369,18 @@ const JournalView: React.FC<JournalViewProps> = ({
         const tradesForChart = [...savedTrades]
             .filter(t => t.feedback.outcome)
             .sort((a, b) => new Date(a.savedDate).getTime() - new Date(b.savedDate).getTime());
-        
+
         let cumulativeR = 0;
-        const dataPoints = [{x:0, y:0}];
+        const dataPoints = [{ x: 0, y: 0 }];
 
         tradesForChart.forEach((trade) => {
             cumulativeR += calculateTradeResultInR(trade);
-            dataPoints.push({ x: dataPoints.length, y: parseFloat(cumulativeR.toFixed(2))});
+            dataPoints.push({ x: dataPoints.length, y: parseFloat(cumulativeR.toFixed(2)) });
         });
 
         return dataPoints.length > 1 ? dataPoints.map(p => p.y) : [0];
     }, [savedTrades]);
-    
+
     const sortedTradesForDisplay = [...savedTrades].sort((a, b) => new Date(b.savedDate).getTime() - new Date(a.savedDate).getTime());
     const sortedSessionsForDisplay = [...savedCoachingSessions].sort((a, b) => new Date(b.savedDate).getTime() - new Date(a.savedDate).getTime());
     const sortedComparisonsForDisplay = [...savedAssetComparisons].sort((a, b) => new Date(b.savedDate).getTime() - new Date(a.savedDate).getTime());
@@ -396,7 +392,7 @@ const JournalView: React.FC<JournalViewProps> = ({
         const chatHistory = trade.coachingSessionChat || [];
 
         return (
-             <div className="fixed inset-0 bg-gray-900/80 flex items-center justify-center z-[100] p-4" onClick={() => setViewingCoachingLogForTrade(null)}>
+            <div className="fixed inset-0 bg-gray-900/80 flex items-center justify-center z-[100] p-4" onClick={() => setViewingCoachingLogForTrade(null)}>
                 <div className="bg-[hsl(var(--color-bg-800))] p-4 md:p-6 rounded-lg shadow-xl max-w-2xl w-full border border-yellow-500/50 max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
                     <div className="flex justify-between items-center pb-4 border-b border-gray-700">
                         <h2 className="text-xl font-bold text-yellow-400">Coaching Log: {trade.symbol} {trade.direction}</h2>
@@ -423,7 +419,7 @@ const JournalView: React.FC<JournalViewProps> = ({
 
     // ... (renderTradeLog, renderSessionContent, renderMentorshipSessions, renderAssetComparisons remain largely same, no new imports)
     // IMPORTANT: The TradeCard prop strategyLogicData is passed here correctly.
-    
+
     const renderTradeLog = () => {
         const totalPages = Math.ceil(sortedTradesForDisplay.length / ITEMS_PER_PAGE);
         const paginatedTrades = sortedTradesForDisplay.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
@@ -432,18 +428,18 @@ const JournalView: React.FC<JournalViewProps> = ({
             <div className="space-y-8">
                 {savedTrades.length > 0 && (
                     <div className="bg-[hsl(var(--color-bg-800))] rounded-lg p-4 md:p-6 border border-gray-700">
-                         <h3 className="font-bold text-yellow-400 mb-4 text-center" style={{ fontSize: `${userSettings.headingFontSize}px` }}>Performance Curve (in R units)</h3>
-                         <PerformanceChart data={performanceData} />
+                        <h3 className="font-bold text-yellow-400 mb-4 text-center" style={{ fontSize: `${userSettings.headingFontSize}px` }}>Performance Curve (in R units)</h3>
+                        <PerformanceChart data={performanceData} />
                     </div>
                 )}
                 <div className="bg-[hsl(var(--color-bg-800))] rounded-lg p-6 border border-gray-700">
                     <h3 className="font-bold text-yellow-400 mb-4 text-center" style={{ fontSize: `${userSettings.headingFontSize}px` }}>Performance Analytics</h3>
                     <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-center">
-                         <div className="bg-[hsl(var(--color-bg-900)/0.5)] p-4 rounded-lg"><p className="font-bold text-white" style={{ fontSize: `${userSettings.dataFontSize + 4}px` }}>{analytics.totalTrades}</p><p className="text-gray-400" style={{ fontSize: `${userSettings.uiFontSize}px` }}>Total Logged</p></div>
-                         <div className="bg-[hsl(var(--color-bg-900)/0.5)] p-4 rounded-lg"><p className={`font-bold ${analytics.winRate >= 50 ? 'text-green-400' : 'text-red-400'}`} style={{ fontSize: `${userSettings.dataFontSize + 4}px` }}>{analytics.winRate}%</p><p className="text-gray-400" style={{ fontSize: `${userSettings.uiFontSize}px` }}>Win Rate</p></div>
-                         <div className="bg-[hsl(var(--color-bg-900)/0.5)] p-4 rounded-lg"><p className="font-bold" style={{ fontSize: `${userSettings.dataFontSize + 4}px` }}><span className="text-green-400">{analytics.winCount}</span>/<span className="text-red-400">{analytics.lossCount}</span>/<span className="text-blue-400">{analytics.breakevenCount}</span></p><p className="text-gray-400" style={{ fontSize: `${userSettings.uiFontSize}px` }}>W/L/BE</p></div>
-                         <div className="bg-[hsl(var(--color-bg-900)/0.5)] p-4 rounded-lg"><p className="font-bold text-yellow-300" style={{ fontSize: `${userSettings.dataFontSize + 4}px` }}>{analytics.totalR}R</p><p className="text-gray-400" style={{ fontSize: `${userSettings.uiFontSize}px` }}>Total R</p></div>
-                         <div className="bg-[hsl(var(--color-bg-900)/0.5)] p-4 rounded-lg"><p className="font-bold text-purple-400 truncate" title={analytics.topStrategy} style={{ fontSize: `${userSettings.dataFontSize + 4}px` }}>{analytics.topStrategy}</p><p className="text-gray-400" style={{ fontSize: `${userSettings.uiFontSize}px` }}>Top Strategy (Wins)</p></div>
+                        <div className="bg-[hsl(var(--color-bg-900)/0.5)] p-4 rounded-lg"><p className="font-bold text-white" style={{ fontSize: `${userSettings.dataFontSize + 4}px` }}>{analytics.totalTrades}</p><p className="text-gray-400" style={{ fontSize: `${userSettings.uiFontSize}px` }}>Total Logged</p></div>
+                        <div className="bg-[hsl(var(--color-bg-900)/0.5)] p-4 rounded-lg"><p className={`font-bold ${analytics.winRate >= 50 ? 'text-green-400' : 'text-red-400'}`} style={{ fontSize: `${userSettings.dataFontSize + 4}px` }}>{analytics.winRate}%</p><p className="text-gray-400" style={{ fontSize: `${userSettings.uiFontSize}px` }}>Win Rate</p></div>
+                        <div className="bg-[hsl(var(--color-bg-900)/0.5)] p-4 rounded-lg"><p className="font-bold" style={{ fontSize: `${userSettings.dataFontSize + 4}px` }}><span className="text-green-400">{analytics.winCount}</span>/<span className="text-red-400">{analytics.lossCount}</span>/<span className="text-blue-400">{analytics.breakevenCount}</span></p><p className="text-gray-400" style={{ fontSize: `${userSettings.uiFontSize}px` }}>W/L/BE</p></div>
+                        <div className="bg-[hsl(var(--color-bg-900)/0.5)] p-4 rounded-lg"><p className="font-bold text-yellow-300" style={{ fontSize: `${userSettings.dataFontSize + 4}px` }}>{analytics.totalR}R</p><p className="text-gray-400" style={{ fontSize: `${userSettings.uiFontSize}px` }}>Total R</p></div>
+                        <div className="bg-[hsl(var(--color-bg-900)/0.5)] p-4 rounded-lg"><p className="font-bold text-purple-400 truncate" title={analytics.topStrategy} style={{ fontSize: `${userSettings.dataFontSize + 4}px` }}>{analytics.topStrategy}</p><p className="text-gray-400" style={{ fontSize: `${userSettings.uiFontSize}px` }}>Top Strategy (Wins)</p></div>
                     </div>
                     <p className="text-xs text-gray-500 mt-4 text-center">Metrics based on trades with a logged outcome. Win rate excludes break-even trades.</p>
                 </div>
@@ -453,14 +449,14 @@ const JournalView: React.FC<JournalViewProps> = ({
                         <>
                             <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-4">
                                 {paginatedTrades.map(trade => (
-                                    <TradeCard 
-                                        key={trade.id} 
-                                        trade={trade} 
-                                        userSettings={userSettings} 
-                                        feedback={trade.feedback} 
-                                        onFeedbackChange={(newFeedback) => onUpdateTradeFeedback(trade.id, newFeedback)} 
-                                        onRemove={() => handleOpenRemoveModal(trade)} 
-                                        onViewCoachingLog={() => setViewingCoachingLogForTrade(trade)} 
+                                    <TradeCard
+                                        key={trade.id}
+                                        trade={trade}
+                                        userSettings={userSettings}
+                                        feedback={trade.feedback}
+                                        onFeedbackChange={(newFeedback) => onUpdateTradeFeedback(trade.id, newFeedback)}
+                                        onRemove={() => handleOpenRemoveModal(trade)}
+                                        onViewCoachingLog={() => setViewingCoachingLogForTrade(trade)}
                                         onViewImages={() => setViewingImagesForTrade(trade)}
                                         onAddResultImage={() => handleTriggerResultImageUpload(trade.id)}
                                         strategyLogicData={strategyLogicData}
@@ -482,18 +478,18 @@ const JournalView: React.FC<JournalViewProps> = ({
             </div>
         );
     };
-    
+
     const renderSessionContent = (session: SavedCoachingSession, isFullscreenView: boolean) => (
-         <>
+        <>
             <div className={`flex items-center gap-4 p-2 bg-[hsl(var(--color-bg-900)/0.3)] rounded-t-md mb-2 ${isFullscreenView ? 'flex-shrink-0' : ''}`}>
-                 <label htmlFor="font-size" className="text-xs text-gray-400">Font Size: {sessionFontSize}px</label>
-                 <input type="range" id="font-size" min="12" max="20" step="1" value={sessionFontSize} onChange={(e) => setSessionFontSize(Number(e.target.value))} className="w-32 h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-yellow-400" />
-                 <div className="flex-grow"></div>
-                 <button onClick={() => isFullscreenView ? setFullscreenSessionId(null) : setFullscreenSessionId(session.id)} className="p-1 text-gray-400 hover:text-yellow-300 transition-colors" title={isFullscreenView ? "Compress View" : "Expand View"}>
-                    {isFullscreenView ? <CompressIcon className="w-5 h-5"/> : <ExpandIcon className="w-5 h-5" />}
-                 </button>
+                <label htmlFor="font-size" className="text-xs text-gray-400">Font Size: {sessionFontSize}px</label>
+                <input type="range" id="font-size" min="12" max="20" step="1" value={sessionFontSize} onChange={(e) => setSessionFontSize(Number(e.target.value))} className="w-32 h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-yellow-400" />
+                <div className="flex-grow"></div>
+                <button onClick={() => isFullscreenView ? setFullscreenSessionId(null) : setFullscreenSessionId(session.id)} className="p-1 text-gray-400 hover:text-yellow-300 transition-colors" title={isFullscreenView ? "Compress View" : "Expand View"}>
+                    {isFullscreenView ? <CompressIcon className="w-5 h-5" /> : <ExpandIcon className="w-5 h-5" />}
+                </button>
             </div>
-             <div className="space-y-2 max-h-96 overflow-y-auto bg-[hsl(var(--color-bg-900)/0.5)] p-3 rounded-md flex-grow" style={{fontSize: `${sessionFontSize}px`}}>
+            <div className="space-y-2 max-h-96 overflow-y-auto bg-[hsl(var(--color-bg-900)/0.5)] p-3 rounded-md flex-grow" style={{ fontSize: `${sessionFontSize}px` }}>
                 {session.chatHistory.map(msg => (
                     <div key={msg.id} className={`flex items-start gap-2 ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
                         {msg.sender === 'oracle' && <OracleIcon className="w-6 h-6 flex-shrink-0" />}
@@ -505,50 +501,10 @@ const JournalView: React.FC<JournalViewProps> = ({
                 ))}
             </div>
             <div className={`space-y-2 mt-2 ${isFullscreenView ? 'flex-shrink-0 w-full' : ''}`}>
-                 <label htmlFor={`notes-${session.id}`} className="block font-medium text-gray-300" style={{ fontSize: `${userSettings.uiFontSize}px` }}>Your Notes & Reflections:</label>
-                 <textarea id={`notes-${session.id}`} value={sessionNotes[session.id] || ''} onChange={e => handleNotesChange(session.id, e.target.value)} onBlur={() => handleSaveNotes(session.id, 'coaching')} rows={4} className="w-full bg-gray-900 p-2 rounded-md text-gray-200 border border-gray-600 focus:ring-yellow-500 focus:border-yellow-500" placeholder="e.g., This trade worked well because..." style={{ fontSize: `${userSettings.uiFontSize}px` }} />
+                <label htmlFor={`notes-${session.id}`} className="block font-medium text-gray-300" style={{ fontSize: `${userSettings.uiFontSize}px` }}>Your Notes & Reflections:</label>
+                <textarea id={`notes-${session.id}`} value={sessionNotes[session.id] || ''} onChange={e => handleNotesChange(session.id, e.target.value)} onBlur={() => handleSaveNotes(session.id, 'coaching')} rows={4} className="w-full bg-gray-900 p-2 rounded-md text-gray-200 border border-gray-600 focus:ring-yellow-500 focus:border-yellow-500" placeholder="e.g., This trade worked well because..." style={{ fontSize: `${userSettings.uiFontSize}px` }} />
             </div>
-         </>
-    );
-
-    const renderMentorshipSessions = () => (
-        <div className="space-y-4">
-             <div className="text-center p-4 bg-[hsl(var(--color-bg-800))] rounded-lg border border-gray-700">
-                <h3 className="font-bold text-yellow-400 mb-2" style={{ fontSize: `${userSettings.headingFontSize}px` }}>Saved Mentorship Sessions</h3>
-                <p className="text-gray-400 mb-4" style={{ fontSize: `${userSettings.uiFontSize}px` }}>Review your past coaching sessions and add notes to reflect on your learning.</p>
-                <button onClick={onStartNewCoachingSession} className="font-bold py-2 px-6 rounded-lg bg-blue-600 hover:bg-blue-500 text-white flex items-center justify-center gap-2 mx-auto">
-                    <OracleIcon className="w-5 h-5"/> Start New Coaching Session
-                </button>
-            </div>
-            {sortedSessionsForDisplay.length > 0 ? (
-                sortedSessionsForDisplay.map(session => (
-                    <div key={session.id} className="bg-[hsl(var(--color-bg-800))] rounded-lg border border-gray-700 group">
-                        <div className="w-full p-4 text-left flex justify-between items-center">
-                            <div className="flex-grow cursor-pointer" onClick={() => handleToggleExpandSession(session.id, 'coaching')}>
-                                <p className="font-bold text-white" style={{ fontSize: `${userSettings.headingFontSize - 2}px` }}>{session.title}</p>
-                                <p className="text-xs text-gray-500">Saved: {new Date(session.savedDate).toLocaleString()}</p>
-                            </div>
-                             <div className="flex items-center gap-1">
-                                <button onClick={(e) => { e.stopPropagation(); onResumeCoachingSession(session); }} className="p-2 rounded-full text-gray-400 hover:text-blue-400 hover:bg-blue-500/10 opacity-0 group-hover:opacity-100 transition-opacity" title="Continue Session"><ContinueIcon className="w-5 h-5"/></button>
-                                <button onClick={(e) => { e.stopPropagation(); setSessionToDelete(session); }} className="p-2 rounded-full text-gray-500 hover:text-red-400 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-opacity" title="Delete Session"><TrashIcon className="w-5 h-5"/></button>
-                                <button onClick={() => handleToggleExpandSession(session.id, 'coaching')} className="p-1">
-                                    <span className={`transition-transform duration-300 ${expandedSessionId === `coaching-${session.id}` ? 'rotate-180' : ''}`}>
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-                                    </span>
-                                </button>
-                             </div>
-                        </div>
-                        {expandedSessionId === `coaching-${session.id}` && (
-                             <div className="p-4 border-t border-gray-700 space-y-4">
-                                {renderSessionContent(session, false)}
-                             </div>
-                        )}
-                    </div>
-                ))
-            ) : (
-                 <div className="text-center bg-[hsl(var(--color-bg-800)/0.5)] rounded-lg py-12"><svg className="mx-auto h-12 w-12 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg><h3 className="mt-2 font-medium text-white" style={{ fontSize: `${userSettings.uiFontSize}px` }}>No saved sessions</h3><p className="mt-1 text-gray-500" style={{ fontSize: `${userSettings.uiFontSize}px` }}>Complete a Live Coaching session to save it here.</p></div>
-            )}
-        </div>
+        </>
     );
 
     const renderAssetComparisons = () => (
@@ -569,7 +525,7 @@ const JournalView: React.FC<JournalViewProps> = ({
                             </div>
                             <div className="flex items-center gap-1">
                                 <button onClick={(e) => { e.stopPropagation(); setSessionToDelete(comp); }} className="p-2 rounded-full text-gray-500 hover:text-red-400 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-opacity" title="Delete Comparison">
-                                    <TrashIcon className="w-5 h-5"/>
+                                    <TrashIcon className="w-5 h-5" />
                                 </button>
                                 <button onClick={() => handleToggleExpandSession(comp.id, 'comparison')} className="p-1">
                                     <span className={`transition-transform duration-300 ${expandedSessionId === `comparison-${comp.id}` ? 'rotate-180' : ''}`}>
@@ -579,7 +535,7 @@ const JournalView: React.FC<JournalViewProps> = ({
                             </div>
                         </div>
                         {expandedSessionId === `comparison-${comp.id}` && (
-                             <div className="p-4 border-t border-gray-700 space-y-4">
+                            <div className="p-4 border-t border-gray-700 space-y-4">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <h4 className="font-semibold text-gray-300">Ranked Results</h4>
@@ -590,7 +546,7 @@ const JournalView: React.FC<JournalViewProps> = ({
                                                         <h5 className="font-bold text-white">{result.asset}</h5>
                                                         <p className={`text-sm font-semibold ${result.sentiment === 'Bullish' ? 'text-green-400' : result.sentiment === 'Bearish' ? 'text-red-400' : 'text-gray-400'}`}>{result.sentiment}</p>
                                                     </div>
-                                                    <HeatMeter level={result.heat}/>
+                                                    <HeatMeter level={result.heat} />
                                                 </div>
                                                 <p className="text-xs text-gray-300 mt-2 italic">"{result.brief}"</p>
                                             </div>
@@ -629,9 +585,8 @@ const JournalView: React.FC<JournalViewProps> = ({
 
             <div className="sticky top-[80px] z-30 bg-[hsl(var(--color-bg-800)/0.8)] backdrop-blur-sm -mx-4 md:-mx-6 px-4 md:px-6">
                 <div className="border-b border-gray-700">
-                    <nav className="-mb-px flex space-x-8 justify-center" aria-label="Tabs">
+                    <nav className="-mb-px flex space-x-8 overflow-x-auto whitespace-nowrap justify-start md:justify-center px-4 no-scrollbar" aria-label="Tabs">
                         <button onClick={() => setActiveTab('trades')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg ${activeTab === 'trades' ? 'border-yellow-400 text-yellow-300' : 'border-transparent text-gray-400 hover:text-gray-200'}`}>Trade Log</button>
-                        <button onClick={() => setActiveTab('sessions')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg ${activeTab === 'sessions' ? 'border-yellow-400 text-yellow-300' : 'border-transparent text-gray-400 hover:text-gray-200'}`}>Mentorship</button>
                         <button onClick={() => setActiveTab('comparisons')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg ${activeTab === 'comparisons' ? 'border-yellow-400 text-yellow-300' : 'border-transparent text-gray-400 hover:text-gray-200'}`}>Comparisons</button>
                     </nav>
                 </div>
@@ -639,14 +594,14 @@ const JournalView: React.FC<JournalViewProps> = ({
 
             <div className="mt-8">
                 {activeTab === 'trades' && renderTradeLog()}
-                {activeTab === 'sessions' && renderMentorshipSessions()}
+
                 {activeTab === 'comparisons' && renderAssetComparisons()}
             </div>
 
-            <ConfirmationModal 
-                isOpen={!!tradeToRemove} 
-                onConfirm={handleConfirmRemove} 
-                onCancel={() => setTradeToRemove(null)} 
+            <ConfirmationModal
+                isOpen={!!tradeToRemove}
+                onConfirm={handleConfirmRemove}
+                onCancel={() => setTradeToRemove(null)}
                 title="Confirm Removal"
                 message={`Are you sure you want to permanently remove this trade from your journal? This action cannot be undone.`}
             />
@@ -666,11 +621,11 @@ const JournalView: React.FC<JournalViewProps> = ({
                     {renderSessionContent(sortedSessionsForDisplay.find(s => s.id === fullscreenSessionId)!, true)}
                 </div>
             )}
-            
+
             <ConfirmationModal
                 isOpen={isAddImageOptionsOpen}
                 onCancel={() => { setIsAddImageOptionsOpen(false); setTradeForResultImage(null); }}
-                onConfirm={() => {}} 
+                onConfirm={() => { }}
                 title="Add Outcome Chart"
                 message="How would you like to add your image?"
             >
@@ -681,7 +636,7 @@ const JournalView: React.FC<JournalViewProps> = ({
                     <input type="file" ref={resultImageInputRef} onChange={handleResultImageSelected} accept="image/*" className="hidden" />
                 </div>
             </ConfirmationModal>
-            
+
             <ScreenCaptureModal isOpen={isCaptureModalOpen} stream={captureStream} onCapture={handleCaptureSubmit} onClose={() => { setIsCaptureModalOpen(false); stopMediaStream(); }} error={captureError} />
 
         </div>
