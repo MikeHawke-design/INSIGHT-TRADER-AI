@@ -99,11 +99,7 @@ export const DEFAULT_LOGGED_OUT_USER: User | null = null;
 
 // --- Beta Access Keys ---
 export const BETA_ACCESS_KEYS = [
-    'oracle-master-key-alpha-7',
-    'beta-test-01',
-    'friend-of-oracle',
-    'dev-access-2024',
-    'ORACLE-BETA-2024-ALPHA'
+    'oracle-master-key-alpha-7'
 ];
 
 

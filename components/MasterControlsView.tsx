@@ -155,6 +155,12 @@ export const MasterControlsView: React.FC<MasterControlsViewProps> = ({
     // Admin Key Generator State
     const [adminEmailInput, setAdminEmailInput] = useState('');
     const [generatedKey, setGeneratedKey] = useState<string | null>(null);
+    const [isAdmin, setIsAdmin] = useState(false);
+
+    useEffect(() => {
+        const adminFlag = localStorage.getItem('chartOracle_isAdmin');
+        setIsAdmin(adminFlag === 'true');
+    }, []);
 
     useEffect(() => {
         setLocalApiKeys(apiConfig);
@@ -790,45 +796,47 @@ export const MasterControlsView: React.FC<MasterControlsViewProps> = ({
                     </div>
                 </div>
 
-                <div className="bg-gray-900/50 p-4 rounded-lg border border-gray-700">
-                    <h4 className="font-semibold text-white mb-3">Admin: User Access Management</h4>
-                    <div className="space-y-4">
-                        <div>
-                            <label className="block font-medium text-sm text-gray-300 mb-1">Generate Access Key for User</label>
-                            <div className="flex gap-2">
-                                <input
-                                    type="email"
-                                    value={adminEmailInput}
-                                    onChange={(e) => setAdminEmailInput(e.target.value)}
-                                    placeholder="User Email Address"
-                                    className="flex-grow bg-gray-800 border border-gray-600 rounded p-2 text-white focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 outline-none"
-                                />
-                                <button
-                                    onClick={() => setGeneratedKey(generateAccessKey(adminEmailInput))}
-                                    disabled={!adminEmailInput}
-                                    className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white font-semibold rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    Generate Key
-                                </button>
-                            </div>
-                        </div>
-                        {generatedKey && (
-                            <div className="bg-gray-800 p-3 rounded border border-purple-500/30 animate-fadeIn">
-                                <p className="text-xs text-gray-400 mb-1">Generated Key for <span className="text-white">{adminEmailInput}</span>:</p>
-                                <div className="flex items-center justify-between bg-black/30 p-2 rounded">
-                                    <code className="text-yellow-400 font-mono text-lg tracking-wider">{generatedKey}</code>
+                {isAdmin && (
+                    <div className="bg-gray-900/50 p-4 rounded-lg border border-gray-700">
+                        <h4 className="font-semibold text-white mb-3">Admin: User Access Management</h4>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block font-medium text-sm text-gray-300 mb-1">Generate Access Key for User</label>
+                                <div className="flex gap-2">
+                                    <input
+                                        type="email"
+                                        value={adminEmailInput}
+                                        onChange={(e) => setAdminEmailInput(e.target.value)}
+                                        placeholder="User Email Address"
+                                        className="flex-grow bg-gray-800 border border-gray-600 rounded p-2 text-white focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 outline-none"
+                                    />
                                     <button
-                                        onClick={() => { navigator.clipboard.writeText(generatedKey); alert("Key copied!"); }}
-                                        className="text-gray-400 hover:text-white"
-                                        title="Copy to Clipboard"
+                                        onClick={() => setGeneratedKey(generateAccessKey(adminEmailInput))}
+                                        disabled={!adminEmailInput}
+                                        className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white font-semibold rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
-                                        <ClipboardIcon className="w-5 h-5" />
+                                        Generate Key
                                     </button>
                                 </div>
                             </div>
-                        )}
+                            {generatedKey && (
+                                <div className="bg-gray-800 p-3 rounded border border-purple-500/30 animate-fadeIn">
+                                    <p className="text-xs text-gray-400 mb-1">Generated Key for <span className="text-white">{adminEmailInput}</span>:</p>
+                                    <div className="flex items-center justify-between bg-black/30 p-2 rounded">
+                                        <code className="text-yellow-400 font-mono text-lg tracking-wider">{generatedKey}</code>
+                                        <button
+                                            onClick={() => { navigator.clipboard.writeText(generatedKey); alert("Key copied!"); }}
+                                            className="text-gray-400 hover:text-white"
+                                            title="Copy to Clipboard"
+                                        >
+                                            <ClipboardIcon className="w-5 h-5" />
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                     </div>
-                </div>
+                )}
             </div>
         );
     }

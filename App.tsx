@@ -42,8 +42,11 @@ import CoachingView from './components/CoachingView';
 import AvatarSelectionModal from './components/AvatarSelectionModal';
 import ProfileView from './components/ProfileView';
 
+import { useAuth } from './context/AuthProvider';
+
 const App: React.FC = () => {
     // Auth & User State
+    const { user: firebaseUser, logout: firebaseLogout } = useAuth();
     const [isAuthenticated, setIsAuthenticated] = useSessionStorage(AUTH_SESSION_LOCALSTORAGE_KEY, false);
     const [currentUser, setCurrentUser] = useLocalStorage<User | null>('chartOracle_currentUser', DEFAULT_LOGGED_OUT_USER);
 
@@ -93,6 +96,25 @@ const App: React.FC = () => {
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
+    // Sync Firebase User
+    useEffect(() => {
+        if (firebaseUser) {
+            setIsAuthenticated(true);
+            setCurrentUser(prev => {
+                // If we already have a user with this email/uid, keep it to preserve tier/settings?
+                // For now, just ensure basic details are synced.
+                const name = firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Trader';
+                return {
+                    ...prev,
+                    name: name,
+                    anonymousUsername: prev?.anonymousUsername && prev.anonymousUsername !== 'New User' ? prev.anonymousUsername : (firebaseUser.displayName || 'Anonymous Trader'),
+                    avatar: firebaseUser.photoURL || prev?.avatar || '',
+                    tier: prev?.tier || 'Apprentice'
+                } as User;
+            });
+        }
+    }, [firebaseUser, setIsAuthenticated, setCurrentUser]);
+
     // Apply UI Darkness
     useEffect(() => {
         const root = document.documentElement;
@@ -128,9 +150,12 @@ const App: React.FC = () => {
         }
     }, [currentUser, setIsAuthenticated, setCurrentUser]);
 
-    const handleLogout = useCallback(() => {
+    const handleLogout = useCallback(async () => {
+        await firebaseLogout();
         setIsAuthenticated(false);
-    }, [setIsAuthenticated]);
+        // Optional: Clear current user or keep for next login?
+        // setCurrentUser(DEFAULT_LOGGED_OUT_USER); 
+    }, [setIsAuthenticated, firebaseLogout]);
 
     const handleNavClick = useCallback((view: ActiveView) => {
         setActiveView(view);
