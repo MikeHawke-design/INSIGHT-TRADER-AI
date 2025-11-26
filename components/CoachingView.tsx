@@ -321,7 +321,7 @@ ${context.strategy.prompt}`;
                         <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${msg.sender === 'oracle' ? 'bg-gray-700' : 'bg-blue-600'}`}>
                             {msg.sender === 'oracle' ? <Logo className="w-5 h-5" /> : <span className="font-bold text-xs">YOU</span>}
                         </div>
-                        <div className={`max-w-[85%] p-3 rounded-lg text-sm ${msg.sender === 'oracle' ? 'bg-gray-800' : 'bg-blue-900/50'}`}>
+                        <div className={`max-w-[75%] p-3 rounded-lg text-sm ${msg.sender === 'oracle' ? 'bg-gray-800' : 'bg-blue-900/50'}`}>
                             {msg.imageKeys?.map(key => <IdbImageDisplay key={key} imageKey={key} onZoom={setZoomedImage} />)}
                             <div className="prose prose-sm prose-invert max-w-none leading-relaxed" dangerouslySetInnerHTML={{ __html: msg.text }} />
                         </div>
@@ -337,13 +337,15 @@ ${context.strategy.prompt}`;
             </div>
 
             {/* Input Area */}
-            <div className="flex gap-2 pt-4 border-t border-gray-700 items-center">
-                <button onClick={() => fileInputRef.current?.click()} className="p-2 text-gray-400 hover:text-yellow-400" title="Upload Image">
-                    <UploadIcon className="w-6 h-6" />
-                </button>
-                <button onClick={handleInitiateScreenCapture} className="p-2 text-gray-400 hover:text-yellow-400" title="Screen Capture">
-                    <ScreenIcon className="w-6 h-6" />
-                </button>
+            <div className="flex flex-col sm:flex-row gap-2 pt-4 border-t border-gray-700 items-stretch sm:items-center">
+                <div className="flex gap-2 w-full sm:w-auto">
+                    <button onClick={() => fileInputRef.current?.click()} className="p-2 text-gray-400 hover:text-yellow-400 flex-grow sm:flex-grow-0 flex justify-center bg-gray-800 sm:bg-transparent rounded-lg sm:rounded-none" title="Upload Image">
+                        <UploadIcon className="w-6 h-6" />
+                    </button>
+                    <button onClick={handleInitiateScreenCapture} className="p-2 text-gray-400 hover:text-yellow-400 flex-grow sm:flex-grow-0 flex justify-center bg-gray-800 sm:bg-transparent rounded-lg sm:rounded-none" title="Screen Capture">
+                        <ScreenIcon className="w-6 h-6" />
+                    </button>
+                </div>
                 <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileUpload} />
 
                 <input
