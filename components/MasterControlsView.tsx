@@ -11,6 +11,7 @@ import { ALL_PERSISTENT_STORAGE_KEYS } from '../constants';
 import { getAllEntries } from '../idb';
 import InteractiveChartModal from './InteractiveChartModal';
 import UserManualView from './UserManualView';
+import { generateAccessKey } from '../authUtils';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://aistudiocdn.com/pdfjs-dist@5.4.149/build/pdf.worker.mjs`;
 
@@ -150,6 +151,10 @@ export const MasterControlsView: React.FC<MasterControlsViewProps> = ({
     // API Key Local State
     const [localApiKeys, setLocalApiKeys] = useState(apiConfig);
     const [saveSuccessMessage, setSaveSuccessMessage] = useState<string | null>(null);
+
+    // Admin Key Generator State
+    const [adminEmailInput, setAdminEmailInput] = useState('');
+    const [generatedKey, setGeneratedKey] = useState<string | null>(null);
 
     useEffect(() => {
         setLocalApiKeys(apiConfig);
@@ -782,6 +787,46 @@ export const MasterControlsView: React.FC<MasterControlsViewProps> = ({
                     <div className="flex gap-4">
                         <button onClick={() => onOpenLegal('terms')} className="text-blue-400 hover:underline">Terms of Use</button>
                         <button onClick={() => onOpenLegal('privacy')} className="text-blue-400 hover:underline">Privacy Policy</button>
+                    </div>
+                </div>
+
+                <div className="bg-gray-900/50 p-4 rounded-lg border border-gray-700">
+                    <h4 className="font-semibold text-white mb-3">Admin: User Access Management</h4>
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block font-medium text-sm text-gray-300 mb-1">Generate Access Key for User</label>
+                            <div className="flex gap-2">
+                                <input
+                                    type="email"
+                                    value={adminEmailInput}
+                                    onChange={(e) => setAdminEmailInput(e.target.value)}
+                                    placeholder="User Email Address"
+                                    className="flex-grow bg-gray-800 border border-gray-600 rounded p-2 text-white focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 outline-none"
+                                />
+                                <button
+                                    onClick={() => setGeneratedKey(generateAccessKey(adminEmailInput))}
+                                    disabled={!adminEmailInput}
+                                    className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white font-semibold rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    Generate Key
+                                </button>
+                            </div>
+                        </div>
+                        {generatedKey && (
+                            <div className="bg-gray-800 p-3 rounded border border-purple-500/30 animate-fadeIn">
+                                <p className="text-xs text-gray-400 mb-1">Generated Key for <span className="text-white">{adminEmailInput}</span>:</p>
+                                <div className="flex items-center justify-between bg-black/30 p-2 rounded">
+                                    <code className="text-yellow-400 font-mono text-lg tracking-wider">{generatedKey}</code>
+                                    <button
+                                        onClick={() => { navigator.clipboard.writeText(generatedKey); alert("Key copied!"); }}
+                                        className="text-gray-400 hover:text-white"
+                                        title="Copy to Clipboard"
+                                    >
+                                        <ClipboardIcon className="w-5 h-5" />
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
