@@ -2,28 +2,28 @@
 import { StrategyKey, TimeFrameStep, UserSettings, RiskAppetite, PreferredTradeDuration, User, CourseModule, GlossaryTerm, StopLossStrategy, ApiConfiguration, UserTier, SubscriptionPlan } from './types';
 
 export const TIME_FRAMES_STEPS: TimeFrameStep[] = [
-  { step: 1, title: 'Weekly Chart', subtitle: 'Long-term Macro View' },
-  { step: 2, title: 'Daily Chart', subtitle: 'Overall Structure, Key OBs/Liquidity' },
-  { step: 3, title: '4H Chart', subtitle: 'Refined Zones, Intermediate Trend' },
-  { step: 4, title: '15m Chart', subtitle: 'Entry Confirmation, FVG, LTF Shift' },
-  { step: 5, title: '1m Chart', subtitle: 'Scalp Entry Precision' },
+    { step: 1, title: 'Weekly Chart', subtitle: 'Long-term Macro View' },
+    { step: 2, title: 'Daily Chart', subtitle: 'Overall Structure, Key OBs/Liquidity' },
+    { step: 3, title: '4H Chart', subtitle: 'Refined Zones, Intermediate Trend' },
+    { step: 4, title: '15m Chart', subtitle: 'Entry Confirmation, FVG, LTF Shift' },
+    { step: 5, title: '1m Chart', subtitle: 'Scalp Entry Precision' },
 ];
 
 export const DEFAULT_USER_SETTINGS: UserSettings = {
-  riskAppetite: 'Moderate',
-  minRiskRewardRatio: 2,
-  preferredTradeDuration: 'Any',
-  tradeAgainstTrend: false,
-  stopLossStrategy: 'Standard',
-  preferredAssetClass: 'Any',
-  marketTiming: 'Any',
-  // Font sizes
-  uiFontSize: 14,
-  headingFontSize: 18,
-  dataFontSize: 16,
-  chatFontSize: 14,
-  uiDarkness: 0,
-  aiProvider: 'gemini',
+    riskAppetite: 'Moderate',
+    minRiskRewardRatio: 2,
+    preferredTradeDuration: 'Any',
+    tradeAgainstTrend: false,
+    stopLossStrategy: 'Standard',
+    preferredAssetClass: 'Any',
+    marketTiming: 'Any',
+    // Font sizes
+    uiFontSize: 14,
+    headingFontSize: 18,
+    dataFontSize: 16,
+    chatFontSize: 14,
+    uiDarkness: 0,
+    aiProvider: 'gemini',
 };
 
 export const DEFAULT_API_CONFIGURATION: ApiConfiguration = {
@@ -102,7 +102,8 @@ export const BETA_ACCESS_KEYS = [
     'oracle-master-key-alpha-7',
     'beta-test-01',
     'friend-of-oracle',
-    'dev-access-2024'
+    'dev-access-2024',
+    'ORACLE-BETA-2024-ALPHA'
 ];
 
 
@@ -126,21 +127,21 @@ export const API_CONFIG_LOCALSTORAGE_KEY = 'chartOracle_apiConfig';
 
 // For the backup/restore feature
 export const ALL_PERSISTENT_STORAGE_KEYS = [
-  SAVED_TRADES_LOCALSTORAGE_KEY,
-  USER_SETTINGS_LOCALSTORAGE_KEY,
-  DASHBOARD_STRATEGIES_LOCALSTORAGE_KEY,
-  DASHBOARD_MARKET_DATA_LOCALSTORAGE_KEY,
-  STRATEGY_LOGIC_LOCALSTORAGE_KEY,
-  KB_DOCS_LOCALSTORAGE_KEY,
-  CHAT_MESSAGES_LOCALSTORAGE_KEY,
-  AUTH_SESSION_LOCALSTORAGE_KEY,
-  COURSE_PROGRESS_LOCALSTORAGE_KEY,
-  COACHING_ONBOARDING_LOCALSTORAGE_KEY,
-  COACHING_SESSIONS_LOCALSTORAGE_KEY,
-  TOKEN_USAGE_HISTORY_LOCALSTORAGE_KEY,
-  MARKET_DATA_CACHE_LOCALSTORAGE_KEY,
-  SAVED_ASSET_COMPARISONS_LOCALSTORAGE_KEY,
-  API_CONFIG_LOCALSTORAGE_KEY,
+    SAVED_TRADES_LOCALSTORAGE_KEY,
+    USER_SETTINGS_LOCALSTORAGE_KEY,
+    DASHBOARD_STRATEGIES_LOCALSTORAGE_KEY,
+    DASHBOARD_MARKET_DATA_LOCALSTORAGE_KEY,
+    STRATEGY_LOGIC_LOCALSTORAGE_KEY,
+    KB_DOCS_LOCALSTORAGE_KEY,
+    CHAT_MESSAGES_LOCALSTORAGE_KEY,
+    AUTH_SESSION_LOCALSTORAGE_KEY,
+    COURSE_PROGRESS_LOCALSTORAGE_KEY,
+    COACHING_ONBOARDING_LOCALSTORAGE_KEY,
+    COACHING_SESSIONS_LOCALSTORAGE_KEY,
+    TOKEN_USAGE_HISTORY_LOCALSTORAGE_KEY,
+    MARKET_DATA_CACHE_LOCALSTORAGE_KEY,
+    SAVED_ASSET_COMPARISONS_LOCALSTORAGE_KEY,
+    API_CONFIG_LOCALSTORAGE_KEY,
 ];
 
 export const DEMO_TICKERS: string[] = [
@@ -169,7 +170,7 @@ export const GLOSSARY: Record<string, Omit<GlossaryTerm, 'imageUrl'>> = {
         displayName: 'Fair Value Gap',
         description: 'An inefficient 3-candle price move, leaving a gap between the wicks of the 1st and 3rd candles. These gaps often act as magnets for price to return to.',
     },
-     ORDER_BLOCK: {
+    ORDER_BLOCK: {
         displayName: 'Order Block',
         description: 'The last up or down candle before an impulsive move that breaks market structure. These zones are often revisited by price, offering potential entry points.',
     },

@@ -102,6 +102,7 @@ interface JournalViewProps {
     savedAssetComparisons: SavedAssetComparison[];
     onUpdateAssetComparisonNotes: (id: string, notes: string) => void;
     onDeleteAssetComparison: (id: string) => void;
+    onContinueSession: (session: SavedCoachingSession) => void;
 }
 
 // ... (CalculateRR and CalculateTradeResultInR functions remain the same)
@@ -149,9 +150,10 @@ const JournalView: React.FC<JournalViewProps> = ({
     userSettings,
     savedAssetComparisons,
     onUpdateAssetComparisonNotes,
-    onDeleteAssetComparison
+    onDeleteAssetComparison,
+    onContinueSession
 }) => {
-    const [activeTab, setActiveTab] = useState<'trades' | 'comparisons'>('trades');
+    const [activeTab, setActiveTab] = useState<'trades' | 'comparisons' | 'mentorship'>('trades');
 
     const [tradeToRemove, setTradeToRemove] = useState<SavedTrade | null>(null);
     const [viewingImagesForTrade, setViewingImagesForTrade] = useState<SavedTrade | null>(null);
@@ -579,6 +581,53 @@ const JournalView: React.FC<JournalViewProps> = ({
         </div>
     );
 
+    const renderMentorshipSessions = () => (
+        <div className="space-y-4">
+            <div className="text-center p-4 bg-[hsl(var(--color-bg-800))] rounded-lg border border-gray-700">
+                <h3 className="font-bold text-yellow-400 mb-2" style={{ fontSize: `${userSettings.headingFontSize}px` }}>Mentorship Sessions</h3>
+                <p className="text-gray-400" style={{ fontSize: `${userSettings.uiFontSize}px` }}>Review your saved coaching conversations and notes.</p>
+            </div>
+            {sortedSessionsForDisplay.length > 0 ? (
+                sortedSessionsForDisplay.map(session => (
+                    <div key={session.id} className="bg-[hsl(var(--color-bg-800))] rounded-lg border border-gray-700 group">
+                        <div className="w-full p-4 text-left flex justify-between items-center">
+                            <div className="flex-grow cursor-pointer" onClick={() => handleToggleExpandSession(session.id, 'coaching')}>
+                                <p className="font-bold text-white" style={{ fontSize: `${userSettings.headingFontSize - 2}px` }}>
+                                    {session.title || `Session on ${session.strategyKey}`}
+                                </p>
+                                <p className="text-xs text-gray-500">Saved: {new Date(session.savedDate).toLocaleString()}</p>
+                            </div>
+                            <div className="flex items-center gap-1">
+                                <button onClick={(e) => { e.stopPropagation(); onContinueSession(session); }} className="p-2 rounded-full text-gray-400 hover:text-yellow-400 hover:bg-yellow-400/10 transition-colors" title="Continue Chat">
+                                    <OracleIcon className="w-5 h-5" />
+                                </button>
+                                <button onClick={(e) => { e.stopPropagation(); setSessionToDelete(session); }} className="p-2 rounded-full text-gray-500 hover:text-red-400 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-opacity" title="Delete Session">
+                                    <TrashIcon className="w-5 h-5" />
+                                </button>
+                                <button onClick={() => handleToggleExpandSession(session.id, 'coaching')} className="p-1">
+                                    <span className={`transition-transform duration-300 ${expandedSessionId === `coaching-${session.id}` ? 'rotate-180' : ''}`}>
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                                    </span>
+                                </button>
+                            </div>
+                        </div>
+                        {expandedSessionId === `coaching-${session.id}` && (
+                            <div className="p-4 border-t border-gray-700">
+                                {renderSessionContent(session, false)}
+                            </div>
+                        )}
+                    </div>
+                ))
+            ) : (
+                <div className="text-center bg-[hsl(var(--color-bg-800)/0.5)] rounded-lg py-12">
+                    <svg className="mx-auto h-12 w-12 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" /></svg>
+                    <h3 className="mt-2 font-medium text-white" style={{ fontSize: `${userSettings.uiFontSize}px` }}>No saved mentorship sessions</h3>
+                    <p className="mt-1 text-gray-500" style={{ fontSize: `${userSettings.uiFontSize}px` }}>Save interesting chats from the Academy or Oracle to review them here.</p>
+                </div>
+            )}
+        </div>
+    );
+
     return (
         <div className="p-4 md:p-6 space-y-8">
             <h2 className="text-3xl font-bold text-white text-center" style={{ fontSize: `${userSettings.headingFontSize + 12}px` }}>Journal</h2>
@@ -587,6 +636,7 @@ const JournalView: React.FC<JournalViewProps> = ({
                 <div className="border-b border-gray-700">
                     <nav className="-mb-px flex space-x-8 overflow-x-auto whitespace-nowrap justify-start md:justify-center px-4 no-scrollbar" aria-label="Tabs">
                         <button onClick={() => setActiveTab('trades')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg ${activeTab === 'trades' ? 'border-yellow-400 text-yellow-300' : 'border-transparent text-gray-400 hover:text-gray-200'}`}>Trade Log</button>
+                        <button onClick={() => setActiveTab('mentorship')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg ${activeTab === 'mentorship' ? 'border-yellow-400 text-yellow-300' : 'border-transparent text-gray-400 hover:text-gray-200'}`}>Mentorship</button>
                         <button onClick={() => setActiveTab('comparisons')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg ${activeTab === 'comparisons' ? 'border-yellow-400 text-yellow-300' : 'border-transparent text-gray-400 hover:text-gray-200'}`}>Comparisons</button>
                     </nav>
                 </div>
@@ -594,7 +644,7 @@ const JournalView: React.FC<JournalViewProps> = ({
 
             <div className="mt-8">
                 {activeTab === 'trades' && renderTradeLog()}
-
+                {activeTab === 'mentorship' && renderMentorshipSessions()}
                 {activeTab === 'comparisons' && renderAssetComparisons()}
             </div>
 

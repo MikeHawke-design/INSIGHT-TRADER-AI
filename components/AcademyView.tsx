@@ -1,44 +1,9 @@
 
-import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useCallback, useRef, useMemo } from 'react';
 import { GoogleGenAI } from "@google/genai";
-import { CourseModule, CourseLesson, QuizQuestion, UserCourseProgress, User, LessonBlock, LessonBlockExercise, UserSettings, StrategyKey, StrategyLogicData, ApiConfiguration } from '../types';
-import { storeImage, getImage } from '../idb';
+import { CourseModule, CourseLesson, UserCourseProgress, User, UserSettings, StrategyKey, StrategyLogicData, ApiConfiguration } from '../types';
+import { storeImage } from '../idb';
 import Logo from './Logo';
-
-interface ExerciseImageProps {
-    imageKey: string;
-}
-
-const ExerciseImage: React.FC<ExerciseImageProps> = ({ imageKey }) => {
-    const [imageUrl, setImageUrl] = useState<string | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
-
-    useEffect(() => {
-        let isMounted = true;
-        const fetchImage = async () => {
-            setIsLoading(true);
-            const url = await getImage(imageKey);
-            if (isMounted) {
-                setImageUrl(url || null);
-                setIsLoading(false);
-            }
-        };
-
-        fetchImage();
-        return () => { isMounted = false; };
-    }, [imageKey]);
-
-    if (isLoading) {
-        return <div className="w-1/2 rounded-md border border-gray-600 bg-gray-700 animate-pulse h-48 flex items-center justify-center">Loading image...</div>;
-    }
-
-    if (!imageUrl) {
-        return <div className="w-1/2 rounded-md border border-gray-600 bg-gray-800 h-48 flex items-center justify-center">Image not found.</div>;
-    }
-
-    return <img src={imageUrl} alt="Submitted exercise" className="w-1/2 rounded-md border border-gray-600" />;
-};
-
 
 interface AcademyViewProps {
     userCourseProgress: UserCourseProgress;
@@ -48,10 +13,9 @@ interface AcademyViewProps {
     userSettings: UserSettings;
     strategyLogicData: Record<StrategyKey, StrategyLogicData>;
     onInitiateCoaching: (strategy: StrategyLogicData, goal: 'learn_basics' | 'build_setup', strategyKey: StrategyKey) => void;
-
 }
 
-export const AcademyView: React.FC<AcademyViewProps> = ({ userCourseProgress, setUserCourseProgress, currentUser, apiConfig, userSettings, strategyLogicData, onInitiateCoaching }) => {
+export const AcademyView: React.FC<AcademyViewProps> = ({ userCourseProgress, setUserCourseProgress, currentUser: _currentUser, apiConfig, userSettings, strategyLogicData, onInitiateCoaching }) => {
     const [activeView, setActiveView] = useState<'modules' | 'lesson' | 'quiz'>('modules');
     const [selectedModule, setSelectedModule] = useState<CourseModule | null>(null);
     const [selectedLesson, setSelectedLesson] = useState<CourseLesson | null>(null);

@@ -4,35 +4,34 @@ import { useState, useEffect, useMemo } from 'react';
 import { Trade, TradeFeedback, SavedTrade, UserSettings, StrategyKey, StrategyLogicData, TradeOutcome } from '../types';
 import HeatMeter from './HeatMeter';
 import OracleIcon from './OracleIcon';
-import { getImage } from '../idb';
 
 interface TradeCardProps {
-  trade: Trade | SavedTrade;
-  userSettings: UserSettings;
-  isModified?: boolean;
-  strategyLogicData: Record<StrategyKey, StrategyLogicData>;
-  activeStrategies?: StrategyKey[];
-  onSave?: (trade: Trade) => void;
-  isSaved?: boolean;
-  feedback?: TradeFeedback;
-  onFeedbackChange?: (feedback: TradeFeedback) => void;
-  isSubmittingFeedback?: boolean;
-  onRemove?: () => void;
-  onViewAndDiscussTrade?: () => void;
-  onAddResultImage?: () => void;
-  onViewImages?: () => void;
-  onViewCoachingLog?: () => void;
+    trade: Trade | SavedTrade;
+    userSettings: UserSettings;
+    isModified?: boolean;
+    strategyLogicData: Record<StrategyKey, StrategyLogicData>;
+    activeStrategies?: StrategyKey[];
+    onSave?: (trade: Trade) => void;
+    isSaved?: boolean;
+    feedback?: TradeFeedback;
+    onFeedbackChange?: (feedback: TradeFeedback) => void;
+    isSubmittingFeedback?: boolean;
+    onRemove?: () => void;
+    onViewAndDiscussTrade?: () => void;
+    onAddResultImage?: () => void;
+    onViewImages?: () => void;
+    onViewCoachingLog?: () => void;
 }
 
 const TRADE_CARD_ANIMATION_STYLE_ID = 'tradecard-animations';
 
 const ensureAnimationStyles = () => {
-  if (typeof document === 'undefined' || document.getElementById(TRADE_CARD_ANIMATION_STYLE_ID)) {
-    return;
-  }
-  const styleElement = document.createElement('style');
-  styleElement.id = TRADE_CARD_ANIMATION_STYLE_ID;
-  styleElement.innerHTML = `
+    if (typeof document === 'undefined' || document.getElementById(TRADE_CARD_ANIMATION_STYLE_ID)) {
+        return;
+    }
+    const styleElement = document.createElement('style');
+    styleElement.id = TRADE_CARD_ANIMATION_STYLE_ID;
+    styleElement.innerHTML = `
     @keyframes fadeIn {
       from { opacity: 0; transform: translateY(-5px); }
       to { opacity: 1; transform: translateY(0); }
@@ -41,7 +40,7 @@ const ensureAnimationStyles = () => {
       animation: fadeIn 0.3s ease-out;
     }
   `;
-  document.head.appendChild(styleElement);
+    document.head.appendChild(styleElement);
 };
 
 const extractPrice = (priceString: string | number): number => {
@@ -58,7 +57,7 @@ const extractPrice = (priceString: string | number): number => {
 
 const formatStrategyName = (name: string = ''): string => name.replace(/^\d+-/, '').replace(/-/g, ' ');
 
-const InfoIcon = (props: {className?: string}) => (
+const InfoIcon = (props: { className?: string }) => (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" {...props}>
         <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
     </svg>
@@ -87,13 +86,13 @@ const OUTCOME_BUTTONS: { outcome: TradeOutcome; label: string; color: string }[]
     { outcome: 'SL', label: 'SL', color: 'red' },
 ];
 
-const TradeCard: React.FC<TradeCardProps> = ({ 
-    trade, 
+const TradeCard: React.FC<TradeCardProps> = ({
+    trade,
     userSettings,
-    isModified, 
-    onSave, 
-    isSaved, 
-    feedback, 
+    isModified,
+    onSave,
+    isSaved,
+    feedback,
     onFeedbackChange,
     isSubmittingFeedback,
     onRemove,
@@ -133,7 +132,7 @@ const TradeCard: React.FC<TradeCardProps> = ({
     useEffect(() => { setFeedbackText(feedback?.text || ''); }, [feedback?.text]);
 
     const handleToggleExplanation = () => setIsExplanationOpen(prev => !prev);
-    
+
     const handleOutcomeChange = (newOutcome: TradeOutcome) => {
         if (!onFeedbackChange || isSubmittingFeedback) return;
         onFeedbackChange({ outcome: newOutcome, text: feedbackText });
@@ -172,11 +171,11 @@ const TradeCard: React.FC<TradeCardProps> = ({
                             </h3>
                             {isModified && <span className="px-2 py-0.5 text-xs font-semibold bg-purple-600 text-purple-100 rounded-full">MODIFIED</span>}
                         </div>
-                         {'savedDate' in trade ? (
-                             <p className="text-xs text-gray-500">Journaled: {new Date(trade.savedDate).toLocaleString()}</p>
-                         ) : (
-                             <p className="text-xs text-gray-500">Generated Just Now</p>
-                         )}
+                        {'savedDate' in trade ? (
+                            <p className="text-xs text-gray-500">Journaled: {new Date(trade.savedDate).toLocaleString()}</p>
+                        ) : (
+                            <p className="text-xs text-gray-500">Generated Just Now</p>
+                        )}
                     </div>
                     {onSave && (
                         <button onClick={() => onSave(trade)} disabled={isSaved} className={`px-3 py-1 text-sm font-semibold rounded-md transition-colors ${isSaved ? 'bg-green-600 text-white cursor-default' : 'bg-blue-600 text-white hover:bg-blue-500'}`}>
@@ -208,8 +207,8 @@ const TradeCard: React.FC<TradeCardProps> = ({
                     <div className="col-span-2 text-left">
                         <p className="text-gray-400 uppercase font-semibold" style={{ fontSize: `${userSettings.uiFontSize - 2}px` }}>Entry</p>
                         <div className={`${isEntryDescriptive ? '' : 'font-mono text-center'} font-bold text-white mt-1`} style={{ fontSize: `${isEntryDescriptive ? userSettings.dataFontSize - 2 : userSettings.dataFontSize}px`, lineHeight: isEntryDescriptive ? '1.5' : '1' }} dangerouslySetInnerHTML={{ __html: trade.entry || '-' }} />
-                         <div className={`mt-1 flex items-center ${isEntryDescriptive ? 'justify-start' : 'justify-center'} space-x-2`}>
-                             <span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${trade.entryType === 'Limit Order' ? 'bg-blue-600 text-blue-100' : 'bg-orange-600 text-orange-100'}`}>{trade.entryType}</span>
+                        <div className={`mt-1 flex items-center ${isEntryDescriptive ? 'justify-start' : 'justify-center'} space-x-2`}>
+                            <span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${trade.entryType === 'Limit Order' ? 'bg-blue-600 text-blue-100' : 'bg-orange-600 text-orange-100'}`}>{trade.entryType}</span>
                             {trade.entryType === 'Confirmation Entry' && trade.entryExplanation && (
                                 <div className="relative">
                                     <button onMouseEnter={() => setIsEntryExplanationVisible(true)} onMouseLeave={() => setIsEntryExplanationVisible(false)} className="text-gray-400 hover:text-yellow-300"><InfoIcon className="w-4 h-4" /></button>
@@ -222,7 +221,7 @@ const TradeCard: React.FC<TradeCardProps> = ({
                     </div>
                     <div className="col-span-2 text-left">
                         <p className="text-red-400 uppercase font-semibold" style={{ fontSize: `${userSettings.uiFontSize - 2}px` }}>Stop Loss</p>
-                         <div className={`${isSlDescriptive ? '' : 'font-mono text-center'} font-bold text-white mt-1`} style={{ fontSize: `${isSlDescriptive ? userSettings.dataFontSize - 2 : userSettings.dataFontSize}px`, lineHeight: isSlDescriptive ? '1.5' : '1' }} dangerouslySetInnerHTML={{ __html: trade.stopLoss || '-' }} />
+                        <div className={`${isSlDescriptive ? '' : 'font-mono text-center'} font-bold text-white mt-1`} style={{ fontSize: `${isSlDescriptive ? userSettings.dataFontSize - 2 : userSettings.dataFontSize}px`, lineHeight: isSlDescriptive ? '1.5' : '1' }} dangerouslySetInnerHTML={{ __html: trade.stopLoss || '-' }} />
                     </div>
                     <div className="col-span-2 text-center py-2 my-1 border-y-2 border-[hsl(var(--color-border-700)/0.5)]">
                         <p className={`font-mono font-bold ${rrColor}`} style={{ fontSize: `${userSettings.dataFontSize + 8}px` }}>{rr.toFixed(2)} : 1</p>
@@ -242,14 +241,14 @@ const TradeCard: React.FC<TradeCardProps> = ({
                     <div className="text-gray-300 bg-[hsl(var(--color-bg-900)/0.5)] p-3 rounded-md border border-[hsl(var(--color-border-700)/0.5)] mt-1" style={{ fontSize: `${userSettings.uiFontSize}px` }}>
                         <h5 className="font-semibold text-gray-200 mb-1">Trade Management Plan:</h5>
                         <ul className="list-disc list-inside space-y-1 text-xs">
-                           <li dangerouslySetInnerHTML={{ __html: trade.tradeManagement.partial_take_profit_1 }}></li>
-                           <li dangerouslySetInnerHTML={{ __html: trade.tradeManagement.move_to_breakeven_condition }}></li>
+                            <li dangerouslySetInnerHTML={{ __html: trade.tradeManagement.partial_take_profit_1 }}></li>
+                            <li dangerouslySetInnerHTML={{ __html: trade.tradeManagement.move_to_breakeven_condition }}></li>
                         </ul>
                     </div>
                 )}
 
                 <div>
-                    <div 
+                    <div
                         className="flex items-center cursor-pointer select-none"
                         onClick={handleToggleExplanation}
                         role="button"
@@ -259,7 +258,7 @@ const TradeCard: React.FC<TradeCardProps> = ({
                         <p className="text-xs text-gray-400 font-semibold mb-1">Analysis Reasoning:</p>
                         <span className="ml-2 text-yellow-400 transition-transform duration-200" style={{ transform: isExplanationOpen ? 'rotate(90deg)' : 'rotate(0deg)' }}>▶</span>
                     </div>
-                    
+
                     {isExplanationOpen && (
                         <div className="animate-fadeIn mt-2 space-y-2">
                             {isSegmented ? (
@@ -269,7 +268,7 @@ const TradeCard: React.FC<TradeCardProps> = ({
                                         <div className="text-blue-300 text-xs font-bold uppercase tracking-wider mb-1">Strategy Match</div>
                                         <div className="text-gray-300 text-sm" dangerouslySetInnerHTML={{ __html: explanationSegments[0].replace('Strategy Match:', '').trim() }} />
                                     </div>
-                                    
+
                                     {/* 2. Evidence Box */}
                                     {explanationSegments[1] && (
                                         <div className="bg-yellow-900/10 border border-yellow-500/30 rounded-md p-3">
@@ -288,8 +287,8 @@ const TradeCard: React.FC<TradeCardProps> = ({
                                 </>
                             ) : (
                                 // Legacy Fallback for older trades without segmentation
-                                <div 
-                                    className="text-gray-300 bg-[hsl(var(--color-bg-900)/0.5)] p-3 rounded-md border border-[hsl(var(--color-border-700)/0.5)] mt-1 prose prose-sm prose-invert max-w-none" 
+                                <div
+                                    className="text-gray-300 bg-[hsl(var(--color-bg-900)/0.5)] p-3 rounded-md border border-[hsl(var(--color-border-700)/0.5)] mt-1 prose prose-sm prose-invert max-w-none"
                                     style={{ fontSize: `${userSettings.uiFontSize}px` }}
                                     dangerouslySetInnerHTML={{ __html: trade.explanation }}
                                 ></div>
@@ -305,7 +304,7 @@ const TradeCard: React.FC<TradeCardProps> = ({
                 <div className="pt-4 mt-4 border-t border-[hsl(var(--color-border-700)/0.5)]">
                     <div className="space-y-3">
                         <h4 className="font-semibold text-gray-300 text-center" style={{ fontSize: `${userSettings.uiFontSize}px` }}>Log Trade Outcome</h4>
-                        
+
                         <div className="flex flex-wrap gap-2 justify-center">
                             {OUTCOME_BUTTONS.map(({ outcome, label, color }) => {
                                 const isSelected = feedback?.outcome === outcome;
@@ -315,7 +314,7 @@ const TradeCard: React.FC<TradeCardProps> = ({
                                     blue: `bg-blue-500/20 border-blue-500 text-blue-300`,
                                 };
                                 return (
-                                     <button
+                                    <button
                                         key={outcome}
                                         onClick={() => handleOutcomeChange(outcome)}
                                         disabled={isSubmittingFeedback}
@@ -328,7 +327,7 @@ const TradeCard: React.FC<TradeCardProps> = ({
                             })}
                         </div>
 
-                         <div className="space-y-2 animate-fadeIn">
+                        <div className="space-y-2 animate-fadeIn">
                             <textarea
                                 value={feedbackText}
                                 onChange={(e) => setFeedbackText(e.target.value)}
@@ -340,12 +339,12 @@ const TradeCard: React.FC<TradeCardProps> = ({
                                 disabled={isSubmittingFeedback}
                             />
                         </div>
-                        
+
                         <div className="flex justify-between items-center pt-3 mt-3 border-t border-[hsl(var(--color-border-700)/0.5)]">
                             {isCoachingTrade ? (
                                 onViewCoachingLog && (
                                     <button onClick={onViewCoachingLog} className="flex items-center gap-2 text-sm text-purple-300 hover:text-purple-200">
-                                        <OracleIcon className="w-5 h-5"/> View Coaching Log
+                                        <OracleIcon className="w-5 h-5" /> View Coaching Log
                                     </button>
                                 )
                             ) : (
@@ -357,7 +356,7 @@ const TradeCard: React.FC<TradeCardProps> = ({
                                     )}
                                     {onViewImages && (('uploadedImageKeys' in trade && Object.keys(trade.uploadedImageKeys).length > 0) || hasResultImage) && (
                                         <button onClick={onViewImages} className="p-2 rounded-full text-gray-400 hover:text-yellow-400 hover:bg-yellow-500/10" title="View Trade Images">
-                                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5"><path fillRule="evenodd" d="M1 5.25A2.25 2.25 0 0 1 3.25 3h13.5A2.25 2.25 0 0 1 19 5.25v9.5A2.25 2.25 0 0 1 16.75 17H3.25A2.25 2.25 0 0 1 1 14.75v-9.5Zm1.5 5.81v3.69c0 .414.336.75.75.75h13.5a.75.75 0 0 0 .75-.75v-2.69l-2.22-2.219a.75.75 0 0 0-1.06 0l-1.91 1.909-.48-1.121a.75.75 0 0 0-1.328-.142l-2.8 6.532H2.5v-3.69l.72-.72a.75.75 0 0 0 0-1.06l-.72-.72Zm15-5.81H3.25a.75.75 0 0 0-.75.75v.5c0 .414.336.75.75.75h13.5a.75.75 0 0 0 .75-.75v-.5a.75.75 0 0 0-.75-.75Z" clipRule="evenodd" /></svg>
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5"><path fillRule="evenodd" d="M1 5.25A2.25 2.25 0 0 1 3.25 3h13.5A2.25 2.25 0 0 1 19 5.25v9.5A2.25 2.25 0 0 1 16.75 17H3.25A2.25 2.25 0 0 1 1 14.75v-9.5Zm1.5 5.81v3.69c0 .414.336.75.75.75h13.5a.75.75 0 0 0 .75-.75v-2.69l-2.22-2.219a.75.75 0 0 0-1.06 0l-1.91 1.909-.48-1.121a.75.75 0 0 0-1.328-.142l-2.8 6.532H2.5v-3.69l.72-.72a.75.75 0 0 0 0-1.06l-.72-.72Zm15-5.81H3.25a.75.75 0 0 0-.75.75v.5c0 .414.336.75.75.75h13.5a.75.75 0 0 0 .75-.75v-.5a.75.75 0 0 0-.75-.75Z" clipRule="evenodd" /></svg>
                                         </button>
                                     )}
                                     {onAddResultImage && (
@@ -367,10 +366,10 @@ const TradeCard: React.FC<TradeCardProps> = ({
                                     )}
                                 </div>
                             )}
-                            
+
                             {onRemove && (
                                 <button onClick={onRemove} className="p-2 rounded-full text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-colors" aria-label="Remove from journal" title="Remove from Journal">
-                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                                 </button>
                             )}
                         </div>

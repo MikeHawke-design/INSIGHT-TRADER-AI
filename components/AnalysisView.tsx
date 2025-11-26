@@ -1,7 +1,6 @@
-
 import React from 'react';
 import { AnalysisResults, StrategyKey, UploadedImageKeys, User, Trade, UserSettings, SavedTrade, UserUsage, StrategyLogicData, AssetComparisonResult, SavedAssetComparison } from '../types';
-import { TIME_FRAMES_STEPS, CREDIT_COSTS, USER_TIERS } from '../constants';
+import { TIME_FRAMES_STEPS } from '../constants';
 import TradeCard from './TradeCard';
 import AISuggestionCard from './AISuggestionCard';
 import HeatMeter from './HeatMeter';
@@ -65,7 +64,6 @@ const AnalysisView: React.FC<AnalysisViewProps> = ({
     onReset,
     onPerformRedo,
     currentUser,
-    userUsage,
     savedTrades,
     onSaveTrade,
     strategyLogicData,
@@ -155,7 +153,7 @@ const AnalysisView: React.FC<AnalysisViewProps> = ({
                 <h2 className="font-bold text-white" style={{ fontSize: `${userSettings.headingFontSize + 4}px` }}>Analysis Complete</h2>
                 <p className="text-gray-400" style={{ fontSize: `${userSettings.uiFontSize}px` }}>Using <span className="font-semibold text-yellow-400">
                     {selectedStrategies.length > 1
-                        ? `Confluent (${strategyDisplayNames})`
+                        ? `Confluent(${strategyDisplayNames})`
                         : strategyDisplayNames}
                 </span> Strategy</p>
             </div>

@@ -1,44 +1,40 @@
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { createPortal } from 'react-dom';
 import { AnalysisResults, StrategyKey, UserSettings, UploadedImageKeys, User, UserUsage, StrategyLogicData, KnowledgeBaseDocument, ApiConfiguration, MarketDataCache, MarketDataCandle } from '../types';
-import { USER_TIERS } from '../constants';
 import ImageUploader, { ImageUploaderHandles } from './ImageUploader';
-import StrategyRequirements from './StrategyRequirements';
 import UserSettingsEditor from './UserSettings';
 import Logo from './Logo';
+import OracleIcon from './OracleIcon';
 
 interface DashboardProps {
-  onAnalysisComplete: (results: AnalysisResults, strategies: StrategyKey[], images: UploadedImageKeys, useRealTimeContext: boolean) => void;
-  userSettings: UserSettings;
-  onUserSettingsChange: (settingKey: keyof UserSettings, value: any) => void;
-  initialImages?: UploadedImageKeys | null;
-  currentUser: User | null;
-  userUsage: UserUsage;
-  dashboardSelectedStrategies: StrategyKey[];
-  onDashboardStrategyChange: (key: StrategyKey) => void;
-  onSetDashboardStrategies: (keys: StrategyKey[]) => void;
-  dashboardSelectedMarketData: string[];
-  setDashboardSelectedMarketData: React.Dispatch<React.SetStateAction<string[]>>;
-  strategyLogicData: Record<StrategyKey, StrategyLogicData>;
-  knowledgeBaseDocuments: KnowledgeBaseDocument[];
-  isAnalyzing: boolean;
-  setIsAnalyzing: (isAnalyzing: boolean) => void;
-  onLogTokenUsage: (tokens: number) => void;
-  isUnrestrictedMode: boolean;
-  apiConfig: ApiConfiguration;
-  onInitiateCoaching: (strategy: StrategyLogicData, goal: 'learn_basics' | 'build_setup', strategyKey: StrategyKey) => void;
-  viewedStrategy: StrategyKey | null;
-  setViewedStrategy: (key: StrategyKey | null) => void;
-  marketDataCache: MarketDataCache;
-  onSaveAssetComparison: (comp: any) => void;
+    onAnalysisComplete: (results: AnalysisResults, strategies: StrategyKey[], images: UploadedImageKeys, useRealTimeContext: boolean) => void;
+    userSettings: UserSettings;
+    onUserSettingsChange: (settingKey: keyof UserSettings, value: any) => void;
+    initialImages?: UploadedImageKeys | null;
+    currentUser: User | null;
+    userUsage: UserUsage;
+    dashboardSelectedStrategies: StrategyKey[];
+    onDashboardStrategyChange: (key: StrategyKey) => void;
+    onSetDashboardStrategies: (keys: StrategyKey[]) => void;
+    dashboardSelectedMarketData: string[];
+    setDashboardSelectedMarketData: React.Dispatch<React.SetStateAction<string[]>>;
+    strategyLogicData: Record<StrategyKey, StrategyLogicData>;
+    knowledgeBaseDocuments: KnowledgeBaseDocument[];
+    isAnalyzing: boolean;
+    setIsAnalyzing: (isAnalyzing: boolean) => void;
+    onLogTokenUsage: (tokens: number) => void;
+    isUnrestrictedMode: boolean;
+    apiConfig: ApiConfiguration;
+    onInitiateCoaching: (strategy: StrategyLogicData, goal: 'learn_basics' | 'build_setup', strategyKey: StrategyKey) => void;
+    viewedStrategy: StrategyKey | null;
+    setViewedStrategy: (key: StrategyKey | null) => void;
+    marketDataCache: MarketDataCache;
+    onSaveAssetComparison: (comp: any) => void;
 }
 
-const LockIcon: React.FC<{className?: string}> = (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002 2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clipRule="evenodd" /></svg>;
-const CheckIcon: React.FC<{className?: string}> = (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>;
-const WarningIcon: React.FC<{className?: string}> = (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M8.257 3.099c.636-1.1 2.29-1.1 2.926 0l5.578 9.663c.636 1.1-.18 2.488-1.463 2.488H4.142c-1.282 0-2.098-1.387-1.463-2.488l5.578-9.663zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" /></svg>;
+const WarningIcon: React.FC<{ className?: string }> = (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M8.257 3.099c.636-1.1 2.29-1.1 2.926 0l5.578 9.663c.636 1.1-.18 2.488-1.463 2.488H4.142c-1.282 0-2.098-1.387-1.463-2.488l5.578-9.663zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" /></svg>;
 const CoachingIcon = (props: { className?: string }) => <svg {...props} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M17.25 6.75 22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3-4.5 16.5" /></svg>;
-const ChevronDownIcon = (props:{className?:string}) => <svg {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z" clipRule="evenodd" /></svg>;
+const ChevronDownIcon = (props: { className?: string }) => <svg {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z" clipRule="evenodd" /></svg>;
 
 
 const Section: React.FC<{ number: number, title: string, children: React.ReactNode, disabled?: boolean, fontSize: number }> = ({ number, title, children, disabled, fontSize }) => (
@@ -53,47 +49,30 @@ const Section: React.FC<{ number: number, title: string, children: React.ReactNo
     </div>
 );
 
-const Dashboard: React.FC<DashboardProps> = ({ 
-    onAnalysisComplete, userSettings, onUserSettingsChange, initialImages, currentUser, userUsage,
-    dashboardSelectedStrategies, onDashboardStrategyChange, onSetDashboardStrategies, 
+const Dashboard: React.FC<DashboardProps> = ({
+    onAnalysisComplete, userSettings, onUserSettingsChange, initialImages, currentUser,
+    dashboardSelectedStrategies, onDashboardStrategyChange, onSetDashboardStrategies,
     dashboardSelectedMarketData, setDashboardSelectedMarketData,
-    strategyLogicData, knowledgeBaseDocuments, isAnalyzing, setIsAnalyzing, onLogTokenUsage, 
-    isUnrestrictedMode, apiConfig, onInitiateCoaching,
+    strategyLogicData, isAnalyzing, setIsAnalyzing, onLogTokenUsage,
+    apiConfig, onInitiateCoaching,
     viewedStrategy, setViewedStrategy, marketDataCache
 }) => {
-    
+
     const uploaderRef = useRef<ImageUploaderHandles>(null);
     const [uploaderPhase, setUploaderPhase] = useState<'idle' | 'gathering' | 'validating' | 'ready' | 'analyzing'>('idle');
     const [useRealTimeContext, setUseRealTimeContext] = useState<boolean>(true);
     const [isComparisonMode, setIsComparisonMode] = useState<boolean>(false);
     const [expandedConcepts, setExpandedConcepts] = useState<Record<StrategyKey, boolean>>({});
-    const [tooltipState, setTooltipState] = useState<{ content: string; top: number; left: number } | null>(null);
     const [isPromptVisible, setIsPromptVisible] = useState(false);
 
     useEffect(() => {
         setIsPromptVisible(false);
     }, [viewedStrategy]);
 
-    const handleMouseEnter = (e: React.MouseEvent<HTMLSpanElement>, content: string) => {
-        const span = e.currentTarget;
-        if (span.scrollWidth > span.clientWidth) {
-            const rect = span.getBoundingClientRect();
-            setTooltipState({
-                content,
-                top: rect.top,
-                left: rect.left + rect.width / 2,
-            });
-        }
-    };
-
-    const handleMouseLeave = () => {
-        setTooltipState(null);
-    };
-
     const handleToggleExpand = (key: StrategyKey) => {
-        setExpandedConcepts(prev => ({...prev, [key]: !prev[key]}));
+        setExpandedConcepts(prev => ({ ...prev, [key]: !prev[key] }));
     };
-    
+
     const info = viewedStrategy ? strategyLogicData[viewedStrategy] : null;
 
     const handleTriggerAnalysis = () => {
@@ -101,10 +80,10 @@ const Dashboard: React.FC<DashboardProps> = ({
         setIsAnalyzing(true);
         uploaderRef.current.triggerAnalysis(useRealTimeContext);
     }
-    
+
     // Allow analysis if API key is in config OR environment variable
     const canAnalyze = !!apiConfig.geminiApiKey || !!import.meta.env.VITE_API_KEY;
-    
+
     const isSubmitDisabled = (uploaderPhase !== 'ready' && dashboardSelectedMarketData.length === 0) || isAnalyzing || !canAnalyze || dashboardSelectedStrategies.length === 0;
 
     let submitButtonTooltip = "";
@@ -141,19 +120,19 @@ const Dashboard: React.FC<DashboardProps> = ({
         Object.entries(marketDataCache).forEach(([key, candlesUntyped]) => {
             const candles = candlesUntyped as MarketDataCandle[];
             if (!Array.isArray(candles) || candles.length === 0) return;
-            
+
             const lastDashIndex = key.lastIndexOf('-');
             const symbol = lastDashIndex > -1 ? key.substring(0, lastDashIndex) : key;
             const timeframe = lastDashIndex > -1 ? key.substring(lastDashIndex + 1) : 'Unknown';
-    
+
             if (!grouped[symbol]) {
                 grouped[symbol] = [];
             }
-    
+
             const sortedDates = candles.map(c => new Date(c.date)).sort((a, b) => a.getTime() - b.getTime());
             const startDate = sortedDates[0].toLocaleDateString(undefined, { year: '2-digit', month: 'short', day: 'numeric' });
             const endDate = sortedDates[sortedDates.length - 1].toLocaleDateString(undefined, { year: '2-digit', month: 'short', day: 'numeric' });
-            
+
             grouped[symbol].push({
                 key,
                 timeframe,
@@ -179,20 +158,6 @@ const Dashboard: React.FC<DashboardProps> = ({
 
     return (
         <div className="p-4 md:p-6">
-             {tooltipState && createPortal(
-                <div
-                    className="fixed z-[100] py-1 px-3 font-semibold text-white bg-gray-900 rounded-md shadow-lg border border-gray-700 pointer-events-none"
-                    style={{
-                        top: tooltipState.top,
-                        left: tooltipState.left,
-                        transform: 'translate(-50%, -120%)',
-                        fontSize: `${userSettings.uiFontSize - 2}px`
-                    }}
-                >
-                    {tooltipState.content}
-                </div>,
-                document.body
-            )}
             {!currentUser && (
                 <div className="max-w-3xl mx-auto bg-red-800/30 border border-red-600 rounded-lg p-6 mb-6 text-center">
                     <h3 className="text-xl font-bold text-red-300">Login Required</h3>
@@ -204,7 +169,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                 <div className={`lg:col-span-3 space-y-8 ${(!currentUser) ? 'opacity-50 pointer-events-none' : ''}`}>
                     <Section number={1} title="Select Your Strategies" fontSize={userSettings.headingFontSize}>
                         <p className="text-gray-400 mb-3" style={{ fontSize: `${userSettings.uiFontSize}px` }}>Build your analysis by selecting your custom-built strategies.</p>
-                        
+
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <div className="md:col-span-1 space-y-2">
                                 <h4 className="font-semibold text-gray-400 text-xs uppercase tracking-wider">Your Strategies</h4>
@@ -232,8 +197,8 @@ const Dashboard: React.FC<DashboardProps> = ({
                                         return (
                                             <div key={key} className="bg-gray-700/20 rounded-md">
                                                 <div className="flex items-center p-3 rounded-t-md bg-gray-800 border-b border-gray-700">
-                                                    <input 
-                                                        type="checkbox" 
+                                                    <input
+                                                        type="checkbox"
                                                         checked={isAllSelected || isPartiallySelected}
                                                         ref={input => { if (input) input.indeterminate = isPartiallySelected; }}
                                                         onChange={handleMasterCheckboxChange}
@@ -248,11 +213,11 @@ const Dashboard: React.FC<DashboardProps> = ({
                                                     <div className="p-3 space-y-2 bg-gray-900/30">
                                                         {children.map(([childKey, childStrat]) => (
                                                             <label key={childKey} className="flex items-center p-2 rounded hover:bg-gray-700/50 cursor-pointer">
-                                                                <input 
-                                                                    type="checkbox" 
-                                                                    checked={dashboardSelectedStrategies.includes(childKey)} 
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={dashboardSelectedStrategies.includes(childKey)}
                                                                     onChange={() => onDashboardStrategyChange(childKey)}
-                                                                    className="h-4 w-4 rounded bg-gray-700 border-gray-600 text-yellow-500 focus:ring-yellow-500/50" 
+                                                                    className="h-4 w-4 rounded bg-gray-700 border-gray-600 text-yellow-500 focus:ring-yellow-500/50"
                                                                 />
                                                                 <span className="ml-3 text-sm text-gray-300">{childStrat.name}</span>
                                                             </label>
@@ -265,20 +230,19 @@ const Dashboard: React.FC<DashboardProps> = ({
 
                                     return (
                                         <div key={key} className="bg-gray-700/20 rounded-md p-3 flex items-center">
-                                            <input 
-                                                type="checkbox" 
-                                                checked={dashboardSelectedStrategies.includes(key)} 
+                                            <input
+                                                type="checkbox"
+                                                checked={dashboardSelectedStrategies.includes(key)}
                                                 onChange={() => onDashboardStrategyChange(key)}
-                                                className="h-4 w-4 rounded bg-gray-700 border-gray-600 text-yellow-500 focus:ring-yellow-500/50" 
+                                                className="h-4 w-4 rounded bg-gray-700 border-gray-600 text-yellow-500 focus:ring-yellow-500/50"
                                             />
                                             <div className="ml-3 flex-grow">
                                                 <span className="font-semibold text-white block">{strategy.name}</span>
                                                 <p className="text-xs text-gray-400">{strategy.description.substring(0, 80)}...</p>
                                             </div>
                                             <div className="flex items-center gap-2">
-                                                <button onClick={() => setViewedStrategy(key)} className="text-xs text-blue-400 hover:underline">Info</button>
-                                                <button onClick={() => onInitiateCoaching(strategy, 'learn_basics', key)} className="text-gray-400 hover:text-yellow-400" title="Start Coaching">
-                                                    <CoachingIcon className="w-5 h-5" />
+                                                <button onClick={() => onInitiateCoaching(strategy, 'learn_basics', key)} className="text-gray-400 hover:text-yellow-400 p-2 hover:bg-gray-700/50 rounded-full transition-colors" title="Chat with Oracle about this strategy">
+                                                    <OracleIcon className="w-6 h-6" />
                                                 </button>
                                             </div>
                                         </div>
@@ -295,33 +259,31 @@ const Dashboard: React.FC<DashboardProps> = ({
                                 <div className="flex bg-gray-900 p-1 rounded-lg border border-gray-700">
                                     <button
                                         onClick={() => setIsComparisonMode(false)}
-                                        className={`flex-1 py-2 px-4 rounded-md text-sm font-semibold transition-all ${
-                                            !isComparisonMode 
-                                            ? 'bg-gray-700 text-white shadow-md' 
+                                        className={`flex-1 py-2 px-4 rounded-md text-sm font-semibold transition-all ${!isComparisonMode
+                                            ? 'bg-gray-700 text-white shadow-md'
                                             : 'text-gray-400 hover:text-gray-200'
-                                        }`}
+                                            }`}
                                     >
                                         Standard Analysis
                                     </button>
                                     <button
                                         onClick={() => setIsComparisonMode(true)}
-                                        className={`flex-1 py-2 px-4 rounded-md text-sm font-semibold transition-all ${
-                                            isComparisonMode 
-                                            ? 'bg-blue-700 text-white shadow-md' 
+                                        className={`flex-1 py-2 px-4 rounded-md text-sm font-semibold transition-all ${isComparisonMode
+                                            ? 'bg-blue-700 text-white shadow-md'
                                             : 'text-gray-400 hover:text-gray-200'
-                                        }`}
+                                            }`}
                                     >
                                         Asset Comparison
                                     </button>
                                 </div>
                                 <p className="text-xs text-gray-500 mt-2 px-1">
-                                    {isComparisonMode 
-                                        ? "Rank multiple assets against each other based on strategy criteria." 
+                                    {isComparisonMode
+                                        ? "Rank multiple assets against each other based on strategy criteria."
                                         : "Deep dive analysis into a single asset or setup with multi-timeframe context."}
                                 </p>
                             </div>
 
-                            <ImageUploader 
+                            <ImageUploader
                                 ref={uploaderRef}
                                 onAnalysisComplete={onAnalysisComplete}
                                 selectedStrategies={dashboardSelectedStrategies}
@@ -337,7 +299,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                                 dashboardSelectedMarketData={dashboardSelectedMarketData}
                                 isComparisonMode={isComparisonMode}
                             />
-                            
+
                             {Object.keys(groupedMarketData).length > 0 && (
                                 <div className="bg-gray-800/70 p-4 rounded-lg border border-gray-700">
                                     <h4 className="font-bold text-gray-200 mb-3">Select Cached Market Data</h4>
@@ -348,9 +310,9 @@ const Dashboard: React.FC<DashboardProps> = ({
                                                 <div className="grid grid-cols-2 gap-2">
                                                     {(items as { key: string; timeframe: string; count: number; dateRange: string; }[]).map(item => (
                                                         <label key={item.key} className={`flex items-center p-2 rounded border cursor-pointer transition-colors ${dashboardSelectedMarketData.includes(item.key) ? 'bg-blue-900/30 border-blue-500' : 'bg-gray-800 border-gray-700 hover:border-gray-600'}`}>
-                                                            <input 
-                                                                type="checkbox" 
-                                                                checked={dashboardSelectedMarketData.includes(item.key)} 
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={dashboardSelectedMarketData.includes(item.key)}
                                                                 onChange={() => handleMarketDataSelectionChange(item.key)}
                                                                 className="h-4 w-4 rounded bg-gray-700 border-gray-600 text-blue-500 focus:ring-blue-500/50"
                                                             />
@@ -373,9 +335,9 @@ const Dashboard: React.FC<DashboardProps> = ({
                         <div className="flex flex-col gap-4">
                             <div className="bg-gray-800/50 p-4 rounded-lg border border-gray-700">
                                 <label className="flex items-center space-x-3 cursor-pointer">
-                                    <input 
-                                        type="checkbox" 
-                                        checked={useRealTimeContext} 
+                                    <input
+                                        type="checkbox"
+                                        checked={useRealTimeContext}
                                         onChange={(e) => setUseRealTimeContext(e.target.checked)}
                                         className="h-5 w-5 rounded bg-gray-700 border-gray-600 text-yellow-500 focus:ring-yellow-500/50"
                                     />
@@ -439,10 +401,10 @@ const Dashboard: React.FC<DashboardProps> = ({
                             <div>
                                 <h4 className="font-semibold text-white border-b border-gray-700 pb-1 mb-2">Strategy Profile</h4>
                                 <div className="grid grid-cols-2 gap-4 text-sm">
-                                    {info.assetClasses && <div><span className="text-gray-500">Asset Classes:</span><br/>{info.assetClasses.join(', ')}</div>}
-                                    {info.tradingStyles && <div><span className="text-gray-500">Style:</span><br/>{info.tradingStyles.join(', ')}</div>}
-                                    {info.timeZoneSpecificity && <div><span className="text-gray-500">Time Zone:</span><br/>{info.timeZoneSpecificity}</div>}
-                                    {info.tags && <div><span className="text-gray-500">Tags:</span><br/>{info.tags.join(', ')}</div>}
+                                    {info.assetClasses && <div><span className="text-gray-500">Asset Classes:</span><br />{info.assetClasses.join(', ')}</div>}
+                                    {info.tradingStyles && <div><span className="text-gray-500">Style:</span><br />{info.tradingStyles.join(', ')}</div>}
+                                    {info.timeZoneSpecificity && <div><span className="text-gray-500">Time Zone:</span><br />{info.timeZoneSpecificity}</div>}
+                                    {info.tags && <div><span className="text-gray-500">Tags:</span><br />{info.tags.join(', ')}</div>}
                                 </div>
                             </div>
                             <div>

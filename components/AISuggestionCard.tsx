@@ -15,7 +15,7 @@ interface AISuggestionCardProps {
 const LightbulbIcon = (props: { className?: string }) => <svg {...props} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 0 0 1.5-.189m-1.5.189a6.01 6.01 0 0 1-1.5-.189m3.75 7.478a12.06 12.06 0 0 1-4.5 0m3.75 2.311a15.045 15.045 0 0 1-4.5 0m3.75-2.311a15.045 15.045 0 0 0 4.5 0M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 4.5h.008v.008H12v-.008Z" /></svg>;
 const InfoIcon = (props: { className?: string }) => <svg {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-7-4a1 1 0 1 1-2 0 1 1 0 0 1 2 0ZM9 9a1 1 0 0 0 0 2v3a1 1 0 0 0 1 1h1a1 1 0 1 0 0-2v-3a1 1 0 0 0-1-1H9Z" clipRule="evenodd" /></svg>;
 
-const AISuggestionCard: React.FC<AISuggestionCardProps> = ({ suggestion, onApply, selectedStrategies, strategyLogicData, userSettings, currentUser, hasTrades }) => {
+const AISuggestionCard: React.FC<AISuggestionCardProps> = ({ suggestion, onApply, strategyLogicData, userSettings, hasTrades }) => {
   const suggestedStrategies = suggestion.suggestedStrategies || [];
   const suggestedSettings = suggestion.suggestedSettings || {};
   const reasoning = suggestion.reasoning || "";
@@ -26,28 +26,34 @@ const AISuggestionCard: React.FC<AISuggestionCardProps> = ({ suggestion, onApply
   const isInformationalOnly = !hasTrades && !isActualSuggestion;
 
   const cardTheme = isInformationalOnly ? {
-    bg: 'bg-blue-900/20',
-    border: 'border-blue-500/50',
-    iconColor: 'text-blue-300',
+    bg: 'bg-slate-900',
+    border: 'border-blue-500/30',
+    iconColor: 'text-blue-400',
     title: "Market Conditions Update",
     icon: <InfoIcon />
   } : {
-    bg: 'bg-purple-900/20',
-    border: 'border-purple-500/50',
-    iconColor: 'text-purple-300',
+    bg: 'bg-slate-900',
+    border: 'border-purple-500/30',
+    iconColor: 'text-purple-400',
     title: "Oracle's Suggestion",
     icon: <LightbulbIcon />
   };
 
   return (
-    <div className={`${cardTheme.bg} border ${cardTheme.border} rounded-lg p-6 my-6 text-left mx-auto`}>
-      <div className="flex items-center mb-4">
+    <div className={`${cardTheme.bg} border ${cardTheme.border} rounded-xl p-6 my-6 text-left mx-auto shadow-lg`}>
+      <div className="flex items-center mb-6 border-b border-gray-800 pb-4">
         {React.cloneElement(cardTheme.icon, { className: `h-6 w-6 ${cardTheme.iconColor} mr-3 flex-shrink-0` })}
-        <h3 className={`font-bold ${cardTheme.iconColor}`} style={{ fontSize: `${userSettings.headingFontSize}px` }}>{cardTheme.title}</h3>
+        <h3 className={`font-bold tracking-wide ${cardTheme.iconColor}`} style={{ fontSize: `${userSettings.headingFontSize}px` }}>{cardTheme.title}</h3>
       </div>
 
       <div
-        className="text-gray-300 prose prose-sm prose-invert max-w-none [&_ul]:list-disc [&_ul]:ml-4 [&_strong]:font-semibold"
+        className="text-gray-300 prose prose-sm prose-invert max-w-none 
+        [&_ul]:list-none [&_ul]:pl-0 [&_ul]:space-y-3 
+        [&_li]:pl-0 
+        [&_strong]:text-yellow-400 [&_strong]:font-bold [&_strong]:mr-1
+        [&_h4]:text-white [&_h4]:font-bold [&_h4]:mt-4 [&_h4]:mb-2 [&_h4]:uppercase [&_h4]:tracking-wider [&_h4]:text-xs [&_h4]:text-gray-500
+        [&_.bullish]:text-green-400 [&_.bearish]:text-red-400
+        leading-relaxed"
         style={{ fontSize: `${userSettings.uiFontSize}px` }}
         dangerouslySetInnerHTML={{ __html: reasoning }}
       />

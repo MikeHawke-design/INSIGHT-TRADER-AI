@@ -90,7 +90,6 @@ const CoachingView: React.FC<CoachingViewProps> = ({
     userSettings: _userSettings,
     onLogTokenUsage,
     onSaveSession,
-    onSaveTrade,
 }) => {
     const [chatHistory, setChatHistory] = useState<ChatMessage[]>(context.session?.chatHistory || []);
     const [input, setInput] = useState('');
@@ -306,30 +305,7 @@ ${context.strategy.prompt}`;
                     <p className="text-sm text-gray-400">Goal: {context.goal === 'learn_basics' ? 'Learn Concepts' : 'Build Setup'}</p>
                 </div>
                 <div className="flex gap-2">
-                    <button onClick={() => {
-                        // Save as a Trade Entry in Journal
-                        const dummyTrade: Trade = {
-                            type: 'Coaching Session',
-                            direction: 'Long', // Default
-                            symbol: context.strategy.name,
-                            entry: '0',
-                            entryType: 'Confirmation Entry',
-                            entryExplanation: 'Coaching Session Log',
-                            stopLoss: '0',
-                            takeProfit1: '0',
-                            takeProfit2: '0',
-                            heat: 1,
-                            explanation: `Coaching Session: ${sessionTitle}`,
-                            tradeManagement: { move_to_breakeven_condition: '', partial_take_profit_1: '', partial_take_profit_2: '' }
-                        };
-                        onSaveTrade(dummyTrade, [context.strategyKey], chatHistory);
-                        onClose();
-                    }} className="p-2 bg-green-600 rounded-full hover:bg-green-500" title="Save to Journal">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 text-white">
-                            <path d="M10.75 4.75a.75.75 0 0 0-1.5 0v4.5h-4.5a.75.75 0 0 0 0 1.5h4.5v4.5a.75.75 0 0 0 1.5 0v-4.5h4.5a.75.75 0 0 0 0-1.5h-4.5v-4.5Z" />
-                        </svg>
-                    </button>
-                    <button onClick={handleSave} className="p-2 bg-blue-600 rounded-full hover:bg-blue-500" title="Save Session">
+                    <button onClick={handleSave} className="p-2 bg-blue-600 rounded-full hover:bg-blue-500" title="Save to Mentorship Journal">
                         <SaveIcon className="w-5 h-5 text-white" />
                     </button>
                     <button onClick={onClose} className="p-2 bg-gray-700 rounded-full hover:bg-gray-600" title="Close">

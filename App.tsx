@@ -415,6 +415,19 @@ const App: React.FC = () => {
                     savedAssetComparisons={savedAssetComparisons}
                     onUpdateAssetComparisonNotes={(id, n) => setSavedAssetComparisons(prev => prev.map(c => c.id === id ? { ...c, userNotes: n } : c))}
                     onDeleteAssetComparison={(id) => setSavedAssetComparisons(prev => prev.filter(c => c.id !== id))}
+                    onContinueSession={(session) => {
+                        const strategy = strategyLogicData[session.strategyKey];
+                        if (strategy) {
+                            setCoachingContext({
+                                strategy: strategy,
+                                goal: session.sessionGoal,
+                                session: session,
+                                strategyKey: session.strategyKey
+                            });
+                        } else {
+                            console.error("Strategy not found for session:", session.strategyKey);
+                        }
+                    }}
                 />;
             case 'settings':
                 return <MasterControlsView
