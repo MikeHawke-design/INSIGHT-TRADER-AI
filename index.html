@@ -1,114 +1,133 @@
 <!DOCTYPE html>
 <html lang="en" class="dark">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>INSIGHT TRADER</title>
-    <!-- Import Rajdhani for Tech Headers and Inter for UI -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      tailwind.config = {
-        darkMode: 'class',
-        theme: {
-          extend: {
-            fontFamily: {
-              sans: ['Inter', 'sans-serif'],
-              display: ['Rajdhani', 'sans-serif'],
-              mono: ['JetBrains Mono', 'monospace'],
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>INSIGHT TRADER</title>
+  <link rel="icon" type="image/svg+xml" href="/logo.svg" />
+  <link rel="apple-touch-icon" href="/logo.svg" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <!-- Import Rajdhani for Tech Headers and Inter for UI -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Rajdhani:wght@500;600;700&display=swap"
+    rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            display: ['Rajdhani', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            gray: {
+              950: '#020617',
+              900: '#0B0E14', // Deep rich background
+              850: '#151A23', // Card background
+              800: '#1E293B',
+              700: '#334155',
+              600: '#475569',
             },
-            colors: {
-              gray: {
-                950: '#020617',
-                900: '#0B0E14', // Deep rich background
-                850: '#151A23', // Card background
-                800: '#1E293B',
-                700: '#334155',
-                600: '#475569',
-              },
-              accent: {
-                500: '#EAB308', // Gold
-                glow: 'rgba(234, 179, 8, 0.5)'
-              }
-            },
-            boxShadow: {
-              'glow': '0 0 20px -5px rgba(234, 179, 8, 0.3)',
-              'glow-sm': '0 0 10px -2px rgba(234, 179, 8, 0.2)',
+            accent: {
+              500: '#EAB308', // Gold
+              glow: 'rgba(234, 179, 8, 0.5)'
             }
+          },
+          boxShadow: {
+            'glow': '0 0 20px -5px rgba(234, 179, 8, 0.3)',
+            'glow-sm': '0 0 10px -2px rgba(234, 179, 8, 0.2)',
           }
         }
       }
-    </script>
-    <meta name="theme-color" content="#0B0E14">
-    <style>
-      :root {
-        --color-bg-900: 222 47% 6%; /* Very dark blue/black */
-        --color-bg-800: 217 33% 12%; /* Dark card bg */
-        --color-bg-700: 215 25% 20%;
-        --color-border-600: 215 20% 30%;
-        
-        /* JS-accessible colors for canvas chart */
-        --js-chart-bg: #0B0E14;
-        --js-chart-text: #94A3B8;
-        --js-chart-grid: #1E293B;
-        --js-chart-border: #334155;
-      }
+    }
+  </script>
+  <meta name="theme-color" content="#0B0E14">
+  <style>
+    :root {
+      --color-bg-900: 222 47% 6%;
+      /* Very dark blue/black */
+      --color-bg-800: 217 33% 12%;
+      /* Dark card bg */
+      --color-bg-700: 215 25% 20%;
+      --color-border-600: 215 20% 30%;
 
-      body {
-        font-family: 'Inter', sans-serif;
-        background-color: #050505;
-        color: #e2e8f0;
-        overflow-x: hidden;
-      }
-      
-      /* Tech Background Mesh */
-      .tech-bg {
-        background-color: #050505;
-        background-image: 
-          radial-gradient(at 0% 0%, rgba(56, 189, 248, 0.08) 0px, transparent 50%), 
-          radial-gradient(at 100% 0%, rgba(234, 179, 8, 0.08) 0px, transparent 50%);
-        background-attachment: fixed;
-      }
+      /* JS-accessible colors for canvas chart */
+      --js-chart-bg: #0B0E14;
+      --js-chart-text: #94A3B8;
+      --js-chart-grid: #1E293B;
+      --js-chart-border: #334155;
+    }
 
-      h1, h2, h3, h4, h5, h6 {
-        font-family: 'Rajdhani', sans-serif;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-      }
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #050505;
+      color: #e2e8f0;
+      overflow-x: hidden;
+    }
 
-      /* Custom Scrollbar */
-      ::-webkit-scrollbar {
-        width: 6px;
-        height: 6px;
-      }
-      ::-webkit-scrollbar-track {
-        background: #0B0E14;
-      }
-      ::-webkit-scrollbar-thumb {
-        background: #334155;
-        border-radius: 3px;
-      }
-      ::-webkit-scrollbar-thumb:hover {
-        background: #EAB308;
-      }
-      
-      /* Utility for glass borders */
-      .glass-border {
-        border: 1px solid rgba(255, 255, 255, 0.08);
-      }
-      .glass-panel {
-        background: rgba(21, 26, 35, 0.7);
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-      }
-    </style>
+    /* Tech Background Mesh */
+    .tech-bg {
+      background-color: #050505;
+      background-image:
+        radial-gradient(at 0% 0%, rgba(56, 189, 248, 0.08) 0px, transparent 50%),
+        radial-gradient(at 100% 0%, rgba(234, 179, 8, 0.08) 0px, transparent 50%);
+      background-attachment: fixed;
+    }
+
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+      font-family: 'Rajdhani', sans-serif;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #0B0E14;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 3px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: #EAB308;
+    }
+
+    /* Utility for glass borders */
+    .glass-border {
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .glass-panel {
+      background: rgba(21, 26, 35, 0.7);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+  </style>
 
 </head>
-  <body class="tech-bg">
-    <div id="root"></div>
-    <script type="module" src="/index.tsx"></script>
-  </body>
+
+<body class="tech-bg">
+  <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+
 </html>
