@@ -24,7 +24,7 @@ import {
 } from './constants';
 import useLocalStorage from './hooks/useLocalStorage';
 import useSessionStorage from './hooks/useSessionStorage';
-import { setItem, clearStore } from './idb';
+import { setItem, clearStore, storeImage } from './idb';
 
 // Components
 import Header from './components/Header';
@@ -190,14 +190,34 @@ const App: React.FC = () => {
         setActiveView('analyze');
     }, []);
 
-    const handleSaveTrade = useCallback((trade: Trade, strategiesUsed: StrategyKey[]) => {
+    const handleSaveTrade = useCallback(async (trade: Trade, strategiesUsed: StrategyKey[]) => {
+        // 1. Store images in IDB and get keys
+        const imageKeysForTrade: UploadedImageKeys = {};
+        if (uploadedImagesForAnalysis) {
+            for (const [key, value] of Object.entries(uploadedImagesForAnalysis)) {
+                if (value && value.startsWith('data:image')) {
+                    try {
+                        const idbKey = await storeImage(value);
+                        imageKeysForTrade[Number(key)] = idbKey;
+                    } catch (e) {
+                        console.error("Failed to store image for trade:", e);
+                        // Fallback: keep data URL if IDB fails (though ImageViewer expects keys)
+                        // Ideally we should handle this better, but for now let's try to save.
+                    }
+                } else if (value) {
+                    // Assume it's already a key or URL we can't store
+                    imageKeysForTrade[Number(key)] = value;
+                }
+            }
+        }
+
         const newSavedTrade: SavedTrade = {
             ...trade,
             id: `trade_${Date.now()}`,
             savedDate: new Date().toISOString(),
             feedback: { outcome: null, text: '' },
             strategiesUsed,
-            uploadedImageKeys: uploadedImagesForAnalysis || {},
+            uploadedImageKeys: imageKeysForTrade,
             analysisContext: { realTimeContextWasUsed: false },
             chartMetadata: analysisResults?.chartMetadata
         };

@@ -104,7 +104,7 @@ const TradeCard: React.FC<TradeCardProps> = ({
     activeStrategies,
 }) => {
     const isLong = trade.direction === 'Long';
-    const [isExplanationOpen, setIsExplanationOpen] = useState(false);
+    const [isExplanationOpen, setIsExplanationOpen] = useState(!onSave || isSaved);
     const [isEntryExplanationVisible, setIsEntryExplanationVisible] = useState(false);
     const [feedbackText, setFeedbackText] = useState(feedback?.text || '');
     const isCoachingTrade = 'isFromCoaching' in trade && trade.isFromCoaching;
@@ -264,24 +264,24 @@ const TradeCard: React.FC<TradeCardProps> = ({
                             {isSegmented ? (
                                 <>
                                     {/* 1. Strategy Match Box */}
-                                    <div className="bg-blue-900/10 border border-blue-500/30 rounded-md p-3">
-                                        <div className="text-blue-300 text-xs font-bold uppercase tracking-wider mb-1">Strategy Match</div>
-                                        <div className="text-gray-300 text-sm">{explanationSegments[0].replace(/Strategy Match:?/i, '').trim()}</div>
+                                    <div className="bg-blue-900/10 border border-blue-500/30 rounded-md p-2">
+                                        <div className="text-blue-300 text-[10px] font-bold uppercase tracking-wider mb-0.5">Strategy Match</div>
+                                        <div className="text-gray-300 text-xs leading-relaxed">{explanationSegments[0].replace(/Strategy Match:?/i, '').trim()}</div>
                                     </div>
 
                                     {/* 2. Evidence Box */}
                                     {explanationSegments[1] && (
-                                        <div className="bg-yellow-900/10 border border-yellow-500/30 rounded-md p-3">
-                                            <div className="text-yellow-400 text-xs font-bold uppercase tracking-wider mb-1">Chart Evidence</div>
-                                            <div className="text-gray-300 text-sm">{explanationSegments[1].replace(/Evidence:?/i, '').trim()}</div>
+                                        <div className="bg-yellow-900/10 border border-yellow-500/30 rounded-md p-2">
+                                            <div className="text-yellow-400 text-[10px] font-bold uppercase tracking-wider mb-0.5">Chart Evidence</div>
+                                            <div className="text-gray-300 text-xs leading-relaxed">{explanationSegments[1].replace(/Evidence:?/i, '').trim()}</div>
                                         </div>
                                     )}
 
                                     {/* 3. Execution/Risk Box */}
                                     {explanationSegments[2] && (
-                                        <div className="bg-red-900/10 border border-red-500/30 rounded-md p-3">
-                                            <div className="text-red-400 text-xs font-bold uppercase tracking-wider mb-1">Execution & Risk</div>
-                                            <div className="text-gray-300 text-sm">{explanationSegments[2].replace(/Execution & Risk:?/i, '').trim()}</div>
+                                        <div className="bg-red-900/10 border border-red-500/30 rounded-md p-2">
+                                            <div className="text-red-400 text-[10px] font-bold uppercase tracking-wider mb-0.5">Execution & Risk</div>
+                                            <div className="text-gray-300 text-xs leading-relaxed">{explanationSegments[2].replace(/Execution & Risk:?/i, '').trim()}</div>
                                         </div>
                                     )}
                                 </>
