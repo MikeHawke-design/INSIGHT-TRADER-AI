@@ -227,9 +227,9 @@ const Dashboard: React.FC<DashboardProps> = ({
                                     </svg>
                                     Strategy Requirements
                                 </h4>
-                                {strategyLogicData[dashboardSelectedStrategies[0]].requirements?.items && strategyLogicData[dashboardSelectedStrategies[0]].requirements.items.length > 0 ? (
+                                {strategyLogicData[dashboardSelectedStrategies[0]].requirements?.items && strategyLogicData[dashboardSelectedStrategies[0]].requirements?.items.length ? (
                                     <ul className="space-y-2">
-                                        {strategyLogicData[dashboardSelectedStrategies[0]].requirements.items.map((req, idx) => (
+                                        {strategyLogicData[dashboardSelectedStrategies[0]].requirements?.items.map((req, idx) => (
                                             <li key={idx} className="text-sm text-gray-300 flex items-start gap-2">
                                                 <span className="text-blue-500 mt-1">•</span>
                                                 <span dangerouslySetInnerHTML={{ __html: req }} />
