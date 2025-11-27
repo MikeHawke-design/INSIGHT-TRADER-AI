@@ -532,15 +532,16 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
 
             const results: AnalysisResults = JSON.parse(jsonText);
 
-            // Ensure every trade has an entry price. If missing, use the current price (if known) or a placeholder.
-            const fillMissingEntry = (trades: Trade[]) =>
+            // Ensure every trade has an entry price and correct direction.
+            const fillMissingEntry = (trades: Trade[], direction: 'Long' | 'Short') =>
                 trades.map(trade => ({
                     ...trade,
+                    direction: direction,
                     entry: (trade.entry && String(trade.entry).trim()) ? String(trade.entry) : (currentPrice !== null ? currentPrice.toFixed(4) : 'N/A')
                 }));
 
-            results['Top Longs'] = fillMissingEntry(results['Top Longs'] ?? []);
-            results['Top Shorts'] = fillMissingEntry(results['Top Shorts'] ?? []);
+            results['Top Longs'] = fillMissingEntry(results['Top Longs'] ?? [], 'Long');
+            results['Top Shorts'] = fillMissingEntry(results['Top Shorts'] ?? [], 'Short');
 
             onAnalysisComplete(results, selectedStrategies, uploadedImagesData, useRealTimeContext, totalTokenCount);
 
