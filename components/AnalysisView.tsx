@@ -1,6 +1,6 @@
 import React from 'react';
 import { AnalysisResults, StrategyKey, UploadedImageKeys, User, Trade, UserSettings, SavedTrade, UserUsage, StrategyLogicData, AssetComparisonResult, SavedAssetComparison } from '../types';
-import { TIME_FRAMES_STEPS } from '../constants';
+
 import TradeCard from './TradeCard';
 import AISuggestionCard from './AISuggestionCard';
 import HeatMeter from './HeatMeter';
@@ -209,7 +209,7 @@ const AnalysisView: React.FC<AnalysisViewProps> = ({
                                 {Object.keys(uploadedImages).map((key) => {
                                     const index = parseInt(key, 10);
                                     const imageSrc = uploadedImages[index as keyof typeof uploadedImages];
-                                    const detectedLabel = analysisResults.chartMetadata?.[key] || TIME_FRAMES_STEPS.find(s => s.step === index + 1)?.title || `Chart ${index + 1}`;
+                                    const detectedLabel = analysisResults.chartMetadata?.[key] || `Chart ${index + 1}`;
 
                                     if (imageSrc) {
                                         return (

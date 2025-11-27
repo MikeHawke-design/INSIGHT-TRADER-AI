@@ -165,6 +165,9 @@ The user has uploaded charts for MULTIPLE DIFFERENT ASSETS to compare them again
     - 5 = Perfect setup, all conditions met.
     - 1 = Weak setup, waiting for major confirmation.
 
+5.  **MANDATORY CHART METADATA IDENTIFICATION:**
+    - For each uploaded image, identify its timeframe (e.g., "Daily", "4H", "15m") and any other relevant labels (e.g., "BTCUSD"). Populate the \`chartMetadata\` field in the JSON output with this information, mapping the image index to its detected label.
+
 **== OUTPUT FORMAT (NON-NEGOTIABLE) ==**
 Your response MUST be a single, valid JSON object.
 {
@@ -174,6 +177,10 @@ Your response MUST be a single, valid JSON object.
     "suggestedStrategies": [],
     "suggestedSettings": {},
     "reasoning": "Mandatory explanation string using HTML formatting."
+  },
+  "chartMetadata": {
+    "0": "Detected Label for Image 0 (e.g., '4H Chart')",
+    "1": "Detected Label for Image 1 (e.g., '15m Chart')"
   }
 }
 `;
