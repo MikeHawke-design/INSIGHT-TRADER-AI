@@ -34,7 +34,6 @@ interface DashboardProps {
 
 const WarningIcon: React.FC<{ className?: string }> = (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M8.257 3.099c.636-1.1 2.29-1.1 2.926 0l5.578 9.663c.636 1.1-.18 2.488-1.463 2.488H4.142c-1.282 0-2.098-1.387-1.463-2.488l5.578-9.663zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" /></svg>;
 const CoachingIcon = (props: { className?: string }) => <svg {...props} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M17.25 6.75 22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3-4.5 16.5" /></svg>;
-const ChevronDownIcon = (props: { className?: string }) => <svg {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z" clipRule="evenodd" /></svg>;
 
 
 const Section: React.FC<{ number: number, title: string, children: React.ReactNode, disabled?: boolean, fontSize: number }> = ({ number, title, children, disabled, fontSize }) => (
@@ -51,7 +50,7 @@ const Section: React.FC<{ number: number, title: string, children: React.ReactNo
 
 const Dashboard: React.FC<DashboardProps> = ({
     onAnalysisComplete, userSettings, onUserSettingsChange, initialImages, currentUser,
-    dashboardSelectedStrategies, onDashboardStrategyChange, onSetDashboardStrategies,
+    dashboardSelectedStrategies, onDashboardStrategyChange: _onDashboardStrategyChange, onSetDashboardStrategies,
     dashboardSelectedMarketData, setDashboardSelectedMarketData,
     strategyLogicData, isAnalyzing, setIsAnalyzing, onLogTokenUsage,
     apiConfig, onInitiateCoaching,
@@ -62,16 +61,11 @@ const Dashboard: React.FC<DashboardProps> = ({
     const [uploaderPhase, setUploaderPhase] = useState<'idle' | 'gathering' | 'validating' | 'ready' | 'analyzing'>('idle');
     const [useRealTimeContext, setUseRealTimeContext] = useState<boolean>(true);
     const [isComparisonMode, setIsComparisonMode] = useState<boolean>(false);
-    const [expandedConcepts, setExpandedConcepts] = useState<Record<StrategyKey, boolean>>({});
     const [isPromptVisible, setIsPromptVisible] = useState(false);
 
     useEffect(() => {
         setIsPromptVisible(false);
     }, [viewedStrategy]);
-
-    const handleToggleExpand = (key: StrategyKey) => {
-        setExpandedConcepts(prev => ({ ...prev, [key]: !prev[key] }));
-    };
 
     const info = viewedStrategy ? strategyLogicData[viewedStrategy] : null;
 
@@ -175,81 +169,78 @@ const Dashboard: React.FC<DashboardProps> = ({
                                 <h4 className="font-semibold text-gray-400 text-xs uppercase tracking-wider">Your Strategies</h4>
                                 {parentStrategies.length > 0 ? parentStrategies.map(([key, strategy]) => {
                                     const children = childrenByParent[key];
-                                    const isExpanded = !!expandedConcepts[key];
-
-                                    if (children && children.length > 0) {
-                                        const childrenKeys = children.map(([childKey]) => childKey);
-                                        const allKeysInGroup = [key, ...childrenKeys];
-                                        const selectedCount = allKeysInGroup.filter(k => dashboardSelectedStrategies.includes(k)).length;
-                                        const isAllSelected = selectedCount === allKeysInGroup.length;
-                                        const isPartiallySelected = selectedCount > 0 && !isAllSelected;
-
-                                        const handleMasterCheckboxChange = () => {
-                                            const currentStrategies = new Set(dashboardSelectedStrategies);
-                                            if (isAllSelected) {
-                                                allKeysInGroup.forEach(k => currentStrategies.delete(k));
-                                            } else {
-                                                allKeysInGroup.forEach(k => currentStrategies.add(k));
-                                            }
-                                            onSetDashboardStrategies(Array.from(currentStrategies));
-                                        };
-
-                                        return (
-                                            <div key={key} className="bg-gray-700/20 rounded-md">
-                                                <div className="flex items-center p-3 rounded-t-md bg-gray-800 border-b border-gray-700">
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={isAllSelected || isPartiallySelected}
-                                                        ref={input => { if (input) input.indeterminate = isPartiallySelected; }}
-                                                        onChange={handleMasterCheckboxChange}
-                                                        className="h-4 w-4 rounded bg-gray-700 border-gray-600 text-yellow-500 focus:ring-yellow-500/50 mr-3"
-                                                    />
-                                                    <span className="font-semibold text-white">{strategy.name}</span>
-                                                    <button onClick={() => handleToggleExpand(key)} className="ml-auto text-gray-400 hover:text-white">
-                                                        <ChevronDownIcon className={`w-5 h-5 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-                                                    </button>
-                                                </div>
-                                                {isExpanded && (
-                                                    <div className="p-3 space-y-2 bg-gray-900/30">
-                                                        {children.map(([childKey, childStrat]) => (
-                                                            <label key={childKey} className="flex items-center p-2 rounded hover:bg-gray-700/50 cursor-pointer">
-                                                                <input
-                                                                    type="checkbox"
-                                                                    checked={dashboardSelectedStrategies.includes(childKey)}
-                                                                    onChange={() => onDashboardStrategyChange(childKey)}
-                                                                    className="h-4 w-4 rounded bg-gray-700 border-gray-600 text-yellow-500 focus:ring-yellow-500/50"
-                                                                />
-                                                                <span className="ml-3 text-sm text-gray-300">{childStrat.name}</span>
-                                                            </label>
-                                                        ))}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        );
-                                    }
 
                                     return (
-                                        <div key={key} className="bg-gray-700/20 rounded-md p-3 flex items-center">
-                                            <input
-                                                type="checkbox"
-                                                checked={dashboardSelectedStrategies.includes(key)}
-                                                onChange={() => onDashboardStrategyChange(key)}
-                                                className="h-4 w-4 rounded bg-gray-700 border-gray-600 text-yellow-500 focus:ring-yellow-500/50"
-                                            />
-                                            <div className="ml-3 flex-grow">
-                                                <span className="font-semibold text-white block">{strategy.name}</span>
-                                                <p className="text-xs text-gray-400">{strategy.description.substring(0, 80)}...</p>
+                                        <div key={key} className="space-y-2">
+                                            {/* Parent Strategy Item */}
+                                            <div
+                                                className={`rounded-md p-3 flex items-center cursor-pointer transition-colors border ${dashboardSelectedStrategies.includes(key) ? 'bg-yellow-500/10 border-yellow-500/50' : 'bg-gray-700/20 border-transparent hover:bg-gray-700/40'}`}
+                                                onClick={() => onSetDashboardStrategies([key])}
+                                            >
+                                                <div className={`w-4 h-4 rounded-full border flex items-center justify-center mr-3 ${dashboardSelectedStrategies.includes(key) ? 'border-yellow-500' : 'border-gray-500'}`}>
+                                                    {dashboardSelectedStrategies.includes(key) && <div className="w-2 h-2 rounded-full bg-yellow-500" />}
+                                                </div>
+                                                <div className="flex-grow">
+                                                    <span className={`font-semibold block ${dashboardSelectedStrategies.includes(key) ? 'text-yellow-400' : 'text-white'}`}>{strategy.name}</span>
+                                                    <p className="text-xs text-gray-400">{strategy.description.substring(0, 80)}...</p>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); onInitiateCoaching(strategy, 'learn_basics', key); }}
+                                                        className="text-gray-400 hover:text-yellow-400 p-2 hover:bg-gray-700/50 rounded-full transition-colors"
+                                                        title="Chat with Oracle about this strategy"
+                                                    >
+                                                        <OracleIcon className="w-6 h-6" />
+                                                    </button>
+                                                </div>
                                             </div>
-                                            <div className="flex items-center gap-2">
-                                                <button onClick={() => onInitiateCoaching(strategy, 'learn_basics', key)} className="text-gray-400 hover:text-yellow-400 p-2 hover:bg-gray-700/50 rounded-full transition-colors" title="Chat with Oracle about this strategy">
-                                                    <OracleIcon className="w-6 h-6" />
-                                                </button>
-                                            </div>
+
+                                            {/* Children Strategies */}
+                                            {children && children.length > 0 && (
+                                                <div className="pl-6 space-y-2">
+                                                    {children.map(([childKey, childStrat]) => (
+                                                        <div
+                                                            key={childKey}
+                                                            className={`rounded-md p-2 flex items-center cursor-pointer transition-colors border ${dashboardSelectedStrategies.includes(childKey) ? 'bg-yellow-500/10 border-yellow-500/50' : 'bg-gray-700/20 border-transparent hover:bg-gray-700/40'}`}
+                                                            onClick={() => onSetDashboardStrategies([childKey])}
+                                                        >
+                                                            <div className={`w-3 h-3 rounded-full border flex items-center justify-center mr-3 ${dashboardSelectedStrategies.includes(childKey) ? 'border-yellow-500' : 'border-gray-500'}`}>
+                                                                {dashboardSelectedStrategies.includes(childKey) && <div className="w-1.5 h-1.5 rounded-full bg-yellow-500" />}
+                                                            </div>
+                                                            <span className={`text-sm ${dashboardSelectedStrategies.includes(childKey) ? 'text-yellow-400' : 'text-gray-300'}`}>{childStrat.name}</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
                                         </div>
                                     );
                                 }) : <p className="text-sm text-gray-500">No strategies created yet. Go to Settings to create one.</p>}
                             </div>
                         </div>
+
+                        {/* Selected Strategy Requirements Display */}
+                        {dashboardSelectedStrategies.length > 0 && strategyLogicData[dashboardSelectedStrategies[0]] && (
+                            <div className="mt-6 bg-blue-900/20 border border-blue-500/30 rounded-lg p-4 animate-fadeIn">
+                                <h4 className="text-blue-400 text-xs font-bold uppercase tracking-wider mb-3 flex items-center gap-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                                        <path fillRule="evenodd" d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-7-4a1 1 0 1 1-2 0 1 1 0 0 1 2 0ZM9 9a.75.75 0 0 0 0 1.5h.253a.25.25 0 0 1 .244.304l-.459 2.066A1.75 1.75 0 0 0 10.747 15H11a.75.75 0 0 0 0-1.5h-.253a.25.25 0 0 1-.244-.304l.459-2.066A1.75 1.75 0 0 0 9.253 9H9Z" clipRule="evenodd" />
+                                    </svg>
+                                    Strategy Requirements
+                                </h4>
+                                {strategyLogicData[dashboardSelectedStrategies[0]].requirements?.items && strategyLogicData[dashboardSelectedStrategies[0]].requirements.items.length > 0 ? (
+                                    <ul className="space-y-2">
+                                        {strategyLogicData[dashboardSelectedStrategies[0]].requirements.items.map((req, idx) => (
+                                            <li key={idx} className="text-sm text-gray-300 flex items-start gap-2">
+                                                <span className="text-blue-500 mt-1">•</span>
+                                                <span dangerouslySetInnerHTML={{ __html: req }} />
+                                            </li>
+                                        ))}
+                                    </ul>
+                                ) : (
+                                    <p className="text-sm text-gray-500 italic">No specific requirements listed for this strategy.</p>
+                                )}
+                            </div>
+                        )}
                     </Section>
 
                     <Section number={2} title="Add Context" disabled={dashboardSelectedStrategies.length === 0} fontSize={userSettings.headingFontSize}>
