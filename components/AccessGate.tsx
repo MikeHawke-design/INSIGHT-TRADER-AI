@@ -43,7 +43,6 @@ const AccessGate: React.FC<AccessGateProps> = ({ onAuthSuccess, onOpenLegal }) =
     try {
       const provider = new GoogleAuthProvider();
       await signInWithPopup(auth, provider);
-      await signInWithPopup(auth, provider);
       // Auth state change will be picked up by AuthProvider -> App
       localStorage.setItem('chartOracle_isAdmin', 'false');
       onAuthSuccess();
