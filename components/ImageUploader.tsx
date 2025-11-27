@@ -155,12 +155,10 @@ The user has uploaded charts for MULTIPLE DIFFERENT ASSETS to compare them again
     - **Consistency:** Ensure the values in the JSON match the values mentioned in your explanation text.
 
 3.  **APPLY LOGIC & JUSTIFY:**
-    - For EACH trade, you MUST write an 'explanation' that quotes specific strategy rules and connects them to chart evidence.
-    - **FORMATTING:** Your 'reasoning' and 'explanation' fields MUST use HTML for readability:
-      - Use <ul> and <li> for lists.
-      - Use <strong> for key terms (e.g., <strong>Market Structure:</strong>).
-      - Use <span class="bullish">Bullish</span> and <span class="bearish">Bearish</span> for sentiment.
-      - Keep it clean, structured, and "directed" (like a military briefing). Avoid conversational fluff.
+    - For EACH trade, you MUST write an 'explanation' string that is strictly segmented into three parts using the delimiter "|||".
+    - **Format:** "Strategy Match: [Why it fits] ||| Evidence: [Chart observations] ||| Execution & Risk: [Plan]"
+    - **CRITICAL:** Do NOT use HTML tags in the explanation. Use plain text. The UI will handle formatting.
+    - Keep it concise, professional, and direct. No fluff.
 
 4.  **HEAT MAP (CONFIDENCE):**
     - Assign a 'heat' score (1-5) to every trade.
@@ -254,14 +252,16 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
     }, []);
 
     useEffect(() => {
-        if (phase !== 'idle') return;
         if (initialImages && Object.keys(initialImages).length > 0) {
             setUploadedImagesData(initialImages);
-            setPhase('ready');
-        } else {
-            resetState();
+            if (phase === 'idle') setPhase('ready');
+        } else if (initialImages === null && phase === 'idle') {
+            // Explicitly reset if initialImages is null and we are idle (e.g. new analysis)
+            setUploadedImagesData({});
+            setConversation([]);
+            chatSessionRef.current = null;
         }
-    }, [initialImages, phase, resetState]);
+    }, [initialImages, phase]);
 
 
     const handleStartGuidedUpload = async () => {

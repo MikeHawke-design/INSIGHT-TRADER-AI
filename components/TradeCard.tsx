@@ -266,14 +266,14 @@ const TradeCard: React.FC<TradeCardProps> = ({
                                     {/* 1. Strategy Match Box */}
                                     <div className="bg-blue-900/10 border border-blue-500/30 rounded-md p-3">
                                         <div className="text-blue-300 text-xs font-bold uppercase tracking-wider mb-1">Strategy Match</div>
-                                        <div className="text-gray-300 text-sm" dangerouslySetInnerHTML={{ __html: explanationSegments[0].replace('Strategy Match:', '').trim() }} />
+                                        <div className="text-gray-300 text-sm">{explanationSegments[0].replace(/Strategy Match:?/i, '').trim()}</div>
                                     </div>
 
                                     {/* 2. Evidence Box */}
                                     {explanationSegments[1] && (
                                         <div className="bg-yellow-900/10 border border-yellow-500/30 rounded-md p-3">
                                             <div className="text-yellow-400 text-xs font-bold uppercase tracking-wider mb-1">Chart Evidence</div>
-                                            <div className="text-gray-300 text-sm" dangerouslySetInnerHTML={{ __html: explanationSegments[1].replace('Evidence:', '').trim() }} />
+                                            <div className="text-gray-300 text-sm">{explanationSegments[1].replace(/Evidence:?/i, '').trim()}</div>
                                         </div>
                                     )}
 
@@ -281,7 +281,7 @@ const TradeCard: React.FC<TradeCardProps> = ({
                                     {explanationSegments[2] && (
                                         <div className="bg-red-900/10 border border-red-500/30 rounded-md p-3">
                                             <div className="text-red-400 text-xs font-bold uppercase tracking-wider mb-1">Execution & Risk</div>
-                                            <div className="text-gray-300 text-sm" dangerouslySetInnerHTML={{ __html: explanationSegments[2].replace('Execution & Risk:', '').trim() }} />
+                                            <div className="text-gray-300 text-sm">{explanationSegments[2].replace(/Execution & Risk:?/i, '').trim()}</div>
                                         </div>
                                     )}
                                 </>
