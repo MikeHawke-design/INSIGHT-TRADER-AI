@@ -47,15 +47,20 @@ export function deleteItem(key: IDBValidKey): Promise<void> {
 }
 
 export function clearStore(): Promise<void> {
-    return withStore('readwrite', store => {
-        store.clear();
-    });
+  return withStore('readwrite', store => {
+    store.clear();
+  });
 }
 
 export function getAllEntries(): Promise<[IDBValidKey, any][]> {
   return getDB().then(db => new Promise<[IDBValidKey, any][]>((resolve, reject) => {
     const transaction = db.transaction(STORE_NAME, 'readonly');
     const store = transaction.objectStore(STORE_NAME);
+
+    // Use getAllKeys and getAll if available for better performance, but cursor is safer for large datasets
+    // to avoid memory issues, though here we want to return everything anyway.
+    // Let's stick to cursor but ensure we handle errors gracefully.
+
     const request = store.openCursor();
     const entries: [IDBValidKey, any][] = [];
 
