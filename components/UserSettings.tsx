@@ -1,11 +1,11 @@
 
 import React from 'react';
-import { UserSettings, RiskAppetite, PreferredTradeDuration, StopLossStrategy } from '../types';
-import { 
-  RISK_APPETITE_OPTIONS, 
-  PREFERRED_TRADE_DURATION_OPTIONS, 
-  PREFERRED_TRADE_DURATION_DETAILS, 
-  STOP_LOSS_STRATEGY_OPTIONS, 
+import { UserSettings } from '../types';
+import {
+  RISK_APPETITE_OPTIONS,
+  PREFERRED_TRADE_DURATION_OPTIONS,
+  PREFERRED_TRADE_DURATION_DETAILS,
+  STOP_LOSS_STRATEGY_OPTIONS,
   STOP_LOSS_STRATEGY_DETAILS,
   ASSET_CLASS_OPTIONS,
   MARKET_TIMING_OPTIONS
@@ -25,7 +25,7 @@ const UserSettingsEditor: React.FC<UserSettingsProps> = ({ userSettings, onUserS
       processedValue = (e.target as HTMLInputElement).checked;
     } else if (type === 'number' || type === 'range') {
       processedValue = parseFloat(value);
-      if (isNaN(processedValue)) processedValue = 14; 
+      if (isNaN(processedValue)) processedValue = 14;
     }
     onUserSettingsChange(name as keyof UserSettings, processedValue);
   };
@@ -72,24 +72,24 @@ const UserSettingsEditor: React.FC<UserSettingsProps> = ({ userSettings, onUserS
               step="0.25"
               className="w-full h-2 bg-[hsl(var(--color-bg-900))] rounded-lg appearance-none cursor-pointer accent-yellow-500"
             />
-             <div className="flex items-center gap-1 bg-[hsl(var(--color-bg-900))] border border-[hsl(var(--color-border-600))] rounded-md p-0.5">
-                <button 
-                    onClick={() => handleRRChange(userSettings.minRiskRewardRatio - 0.25)}
-                    className="px-2 py-1 rounded text-lg font-bold text-gray-400 hover:bg-[hsl(var(--color-bg-700))] hover:text-white leading-none"
-                    aria-label="Decrement Risk/Reward Ratio"
-                >
-                    -
-                </button>
-                <span className="font-mono font-bold text-yellow-400 text-base w-16 text-center select-none">
-                  {userSettings.minRiskRewardRatio.toFixed(2)}
-                </span>
-                <button
-                    onClick={() => handleRRChange(userSettings.minRiskRewardRatio + 0.25)}
-                    className="px-2 py-1 rounded text-lg font-bold text-gray-400 hover:bg-[hsl(var(--color-bg-700))] hover:text-white leading-none"
-                    aria-label="Increment Risk/Reward Ratio"
-                >
-                    +
-                </button>
+            <div className="flex items-center gap-1 bg-[hsl(var(--color-bg-900))] border border-[hsl(var(--color-border-600))] rounded-md p-0.5">
+              <button
+                onClick={() => handleRRChange(userSettings.minRiskRewardRatio - 0.25)}
+                className="px-2 py-1 rounded text-lg font-bold text-gray-400 hover:bg-[hsl(var(--color-bg-700))] hover:text-white leading-none"
+                aria-label="Decrement Risk/Reward Ratio"
+              >
+                -
+              </button>
+              <span className="font-mono font-bold text-yellow-400 text-base w-16 text-center select-none">
+                {userSettings.minRiskRewardRatio.toFixed(2)}
+              </span>
+              <button
+                onClick={() => handleRRChange(userSettings.minRiskRewardRatio + 0.25)}
+                className="px-2 py-1 rounded text-lg font-bold text-gray-400 hover:bg-[hsl(var(--color-bg-700))] hover:text-white leading-none"
+                aria-label="Increment Risk/Reward Ratio"
+              >
+                +
+              </button>
             </div>
           </div>
           <p className="text-xs text-gray-500 mt-2">E.g., 2.00 means Take Profit is at least 2x Stop Loss distance.</p>
@@ -109,9 +109,9 @@ const UserSettingsEditor: React.FC<UserSettingsProps> = ({ userSettings, onUserS
               <option key={option} value={option}>{option}</option>
             ))}
           </select>
-           <p className="text-xs text-gray-500 mt-1">{PREFERRED_TRADE_DURATION_DETAILS[userSettings.preferredTradeDuration]}</p>
+          <p className="text-xs text-gray-500 mt-1">{PREFERRED_TRADE_DURATION_DETAILS[userSettings.preferredTradeDuration]}</p>
         </div>
-        
+
         {/* Trade Against Trend */}
         <div className="flex items-center pt-5">
           <input
@@ -160,7 +160,7 @@ const UserSettingsEditor: React.FC<UserSettingsProps> = ({ userSettings, onUserS
           </select>
           <p className="text-xs text-gray-500 mt-1">Guides the AI on session-specific behaviors like killzones or market opens.</p>
         </div>
-        
+
         {/* Stop-Loss Strategy */}
         <div className="md:col-span-2">
           <label htmlFor="stopLossStrategy" className="block text-sm font-medium text-gray-300 mb-1">Stop-Loss Placement Logic</label>

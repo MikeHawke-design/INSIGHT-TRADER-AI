@@ -1,5 +1,5 @@
 
-import { StrategyKey, TimeFrameStep, UserSettings, RiskAppetite, PreferredTradeDuration, User, CourseModule, GlossaryTerm, StopLossStrategy, ApiConfiguration, UserTier, SubscriptionPlan } from './types';
+import { TimeFrameStep, UserSettings, RiskAppetite, PreferredTradeDuration, User, CourseModule, GlossaryTerm, StopLossStrategy, ApiConfiguration, UserTier, SubscriptionPlan } from './types';
 
 export const TIME_FRAMES_STEPS: TimeFrameStep[] = [
     { step: 1, title: 'Weekly Chart', subtitle: 'Long-term Macro View' },
