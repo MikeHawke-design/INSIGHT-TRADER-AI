@@ -167,7 +167,7 @@ const TradeCard: React.FC<TradeCardProps> = ({
                     <div className="flex-grow space-y-1">
                         <div className="flex items-center space-x-2 flex-wrap">
                             <h3 className={`font-bold ${isLong ? 'text-teal-400' : 'text-red-400'}`} style={{ fontSize: `${userSettings.headingFontSize}px` }}>
-                                {titleSymbol} <span className="text-gray-400">-</span> {trade.direction.toUpperCase()}
+                                {titleSymbol} <span className="text-gray-400">-</span> {(trade.direction || 'UNKNOWN').toUpperCase()}
                             </h3>
                             {isModified && <span className="px-2 py-0.5 text-xs font-semibold bg-purple-600 text-purple-100 rounded-full">MODIFIED</span>}
                         </div>

@@ -536,7 +536,7 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
             const fillMissingEntry = (trades: Trade[]) =>
                 trades.map(trade => ({
                     ...trade,
-                    entry: trade.entry && trade.entry.trim() ? trade.entry : (currentPrice !== null ? currentPrice.toFixed(4) : 'N/A')
+                    entry: (trade.entry && String(trade.entry).trim()) ? String(trade.entry) : (currentPrice !== null ? currentPrice.toFixed(4) : 'N/A')
                 }));
 
             results['Top Longs'] = fillMissingEntry(results['Top Longs'] ?? []);
