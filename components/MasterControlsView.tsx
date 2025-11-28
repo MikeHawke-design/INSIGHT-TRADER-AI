@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { GoogleGenAI } from "@google/genai";
-import { ActiveView, StrategyKey, StrategyLogicData, User, UserSettings, TokenUsageRecord, ApiConfiguration, MarketDataCache, EodhdUsageStats, CourseModule, MarketDataCandle } from '../types';
+import { ActiveView, StrategyKey, StrategyLogicData, User, UserSettings, TokenUsageRecord, ApiConfiguration, MarketDataCache, EodhdUsageStats, CourseModule, MarketDataCandle, RiskManagementSettings } from '../types';
 // @ts-ignore - pdfjs-dist doesn't have proper TypeScript declarations
 import * as pdfjsLib from 'pdfjs-dist/build/pdf.mjs';
 import JSZip from 'jszip';
@@ -12,6 +12,7 @@ import { getAllEntries } from '../idb';
 import InteractiveChartModal from './InteractiveChartModal';
 import UserManualView from './UserManualView';
 import { generateAccessKey } from '../authUtils';
+import TradingDashboard from './TradingDashboard';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://aistudiocdn.com/pdfjs-dist@5.4.149/build/pdf.worker.mjs`;
 
@@ -118,7 +119,26 @@ export const MasterControlsView: React.FC<MasterControlsViewProps> = ({
     onFetchEodhdUsage,
     onNavClick: _onNavClick,
 }) => {
-    const [activeTab, setActiveTab] = useState<'strategies' | 'settings' | 'data' | 'manual'>('strategies');
+    const [activeTab, setActiveTab] = useState<'strategies' | 'settings' | 'data' | 'manual' | 'trading'>('strategies');
+
+    // Risk Management Settings State
+    const [riskSettings, setRiskSettings] = useState<RiskManagementSettings>(() => {
+        const saved = localStorage.getItem('riskManagementSettings');
+        return saved ? JSON.parse(saved) : {
+            riskPercentagePerTrade: 2,
+            maxPositionSize: 10,
+            useStopLoss: true,
+            useTakeProfit: true,
+            minRiskRewardRatio: 2,
+            maxDailyTrades: 5,
+            maxOpenPositions: 3
+        };
+    });
+
+    // Save risk settings to localStorage whenever they change
+    useEffect(() => {
+        localStorage.setItem('riskManagementSettings', JSON.stringify(riskSettings));
+    }, [riskSettings]);
 
     // Strategy Management State
     const [isEditing, setIsEditing] = useState<StrategyKey | null>(null);
@@ -802,6 +822,37 @@ export const MasterControlsView: React.FC<MasterControlsViewProps> = ({
                                 className="w-full bg-gray-800 border border-gray-600 rounded p-2 text-white focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 outline-none"
                             />
                         </div>
+                        <div>
+                            <label className="block font-medium text-sm text-gray-300 mb-1">MEXC API Key (For Live Trading)</label>
+                            <input
+                                type="password"
+                                value={localApiKeys.mexcApiKey || ''}
+                                onChange={(e) => setLocalApiKeys(prev => ({ ...prev, mexcApiKey: e.target.value }))}
+                                placeholder="Enter your MEXC API Key"
+                                className="w-full bg-gray-800 border border-gray-600 rounded p-2 text-white focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 outline-none"
+                            />
+                            <p className="text-xs text-gray-500 mt-1">Optional. Required for live trade execution on MEXC exchange.</p>
+                        </div>
+                        <div>
+                            <label className="block font-medium text-sm text-gray-300 mb-1">MEXC Secret Key</label>
+                            <input
+                                type="password"
+                                value={localApiKeys.mexcSecretKey || ''}
+                                onChange={(e) => setLocalApiKeys(prev => ({ ...prev, mexcSecretKey: e.target.value }))}
+                                placeholder="Enter your MEXC Secret Key"
+                                className="w-full bg-gray-800 border border-gray-600 rounded p-2 text-white focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 outline-none"
+                            />
+                            <p className="text-xs text-gray-500 mt-1">Keep this secure. Never share your secret key.</p>
+                        </div>
+                        <div className="bg-yellow-900/30 border border-yellow-500/30 rounded-md p-3">
+                            <p className="text-yellow-300 font-semibold text-sm">⚠️ MEXC API Security</p>
+                            <ul className="text-xs text-gray-300 mt-2 space-y-1 list-disc list-inside">
+                                <li>Enable "Trade" permission when creating your API key</li>
+                                <li>DO NOT enable "Withdraw" permission for security</li>
+                                <li>Consider using IP whitelist for added security</li>
+                                <li>Keys are stored locally and encrypted</li>
+                            </ul>
+                        </div>
                         <div className="flex items-center gap-3">
                             <button
                                 onClick={handleSaveApiKeys}
@@ -897,6 +948,7 @@ export const MasterControlsView: React.FC<MasterControlsViewProps> = ({
                 <div className="overflow-x-auto mobile-tab-scroll">
                     <nav className="-mb-px flex space-x-6 min-w-max" aria-label="Tabs">
                         <TabButton name="strategies" activeTab={activeTab} setActiveTab={setActiveTab}>My Strategies</TabButton>
+                        <TabButton name="trading" activeTab={activeTab} setActiveTab={setActiveTab}>Trading</TabButton>
                         <TabButton name="settings" activeTab={activeTab} setActiveTab={setActiveTab}>Settings</TabButton>
                         <TabButton name="data" activeTab={activeTab} setActiveTab={setActiveTab}>Data Management</TabButton>
                         <TabButton name="manual" activeTab={activeTab} setActiveTab={setActiveTab}>User Manual</TabButton>
@@ -951,6 +1003,15 @@ export const MasterControlsView: React.FC<MasterControlsViewProps> = ({
                             {error && <p className="text-red-400 text-sm mt-2">{error}</p>}
                         </div>
                         {renderStrategyList()}
+                    </div>
+                )}
+                {activeTab === 'trading' && (
+                    <div className="p-6">
+                        <TradingDashboard
+                            apiConfig={apiConfig}
+                            riskSettings={riskSettings}
+                            onUpdateRiskSettings={setRiskSettings}
+                        />
                     </div>
                 )}
                 {activeTab === 'settings' && renderSettings()}
@@ -1064,7 +1125,7 @@ export const MasterControlsView: React.FC<MasterControlsViewProps> = ({
 
 // --- SUB-COMPONENTS ---
 
-const TabButton: React.FC<{ name: 'strategies' | 'settings' | 'data' | 'manual'; activeTab: 'strategies' | 'settings' | 'data' | 'manual'; setActiveTab: (name: 'strategies' | 'settings' | 'data' | 'manual') => void; children: React.ReactNode }> = ({ name, activeTab, setActiveTab, children }) => (
+const TabButton: React.FC<{ name: 'strategies' | 'settings' | 'data' | 'manual' | 'trading'; activeTab: 'strategies' | 'settings' | 'data' | 'manual' | 'trading'; setActiveTab: (name: 'strategies' | 'settings' | 'data' | 'manual' | 'trading') => void; children: React.ReactNode }> = ({ name, activeTab, setActiveTab, children }) => (
     <button onClick={() => setActiveTab(name)} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg ${activeTab === name ? 'border-yellow-400 text-yellow-300' : 'border-transparent text-gray-400 hover:text-gray-200'}`}>
         {children}
     </button>

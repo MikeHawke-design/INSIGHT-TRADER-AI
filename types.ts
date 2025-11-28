@@ -244,6 +244,18 @@ export type ActiveView = 'analyze' | 'analyze_new' | 'academy' | 'journal' | 'se
 export interface ApiConfiguration {
     eodhdApiKey: string; // Kept optional for market data
     geminiApiKey?: string;
+    mexcApiKey?: string;
+    mexcSecretKey?: string;
+}
+
+export interface RiskManagementSettings {
+    riskPercentagePerTrade: number; // % of account to risk per trade (e.g., 1, 2, 3)
+    maxPositionSize: number; // Maximum position size as % of account
+    useStopLoss: boolean; // Always use stop loss
+    useTakeProfit: boolean; // Always use take profit
+    minRiskRewardRatio: number; // Minimum R:R ratio to accept (e.g., 1.5, 2, 3)
+    maxDailyTrades: number; // Maximum number of trades per day
+    maxOpenPositions: number; // Maximum concurrent open positions
 }
 
 export interface EodhdUsageStats {
