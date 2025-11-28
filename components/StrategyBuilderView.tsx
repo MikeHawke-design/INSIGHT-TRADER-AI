@@ -139,6 +139,7 @@ const StrategyBuilderView: React.FC<StrategyBuilderViewProps> = ({
                 prompt: currentDraft.prompt,
                 status: 'active',
                 requirements: currentDraft.requirements || { title: "Rules", items: [] },
+                isEnabled: true,
                 ...currentDraft
             };
             onSaveStrategy(finalStrategy);
