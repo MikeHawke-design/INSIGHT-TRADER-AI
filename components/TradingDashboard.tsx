@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ApiConfiguration, RiskManagementSettings } from '../types';
 import { getMexcAccountInfo, getUserAuthorizedSymbols, MexcBalance } from '../mexcApi';
+import { testMexcConnection } from '../mexcApiTest';
 
 interface TradingDashboardProps {
     apiConfig: ApiConfiguration;
@@ -20,6 +21,9 @@ const TradingDashboard: React.FC<TradingDashboardProps> = ({
     const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
     const [authorizedSymbols, setAuthorizedSymbols] = useState<string[]>([]);
     const [isLoadingSymbols, setIsLoadingSymbols] = useState(false);
+    const [isTestingConnection, setIsTestingConnection] = useState(false);
+    const [testResults, setTestResults] = useState<any>(null);
+    const [showTestModal, setShowTestModal] = useState(false);
 
     const hasMexcCredentials = apiConfig.mexcApiKey && apiConfig.mexcSecretKey;
 
@@ -96,6 +100,26 @@ const TradingDashboard: React.FC<TradingDashboardProps> = ({
         });
     };
 
+    const runDiagnosticTest = async () => {
+        if (!hasMexcCredentials) return;
+
+        setIsTestingConnection(true);
+        setError(null);
+
+        try {
+            const results = await testMexcConnection({
+                apiKey: apiConfig.mexcApiKey!,
+                secretKey: apiConfig.mexcSecretKey!
+            });
+            setTestResults(results);
+            setShowTestModal(true);
+        } catch (err) {
+            setError('Failed to run diagnostic test: ' + (err instanceof Error ? err.message : String(err)));
+        } finally {
+            setIsTestingConnection(false);
+        }
+    };
+
     if (!hasMexcCredentials) {
         return (
             <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-6">
@@ -116,16 +140,37 @@ const TradingDashboard: React.FC<TradingDashboardProps> = ({
             <div className="bg-gradient-to-br from-gray-800 to-gray-900 border border-yellow-500/30 rounded-lg p-6">
                 <div className="flex justify-between items-center mb-4">
                     <h3 className="text-2xl font-bold text-yellow-400">Account Balance</h3>
-                    <button
-                        onClick={fetchBalances}
-                        disabled={isLoading}
-                        className="bg-yellow-500 hover:bg-yellow-400 text-gray-900 font-semibold px-4 py-2 rounded-md transition-colors disabled:opacity-50 flex items-center gap-2"
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
-                        </svg>
-                        Refresh
-                    </button>
+                    <div className="flex gap-2">
+                        <button
+                            onClick={runDiagnosticTest}
+                            disabled={isTestingConnection}
+                            className="bg-blue-600 hover:bg-blue-500 text-white font-semibold px-4 py-2 rounded-md transition-colors disabled:opacity-50 flex items-center gap-2 text-sm"
+                        >
+                            {isTestingConnection ? (
+                                <>
+                                    <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    Testing...
+                                </>
+                            ) : (
+                                <>
+                                    🔧 Test Connection
+                                </>
+                            )}
+                        </button>
+                        <button
+                            onClick={fetchBalances}
+                            disabled={isLoading}
+                            className="bg-yellow-500 hover:bg-yellow-400 text-gray-900 font-semibold px-4 py-2 rounded-md transition-colors disabled:opacity-50 flex items-center gap-2"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
+                            </svg>
+                            Refresh
+                        </button>
+                    </div>
                 </div>
 
                 {error && (
@@ -367,6 +412,79 @@ const TradingDashboard: React.FC<TradingDashboardProps> = ({
                     </ul>
                 </div>
             </div>
+
+            {/* Diagnostic Test Results Modal */}
+            {showTestModal && testResults && (
+                <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[200] p-4">
+                    <div className="bg-gray-800 rounded-lg max-w-4xl w-full p-6 border border-yellow-500/50 max-h-[90vh] overflow-y-auto">
+                        <div className="flex justify-between items-center mb-4">
+                            <h2 className="text-2xl font-bold text-yellow-400">🔧 MEXC API Diagnostic Test</h2>
+                            <button
+                                onClick={() => setShowTestModal(false)}
+                                className="text-gray-400 hover:text-white transition-colors"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        <div className={`p-4 rounded-md mb-4 ${testResults.success ? 'bg-green-900/30 border border-green-500/50' : 'bg-red-900/30 border border-red-500/50'}`}>
+                            <p className={`font-bold text-lg ${testResults.success ? 'text-green-300' : 'text-red-300'}`}>
+                                {testResults.success ? '✅ All Tests Passed!' : '❌ Some Tests Failed'}
+                            </p>
+                            <p className="text-sm text-gray-300 mt-1">
+                                {testResults.success
+                                    ? 'Your MEXC API is configured correctly and working!'
+                                    : 'There are issues with your MEXC API configuration. See details below.'}
+                            </p>
+                        </div>
+
+                        <div className="space-y-3">
+                            {testResults.tests.map((test: any, idx: number) => (
+                                <div key={idx} className={`p-4 rounded-md border ${test.passed ? 'bg-green-900/20 border-green-500/30' : 'bg-red-900/20 border-red-500/30'}`}>
+                                    <div className="flex items-start justify-between">
+                                        <div className="flex-1">
+                                            <h3 className={`font-semibold ${test.passed ? 'text-green-300' : 'text-red-300'}`}>
+                                                {test.passed ? '✅' : '❌'} {test.name}
+                                            </h3>
+                                            <p className="text-sm text-gray-300 mt-1">{test.message}</p>
+                                            {test.details && (
+                                                <details className="mt-2">
+                                                    <summary className="text-xs text-gray-400 cursor-pointer hover:text-gray-300">
+                                                        Show Details
+                                                    </summary>
+                                                    <pre className="mt-2 text-xs bg-gray-900 p-2 rounded overflow-x-auto">
+                                                        {JSON.stringify(test.details, null, 2)}
+                                                    </pre>
+                                                </details>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="mt-6 flex justify-end gap-3">
+                            <button
+                                onClick={() => setShowTestModal(false)}
+                                className="bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 px-6 rounded-lg transition-colors"
+                            >
+                                Close
+                            </button>
+                            <button
+                                onClick={() => {
+                                    console.log('Full Test Results:', testResults);
+                                    alert('Test results logged to console. Press F12 to view.');
+                                }}
+                                className="bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2 px-6 rounded-lg transition-colors"
+                            >
+                                Log to Console
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
