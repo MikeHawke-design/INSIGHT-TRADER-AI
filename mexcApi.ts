@@ -135,6 +135,35 @@ export async function getMexcSymbols(): Promise<string[]> {
 }
 
 /**
+ * Get user's authorized/default trading symbols
+ * These are the symbols the user has specifically enabled for their API key
+ */
+export async function getUserAuthorizedSymbols(credentials: MexcCredentials): Promise<string[]> {
+    const timestamp = Date.now();
+    const queryString = `timestamp=${timestamp}`;
+    const signature = await generateSignature(credentials.secretKey, queryString);
+
+    const response = await fetch(
+        `${MEXC_BASE_URL}/api/v3/selfSymbols?${queryString}&signature=${signature}`,
+        {
+            method: 'GET',
+            headers: {
+                'X-MEXC-APIKEY': credentials.apiKey,
+                'Content-Type': 'application/json'
+            }
+        }
+    );
+
+    if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`MEXC API error: ${response.status} - ${errorText}`);
+    }
+
+    const result = await response.json();
+    return result.data || [];
+}
+
+/**
  * Place an order on MEXC exchange
  */
 export async function placeMexcOrder(

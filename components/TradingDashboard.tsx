@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ApiConfiguration, RiskManagementSettings } from '../types';
-import { getMexcAccountInfo, MexcBalance } from '../mexcApi';
+import { getMexcAccountInfo, getUserAuthorizedSymbols, MexcBalance } from '../mexcApi';
 
 interface TradingDashboardProps {
     apiConfig: ApiConfiguration;
@@ -18,6 +18,8 @@ const TradingDashboard: React.FC<TradingDashboardProps> = ({
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+    const [authorizedSymbols, setAuthorizedSymbols] = useState<string[]>([]);
+    const [isLoadingSymbols, setIsLoadingSymbols] = useState(false);
 
     const hasMexcCredentials = apiConfig.mexcApiKey && apiConfig.mexcSecretKey;
 
@@ -61,9 +63,29 @@ const TradingDashboard: React.FC<TradingDashboardProps> = ({
         }
     };
 
+    const fetchAuthorizedSymbols = async () => {
+        if (!hasMexcCredentials) return;
+
+        setIsLoadingSymbols(true);
+
+        try {
+            const symbols = await getUserAuthorizedSymbols({
+                apiKey: apiConfig.mexcApiKey!,
+                secretKey: apiConfig.mexcSecretKey!
+            });
+            setAuthorizedSymbols(symbols);
+        } catch (err) {
+            console.error('Failed to fetch authorized symbols:', err);
+            // Don't set error state for symbols, just log it
+        } finally {
+            setIsLoadingSymbols(false);
+        }
+    };
+
     useEffect(() => {
         if (hasMexcCredentials) {
             fetchBalances();
+            fetchAuthorizedSymbols();
         }
     }, [apiConfig.mexcApiKey, apiConfig.mexcSecretKey]);
 
@@ -154,6 +176,64 @@ const TradingDashboard: React.FC<TradingDashboardProps> = ({
                     <p className="text-xs text-gray-500 mt-3">
                         Last updated: {lastUpdate.toLocaleTimeString()}
                     </p>
+                )}
+            </div>
+
+            {/* Authorized Trading Pairs Section */}
+            <div className="bg-gradient-to-br from-gray-800 to-gray-900 border border-yellow-500/30 rounded-lg p-6">
+                <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-2xl font-bold text-yellow-400">Authorized Trading Pairs</h3>
+                    <button
+                        onClick={fetchAuthorizedSymbols}
+                        disabled={isLoadingSymbols}
+                        className="bg-yellow-500 hover:bg-yellow-400 text-gray-900 font-semibold px-4 py-2 rounded-md transition-colors disabled:opacity-50 flex items-center gap-2 text-sm"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 ${isLoadingSymbols ? 'animate-spin' : ''}`} viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
+                        </svg>
+                        Refresh
+                    </button>
+                </div>
+
+                <div className="bg-blue-900/30 border border-blue-500/30 rounded-md p-4 mb-4">
+                    <p className="text-blue-300 font-semibold text-sm">ℹ️ About Trading Pairs</p>
+                    <p className="text-xs text-gray-300 mt-2">
+                        These are the trading pairs you've authorized for your API key on MEXC. Only these pairs can be traded through this application.
+                        To add more pairs, go to your MEXC API settings and update the "Trading Pair Settings" for your API key.
+                    </p>
+                </div>
+
+                {isLoadingSymbols ? (
+                    <div className="text-center py-8">
+                        <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-400"></div>
+                        <p className="text-gray-400 mt-2">Loading authorized pairs...</p>
+                    </div>
+                ) : authorizedSymbols.length > 0 ? (
+                    <div className="bg-gray-900/30 rounded-lg p-4">
+                        <div className="flex items-center justify-between mb-3">
+                            <h4 className="text-sm font-semibold text-gray-300">
+                                Your Authorized Pairs ({authorizedSymbols.length})
+                            </h4>
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 max-h-64 overflow-y-auto">
+                            {authorizedSymbols.map((symbol, idx) => (
+                                <div
+                                    key={idx}
+                                    className="bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-center hover:border-yellow-500/50 transition-colors"
+                                >
+                                    <span className="text-white font-mono text-sm">{symbol}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                ) : (
+                    <div className="bg-yellow-900/30 border border-yellow-500/50 rounded-md p-4 text-center">
+                        <p className="text-yellow-300 font-semibold">⚠️ No Trading Pairs Authorized</p>
+                        <p className="text-sm text-gray-300 mt-2">
+                            You haven't authorized any trading pairs for your API key yet.
+                            Please go to your MEXC account and configure trading pairs for your API key.
+                        </p>
+                    </div>
                 )}
             </div>
 
