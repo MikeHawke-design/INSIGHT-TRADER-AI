@@ -21,7 +21,6 @@ interface TradeCardProps {
     onAddResultImage?: () => void;
     onViewImages?: () => void;
     onViewCoachingLog?: () => void;
-    onExecuteTrade?: () => void;
 }
 
 const TRADE_CARD_ANIMATION_STYLE_ID = 'tradecard-animations';
@@ -121,7 +120,6 @@ const TradeCard: React.FC<TradeCardProps> = ({
     onAddResultImage,
     onViewImages,
     onViewCoachingLog,
-    onExecuteTrade,
     strategyLogicData,
     activeStrategies,
 }) => {
@@ -204,25 +202,11 @@ const TradeCard: React.FC<TradeCardProps> = ({
                             <p className="text-xs text-gray-500">Generated Just Now</p>
                         )}
                     </div>
-                    <div className="flex gap-2">
-                        {onExecuteTrade && (
-                            <button
-                                onClick={onExecuteTrade}
-                                className="px-3 py-1 text-sm font-semibold rounded-md transition-colors bg-green-600 text-white hover:bg-green-500 flex items-center gap-1"
-                                title="Execute this trade on BloFin exchange"
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-                                    <path fillRule="evenodd" d="M10 17a.75.75 0 01-.75-.75V5.612L5.29 9.77a.75.75 0 01-1.08-1.04l5.25-5.5a.75.75 0 011.08 0l5.25 5.5a.75.75 0 11-1.08 1.04l-3.96-4.158V16.25A.75.75 0 0110 17z" clipRule="evenodd" />
-                                </svg>
-                                Execute
-                            </button>
-                        )}
-                        {onSave && (
-                            <button onClick={() => onSave(trade)} disabled={isSaved} className={`px-3 py-1 text-sm font-semibold rounded-md transition-colors ${isSaved ? 'bg-green-600 text-white cursor-default' : 'bg-blue-600 text-white hover:bg-blue-500'}`}>
-                                {isSaved ? 'Saved ✔' : 'Save Trade'}
-                            </button>
-                        )}
-                    </div>
+                    {onSave && (
+                        <button onClick={() => onSave(trade)} disabled={isSaved} className={`px-3 py-1 text-sm font-semibold rounded-md transition-colors ${isSaved ? 'bg-green-600 text-white cursor-default' : 'bg-blue-600 text-white hover:bg-blue-500'}`}>
+                            {isSaved ? 'Saved ✔' : 'Save Trade'}
+                        </button>
+                    )}
                 </div>
 
                 <HeatMeter level={trade.heat} />

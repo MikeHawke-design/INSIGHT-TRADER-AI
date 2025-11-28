@@ -802,48 +802,6 @@ export const MasterControlsView: React.FC<MasterControlsViewProps> = ({
                                 className="w-full bg-gray-800 border border-gray-600 rounded p-2 text-white focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 outline-none"
                             />
                         </div>
-
-                        <div className="border-t border-gray-700 pt-4 mt-4">
-                            <h5 className="font-semibold text-yellow-400 mb-3 text-sm">BloFin Trading API (Optional)</h5>
-                            <p className="text-xs text-gray-400 mb-3">Configure BloFin API to execute trades directly from the platform</p>
-                            <div className="space-y-3">
-                                <div>
-                                    <label className="block font-medium text-sm text-gray-300 mb-1">BloFin API Key</label>
-                                    <input
-                                        type="password"
-                                        value={localApiKeys.blofinApiKey || ''}
-                                        onChange={(e) => setLocalApiKeys(prev => ({ ...prev, blofinApiKey: e.target.value }))}
-                                        placeholder="Enter your BloFin API Key"
-                                        className="w-full bg-gray-800 border border-gray-600 rounded p-2 text-white focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 outline-none"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block font-medium text-sm text-gray-300 mb-1">BloFin Secret Key</label>
-                                    <input
-                                        type="password"
-                                        value={localApiKeys.blofinSecretKey || ''}
-                                        onChange={(e) => setLocalApiKeys(prev => ({ ...prev, blofinSecretKey: e.target.value }))}
-                                        placeholder="Enter your BloFin Secret Key"
-                                        className="w-full bg-gray-800 border border-gray-600 rounded p-2 text-white focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 outline-none"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block font-medium text-sm text-gray-300 mb-1">BloFin Passphrase</label>
-                                    <input
-                                        type="password"
-                                        value={localApiKeys.blofinPassphrase || ''}
-                                        onChange={(e) => setLocalApiKeys(prev => ({ ...prev, blofinPassphrase: e.target.value }))}
-                                        placeholder="Enter your BloFin Passphrase"
-                                        className="w-full bg-gray-800 border border-gray-600 rounded p-2 text-white focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 outline-none"
-                                    />
-                                </div>
-                                <div className="bg-yellow-900/20 border border-yellow-500/30 rounded p-2">
-                                    <p className="text-xs text-yellow-300">
-                                        ⚠️ Your BloFin credentials are stored locally and never sent to our servers. Only use API keys with TRADE permission.
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
                         <div className="flex items-center gap-3">
                             <button
                                 onClick={handleSaveApiKeys}
