@@ -54,11 +54,13 @@ const StrategyBuilderView: React.FC<StrategyBuilderViewProps> = ({
         setIsGenerating(true);
 
         try {
-            if (!apiConfig.geminiApiKey) {
+            const apiKey = apiConfig.geminiApiKey || import.meta.env.VITE_API_KEY;
+
+            if (!apiKey) {
                 throw new Error("API Key missing");
             }
 
-            const genAI = new GoogleGenAI({ apiKey: apiConfig.geminiApiKey });
+            const genAI = new GoogleGenAI({ apiKey });
 
             const contentHistory = messages.map(m => ({
                 role: m.sender === 'user' ? 'user' : 'model',
@@ -71,7 +73,7 @@ const StrategyBuilderView: React.FC<StrategyBuilderViewProps> = ({
             ];
 
             const result = await genAI.models.generateContent({
-                model: "gemini-1.5-flash",
+                model: "gemini-2.5-flash",
                 contents: fullContents,
                 config: {
                     systemInstruction: STRATEGY_BUILDER_PROMPT
@@ -83,21 +85,22 @@ const StrategyBuilderView: React.FC<StrategyBuilderViewProps> = ({
             // Try to extract JSON if the AI decided to finalize the strategy
             let aiText = responseText;
 
-            // Simple heuristic: if response contains JSON-like structure for a strategy
-            if (responseText.includes('```json')) {
-                const jsonMatch = responseText.match(/```json\n([\s\S]*?)\n```/);
-                if (jsonMatch && jsonMatch[1]) {
-                    try {
-                        const parsed = JSON.parse(jsonMatch[1]);
-                        if (parsed.name && parsed.prompt) {
-                            // Strip the JSON from the displayed text to keep chat clean, or keep it?
-                            // Let's keep the text explanation but maybe hide the raw JSON block
-                            aiText = responseText.replace(/```json[\s\S]*?```/, "I've drafted the strategy based on your requirements. Check the preview panel on the right!");
-                            setCurrentDraft(parsed);
-                        }
-                    } catch (e) {
-                        console.error("Failed to parse strategy JSON", e);
+            // Robust JSON extraction
+            const fenceRegex = /```json\s*([\s\S]*?)\s*```/;
+            const match = responseText.match(fenceRegex);
+
+            if (match && match[1]) {
+                try {
+                    const jsonStr = match[1].trim();
+                    const parsed = JSON.parse(jsonStr);
+                    if (parsed.name && parsed.prompt) {
+                        // Strip the JSON from the displayed text to keep chat clean
+                        // We replace the whole code block with a placeholder message
+                        aiText = responseText.replace(fenceRegex, "I've drafted the strategy based on your requirements. Check the preview panel on the right!");
+                        setCurrentDraft(parsed);
                     }
+                } catch (e) {
+                    console.error("Failed to parse strategy JSON", e);
                 }
             }
 
