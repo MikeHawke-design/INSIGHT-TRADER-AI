@@ -432,6 +432,7 @@ const App: React.FC = () => {
                         onSaveTrade={handleSaveTrade}
                         strategyLogicData={strategyLogicData}
                         userSettings={userSettings}
+                        apiConfig={apiConfig}
                     />
                 ) : <Dashboard
                     onAnalysisComplete={handleAnalysisComplete}
