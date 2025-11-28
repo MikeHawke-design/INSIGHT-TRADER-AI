@@ -62,10 +62,12 @@ const StrategyBuilderView: React.FC<StrategyBuilderViewProps> = ({
 
             const genAI = new GoogleGenAI({ apiKey });
 
-            const contentHistory = messages.map(m => ({
-                role: m.sender === 'user' ? 'user' : 'model',
-                parts: [{ text: m.text }]
-            }));
+            const contentHistory = messages
+                .filter(m => m.id !== 'welcome')
+                .map(m => ({
+                    role: m.sender === 'user' ? 'user' : 'model',
+                    parts: [{ text: m.text }]
+                }));
 
             const fullContents = [
                 ...contentHistory,
