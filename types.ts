@@ -244,6 +244,9 @@ export type ActiveView = 'analyze' | 'analyze_new' | 'academy' | 'journal' | 'se
 export interface ApiConfiguration {
     eodhdApiKey: string; // Kept optional for market data
     geminiApiKey?: string;
+    blofinApiKey?: string;
+    blofinSecretKey?: string;
+    blofinPassphrase?: string;
 }
 
 export interface EodhdUsageStats {
