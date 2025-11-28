@@ -183,10 +183,16 @@ When the strategy is ready, output a JSON block like this:
 \`\`\`
 
 **Crucial for the 'prompt' field:**
-The 'prompt' you generate will be fed into another AI to analyze charts. It must be EXTREMELY detailed.
-- Explicitly state what to look for visually.
-- Define invalidation criteria.
-- Explain how to calculate the Stop Loss (e.g., "below the recent swing low").
+The 'prompt' you generate will be fed into another AI to analyze charts. It must be EXTREMELY detailed and follow this EXACT structure to ensure the analyzer understands it perfectly:
+
+"**STRATEGY ANALYSIS PROTOCOL:**
+1. **SETUP IDENTIFICATION:** [Detailed visual description of the pattern or market condition to look for. Be specific about candle shapes, trend direction, and indicator states.]
+2. **ENTRY TRIGGER:** [The exact condition that signals an entry. e.g., 'Enter on the close of the bullish engulfing candle'.]
+3. **STOP LOSS PLACEMENT:** [Precise rule for where to place the Stop Loss. e.g., '5 pips below the swing low'.]
+4. **TAKE PROFIT TARGETS:** [Rules for TP1 and TP2. e.g., 'TP1 at 1:1.5 Risk/Reward, TP2 at next resistance'.]
+5. **INVALIDATION CRITERIA:** [Specific conditions that would make this setup invalid. e.g., 'If price closes below the 200 EMA, invalidate'.]"
+
+Use 'You must...' language. Do not be vague.
 `;
 
 // --- Glossary for Interactive Tooltips ---
