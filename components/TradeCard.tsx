@@ -46,13 +46,33 @@ const ensureAnimationStyles = () => {
 const extractPrice = (priceString: string | number): number => {
     if (typeof priceString === 'number') return priceString;
     if (!priceString) return NaN;
-    const textContent = String(priceString).replace(/<[^>]*>/g, ' ');
-    const match = textContent.match(/(\d{1,3}(,\d{3})*(\.\d+)?|\d+(\.\d+)?)/g);
-    if (match) {
-        const lastMatch = match[match.length - 1];
-        return parseFloat(lastMatch.replace(/,/g, ''));
+
+    // 1. Try direct parsing first (handles simple "91750.0")
+    const directParse = parseFloat(String(priceString).replace(/,/g, ''));
+    if (!isNaN(directParse) && isFinite(directParse) && !String(priceString).includes(' ')) {
+        return directParse;
     }
-    return NaN;
+
+    // 2. Robust extraction
+    const cleanString = String(priceString)
+        .replace(/<[^>]*>/g, ' ') // Remove HTML
+        .replace(/&nbsp;/g, ' ')  // Remove non-breaking spaces
+        .trim();
+
+    // Match all number-like sequences (e.g. 123, 123.45, 1,234.56)
+    const matches = cleanString.match(/(\d{1,3}(,\d{3})*(\.\d+)?|\d+(\.\d+)?)/g);
+
+    if (!matches) return NaN;
+
+    // Parse all found numbers
+    const validNumbers = matches
+        .map(m => parseFloat(m.replace(/,/g, '')))
+        .filter(n => !isNaN(n) && isFinite(n));
+
+    if (validNumbers.length === 0) return NaN;
+
+    // Return the last valid number found (heuristic for "TP1: 100")
+    return validNumbers[validNumbers.length - 1];
 };
 
 const formatStrategyName = (name: string = ''): string => name.replace(/^\d+-/, '').replace(/-/g, ' ');
@@ -113,10 +133,15 @@ const TradeCard: React.FC<TradeCardProps> = ({
         const entry = extractPrice(trade.entry);
         const sl = extractPrice(trade.stopLoss);
         const tp1 = extractPrice(trade.takeProfit1);
+
         if (isNaN(entry) || isNaN(sl) || isNaN(tp1)) return 0;
+
         const risk = Math.abs(entry - sl);
         const reward = Math.abs(tp1 - entry);
-        return risk === 0 ? 0 : reward / risk;
+
+        if (risk === 0) return 0; // Avoid division by zero
+
+        return reward / risk;
     }, [trade.entry, trade.stopLoss, trade.takeProfit1]);
 
     const rrColor = useMemo(() => {
