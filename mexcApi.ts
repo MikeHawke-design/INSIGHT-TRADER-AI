@@ -82,26 +82,43 @@ async function generateSignature(secretKey: string, queryString: string): Promis
  */
 export async function getMexcAccountInfo(credentials: MexcCredentials): Promise<MexcAccountInfo> {
     const timestamp = Date.now();
-    const queryString = `timestamp=${timestamp}`;
+    const recvWindow = 5000; // 5 seconds window
+    const queryString = `recvWindow=${recvWindow}&timestamp=${timestamp}`;
     const signature = await generateSignature(credentials.secretKey, queryString);
 
-    const response = await fetch(
-        `${MEXC_BASE_URL}/api/v3/account?${queryString}&signature=${signature}`,
-        {
-            method: 'GET',
-            headers: {
-                'X-MEXC-APIKEY': credentials.apiKey,
-                'Content-Type': 'application/json'
-            }
+    const url = `${MEXC_BASE_URL}/api/v3/account?${queryString}&signature=${signature}`;
+
+    console.log('MEXC API Request:', {
+        url: url.replace(signature, 'HIDDEN'),
+        apiKey: credentials.apiKey.substring(0, 8) + '...',
+        timestamp,
+        recvWindow
+    });
+
+    const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+            'X-MEXC-APIKEY': credentials.apiKey,
+            'Content-Type': 'application/json'
         }
-    );
+    });
+
+    const responseText = await response.text();
+    console.log('MEXC API Response:', {
+        status: response.status,
+        statusText: response.statusText,
+        body: responseText
+    });
 
     if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`MEXC API error: ${response.status} - ${errorText}`);
+        throw new Error(`MEXC API error (${response.status}): ${responseText}`);
     }
 
-    return response.json();
+    try {
+        return JSON.parse(responseText);
+    } catch (e) {
+        throw new Error(`Failed to parse MEXC response: ${responseText}`);
+    }
 }
 
 /**
@@ -140,27 +157,41 @@ export async function getMexcSymbols(): Promise<string[]> {
  */
 export async function getUserAuthorizedSymbols(credentials: MexcCredentials): Promise<string[]> {
     const timestamp = Date.now();
-    const queryString = `timestamp=${timestamp}`;
+    const recvWindow = 5000;
+    const queryString = `recvWindow=${recvWindow}&timestamp=${timestamp}`;
     const signature = await generateSignature(credentials.secretKey, queryString);
 
-    const response = await fetch(
-        `${MEXC_BASE_URL}/api/v3/selfSymbols?${queryString}&signature=${signature}`,
-        {
-            method: 'GET',
-            headers: {
-                'X-MEXC-APIKEY': credentials.apiKey,
-                'Content-Type': 'application/json'
-            }
+    const url = `${MEXC_BASE_URL}/api/v3/selfSymbols?${queryString}&signature=${signature}`;
+
+    console.log('MEXC selfSymbols Request:', {
+        url: url.replace(signature, 'HIDDEN'),
+        timestamp
+    });
+
+    const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+            'X-MEXC-APIKEY': credentials.apiKey,
+            'Content-Type': 'application/json'
         }
-    );
+    });
+
+    const responseText = await response.text();
+    console.log('MEXC selfSymbols Response:', {
+        status: response.status,
+        body: responseText
+    });
 
     if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`MEXC API error: ${response.status} - ${errorText}`);
+        throw new Error(`MEXC API error (${response.status}): ${responseText}`);
     }
 
-    const result = await response.json();
-    return result.data || [];
+    try {
+        const result = JSON.parse(responseText);
+        return result.data || [];
+    } catch (e) {
+        throw new Error(`Failed to parse MEXC response: ${responseText}`);
+    }
 }
 
 /**
