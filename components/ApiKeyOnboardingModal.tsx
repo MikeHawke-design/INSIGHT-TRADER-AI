@@ -9,8 +9,8 @@ const InfoIcon = (props: { className?: string }) => (
 
 const LoadingSpinner = () => (
     <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
     </svg>
 );
 
@@ -30,7 +30,7 @@ const ApiKeyOnboardingModal: React.FC<ApiKeyOnboardingModalProps> = ({ isOpen, o
     const handleSave = async () => {
         setIsLoading(true);
         setError('');
-        
+
         if (!geminiApiKey.trim() && !openaiApiKey.trim()) {
             setError('Please provide at least one API key (Gemini or OpenAI) to proceed.');
             setIsLoading(false);
@@ -38,9 +38,9 @@ const ApiKeyOnboardingModal: React.FC<ApiKeyOnboardingModalProps> = ({ isOpen, o
         }
 
         if (geminiApiKey.trim()) {
-             try {
+            try {
                 const ai = new GoogleGenAI({ apiKey: geminiApiKey });
-                await ai.models.generateContent({model: 'gemini-2.5-flash', contents: 'test'});
+                await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: 'test' });
             } catch (e) {
                 const errorMessage = e instanceof Error ? e.message : 'An unknown error occurred.';
                 if (errorMessage.toLowerCase().includes('api key not valid')) {
@@ -69,7 +69,7 @@ const ApiKeyOnboardingModal: React.FC<ApiKeyOnboardingModalProps> = ({ isOpen, o
                 return;
             }
         }
-        
+
         onSave({ gemini: geminiApiKey, openai: openaiApiKey });
         setIsLoading(false);
     };
@@ -83,7 +83,7 @@ const ApiKeyOnboardingModal: React.FC<ApiKeyOnboardingModalProps> = ({ isOpen, o
                 <p className="text-gray-400 mt-2 mb-4">
                     To use Chart Oracle's AI features, please provide a personal API key from either Google Gemini or OpenAI. Both providers enable all platform features.
                 </p>
-                
+
                 <div className="space-y-4">
                     <div className="space-y-1">
                         <label className="text-sm font-bold text-yellow-300">Gemini API Key</label>
@@ -121,7 +121,7 @@ const ApiKeyOnboardingModal: React.FC<ApiKeyOnboardingModalProps> = ({ isOpen, o
                 ) : (
                     <p className="text-gray-500 text-sm mt-2 h-5">At least one API key is required to proceed.</p>
                 )}
-                
+
                 <div className="flex justify-end gap-3 mt-4">
                     <button onClick={onClose} className="font-semibold py-2 px-4 rounded-md bg-gray-600 hover:bg-gray-500 text-white">
                         Do Later
