@@ -623,6 +623,22 @@ export const MasterControlsView: React.FC<MasterControlsViewProps> = ({
 
     const renderStrategyList = () => (
         <div className="space-y-4">
+            <div className="flex justify-between items-center bg-gray-800 p-4 rounded-lg border border-gray-700 mb-4">
+                <div>
+                    <h4 className="font-bold text-white">Strategy Builder</h4>
+                    <p className="text-sm text-gray-400">Create robust trading strategies with the AI Architect.</p>
+                </div>
+                <button
+                    onClick={() => _onNavClick('strategy_builder')}
+                    className="bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 transition-colors shadow-lg shadow-purple-900/20"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clipRule="evenodd" />
+                    </svg>
+                    New Strategy
+                </button>
+            </div>
+
             {parentStrategies.map(([key, strat]) => (
                 <div key={key} className="bg-gray-700/30 rounded-lg">
                     <StrategyListItem strategy={strat} strategyKey={key} onEdit={handleEdit} setStrategyToDelete={setStrategyToDelete} onToggleEnable={handleToggleEnable} />

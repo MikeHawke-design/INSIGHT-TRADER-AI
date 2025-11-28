@@ -1,9 +1,9 @@
 
 // A type to represent the temporary, full-data format of an image before it's stored.
 export interface UploadedImageData {
-  name: string;
-  type: string;
-  dataUrl: string;
+    name: string;
+    type: string;
+    dataUrl: string;
 }
 
 export type StrategyKey = string;
@@ -12,30 +12,30 @@ export type TradeDirection = 'Long' | 'Short';
 export type EntryType = 'Limit Order' | 'Confirmation Entry';
 
 export interface TradeManagement {
-  move_to_breakeven_condition: string;
-  partial_take_profit_1: string;
-  partial_take_profit_2: string;
+    move_to_breakeven_condition: string;
+    partial_take_profit_1: string;
+    partial_take_profit_2: string;
 }
 
 // New interface for dynamic chart timeframes detected by AI
 export interface ChartMetadata {
-  [imageIndex: string]: string; // e.g., "0": "4H", "1": "15m"
+    [imageIndex: string]: string; // e.g., "0": "4H", "1": "15m"
 }
 
 export interface Trade {
-  type: string;
-  direction: TradeDirection;
-  symbol: string;
-  entry: string;
-  entryType: EntryType;
-  entryExplanation: string;
-  stopLoss: string;
-  takeProfit1: string;
-  takeProfit2: string;
-  heat: number;
-  explanation: string;
-  isModified?: boolean; // Added for tracking modified trades
-  tradeManagement?: TradeManagement;
+    type: string;
+    direction: TradeDirection;
+    symbol: string;
+    entry: string;
+    entryType: EntryType;
+    entryExplanation: string;
+    stopLoss: string;
+    takeProfit1: string;
+    takeProfit2: string;
+    heat: number;
+    explanation: string;
+    isModified?: boolean; // Added for tracking modified trades
+    tradeManagement?: TradeManagement;
 }
 
 export type TradeOutcome = 'TP1 & TP2' | 'TP1 -> B/E' | 'TP1' | 'B/E' | 'SL' | null;
@@ -55,41 +55,41 @@ export interface AssetComparisonResult {
 }
 
 export interface AnalysisResults {
-  'Top Longs': Trade[];
-  'Top Shorts': Trade[];
-  strategySuggestion: StrategySuggestion;
-  chartMetadata?: ChartMetadata; // Added to store AI-detected timeframes
-  assetComparisonResults?: AssetComparisonResult[]; // Added for comparison mode
+    'Top Longs': Trade[];
+    'Top Shorts': Trade[];
+    strategySuggestion: StrategySuggestion;
+    chartMetadata?: ChartMetadata; // Added to store AI-detected timeframes
+    assetComparisonResults?: AssetComparisonResult[]; // Added for comparison mode
 }
 
 export interface SavedTrade extends Trade {
-  id: string;
-  savedDate: string;
-  feedback: TradeFeedback;
-  strategiesUsed: StrategyKey[];
-  uploadedImageKeys: UploadedImageKeys;
-  resultImageKey?: string; // Optional key for result image
-  analysisContext: {
-      realTimeContextWasUsed: boolean;
-  };
-  isFromCoaching?: boolean;
-  coachingSessionChat?: ChatMessage[];
-  chartMetadata?: ChartMetadata; // Added to persist timeframe labels
+    id: string;
+    savedDate: string;
+    feedback: TradeFeedback;
+    strategiesUsed: StrategyKey[];
+    uploadedImageKeys: UploadedImageKeys;
+    resultImageKey?: string; // Optional key for result image
+    analysisContext: {
+        realTimeContextWasUsed: boolean;
+    };
+    isFromCoaching?: boolean;
+    coachingSessionChat?: ChatMessage[];
+    chartMetadata?: ChartMetadata; // Added to persist timeframe labels
 }
 
 export interface StrategySuggestion {
-  suggestedStrategies: StrategyKey[];
-  suggestedSettings: Partial<UserSettings>;
-  reasoning: string;
+    suggestedStrategies: StrategyKey[];
+    suggestedSettings: Partial<UserSettings>;
+    reasoning: string;
 }
 
 export type UserTier = 'Apprentice' | 'Traditional Trader' | 'Advanced AI';
 
 export interface User {
-  name: string;
-  anonymousUsername: string;
-  avatar?: string;
-  tier?: UserTier;
+    name: string;
+    anonymousUsername: string;
+    avatar?: string;
+    tier?: UserTier;
 }
 
 export interface UserUsage {
@@ -116,20 +116,20 @@ export type PreferredTradeDuration = 'Any' | 'Short-term' | 'Medium-term' | 'Lon
 export type StopLossStrategy = 'Standard' | 'Structure-Buffered';
 
 export interface UserSettings {
-  riskAppetite: RiskAppetite;
-  minRiskRewardRatio: number;
-  preferredTradeDuration: PreferredTradeDuration;
-  tradeAgainstTrend: boolean;
-  stopLossStrategy: StopLossStrategy;
-  preferredAssetClass: string;
-  marketTiming: string;
-  // Appearance
-  uiFontSize: number;
-  headingFontSize: number;
-  dataFontSize: number;
-  chatFontSize: number;
-  uiDarkness: number;
-  aiProvider: 'gemini' | 'openai'; 
+    riskAppetite: RiskAppetite;
+    minRiskRewardRatio: number;
+    preferredTradeDuration: PreferredTradeDuration;
+    tradeAgainstTrend: boolean;
+    stopLossStrategy: StopLossStrategy;
+    preferredAssetClass: string;
+    marketTiming: string;
+    // Appearance
+    uiFontSize: number;
+    headingFontSize: number;
+    dataFontSize: number;
+    chatFontSize: number;
+    uiDarkness: number;
+    aiProvider: 'gemini' | 'openai';
 }
 
 export interface StrategyLogicData {
@@ -153,9 +153,9 @@ export interface StrategyLogicData {
 }
 
 export interface TimeFrameStep {
-  step: number;
-  title: string;
-  subtitle: string;
+    step: number;
+    title: string;
+    subtitle: string;
 }
 
 export interface ChatMessage {
@@ -209,7 +209,7 @@ export interface CourseLesson {
     blocks: LessonBlock[];
 }
 
-export type LessonBlock = 
+export type LessonBlock =
     | { type: 'text'; content: string }
     | { type: 'image'; url: string; caption?: string }
     | { type: 'exercise'; prompt: string; validationPrompt: string }; // validationPrompt for AI vision check
@@ -239,7 +239,7 @@ export interface GlossaryTerm {
     imageUrl?: string;
 }
 
-export type ActiveView = 'analyze' | 'analyze_new' | 'academy' | 'journal' | 'settings' | 'profile';
+export type ActiveView = 'analyze' | 'analyze_new' | 'academy' | 'journal' | 'settings' | 'profile' | 'strategy_builder';
 
 export interface ApiConfiguration {
     eodhdApiKey: string; // Kept optional for market data

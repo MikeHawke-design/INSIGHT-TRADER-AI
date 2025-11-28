@@ -41,6 +41,7 @@ import Footer from './components/Footer';
 import CoachingView from './components/CoachingView';
 import AvatarSelectionModal from './components/AvatarSelectionModal';
 import ProfileView from './components/ProfileView';
+import StrategyBuilderView from './components/StrategyBuilderView';
 
 import { useAuth } from './context/AuthProvider';
 
@@ -87,6 +88,16 @@ const App: React.FC = () => {
     const [activeLegalModal, setActiveLegalModal] = useState<'privacy' | 'terms' | null>(null);
     const [coachingContext, setCoachingContext] = useState<{ strategy: StrategyLogicData; goal: 'learn_basics' | 'build_setup'; session?: SavedCoachingSession; strategyKey: StrategyKey; } | null>(null);
     const [viewedStrategy, setViewedStrategy] = useState<StrategyKey | null>(null);
+
+    const handleSaveCustomStrategy = (newStrategy: StrategyLogicData) => {
+        const strategyKey = newStrategy.name.toLowerCase().replace(/\s+/g, '-');
+        setStrategyLogicData(prev => ({
+            ...prev,
+            [strategyKey]: newStrategy
+        }));
+        setDashboardSelectedStrategies(prev => [...prev, strategyKey]);
+        setActiveView('analyze');
+    };
 
 
     // --- Effects ---
@@ -488,6 +499,17 @@ const App: React.FC = () => {
                     strategyLogicData={strategyLogicData}
                     onInitiateCoaching={(strat, goal, key) => { setCoachingContext({ strategy: strat, goal, strategyKey: key }); setActiveView('analyze'); }}
                 />;
+            case 'strategy_builder':
+                return (
+                    <div className="flex-grow overflow-hidden h-full">
+                        <StrategyBuilderView
+                            userSettings={userSettings}
+                            onSaveStrategy={handleSaveCustomStrategy}
+                            onCancel={() => setActiveView('analyze')}
+                            apiConfig={apiConfig}
+                        />
+                    </div>
+                );
             case 'profile':
                 return currentUser ? <ProfileView
                     currentUser={currentUser}
