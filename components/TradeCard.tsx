@@ -1,9 +1,10 @@
 
 import React from 'react';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Trade, TradeFeedback, SavedTrade, UserSettings, StrategyKey, StrategyLogicData, TradeOutcome } from '../types';
 import HeatMeter from './HeatMeter';
 import OracleIcon from './OracleIcon';
+import html2canvas from 'html2canvas';
 
 interface TradeCardProps {
     trade: Trade | SavedTrade;
@@ -128,6 +129,65 @@ const TradeCard: React.FC<TradeCardProps> = ({
     const [isEntryExplanationVisible, setIsEntryExplanationVisible] = useState(false);
     const [feedbackText, setFeedbackText] = useState(feedback?.text || '');
     const isCoachingTrade = 'isFromCoaching' in trade && trade.isFromCoaching;
+    const cardRef = useRef<HTMLDivElement>(null);
+    const [isSharing, setIsSharing] = useState(false);
+
+    const handleShareCard = async () => {
+        if (!cardRef.current) return;
+
+        setIsSharing(true);
+        try {
+            // Capture the card as canvas
+            const canvas = await html2canvas(cardRef.current, {
+                backgroundColor: '#1f2937', // Match the card background
+                scale: 2, // Higher quality
+                logging: false,
+                useCORS: true,
+            });
+
+            // Convert canvas to blob
+            canvas.toBlob(async (blob) => {
+                if (!blob) {
+                    alert('Failed to generate image');
+                    setIsSharing(false);
+                    return;
+                }
+
+                const file = new File([blob], `trade-${trade.symbol || 'call'}-${Date.now()}.png`, { type: 'image/png' });
+
+                // Check if Web Share API is available
+                if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+                    try {
+                        await navigator.share({
+                            files: [file],
+                            title: `${trade.symbol} - ${trade.direction} Trade Call`,
+                            text: `Check out this ${trade.direction} trade setup for ${trade.symbol}!`
+                        });
+                    } catch (err) {
+                        if ((err as Error).name !== 'AbortError') {
+                            // Fallback to download if share was not aborted by user
+                            downloadImage(canvas);
+                        }
+                    }
+                } else {
+                    // Fallback: download the image
+                    downloadImage(canvas);
+                }
+                setIsSharing(false);
+            }, 'image/png');
+        } catch (error) {
+            console.error('Error sharing card:', error);
+            alert('Failed to share trade card');
+            setIsSharing(false);
+        }
+    };
+
+    const downloadImage = (canvas: HTMLCanvasElement) => {
+        const link = document.createElement('a');
+        link.download = `trade-${trade.symbol || 'call'}-${Date.now()}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+    };
 
     const rr = useMemo(() => {
         const entry = extractPrice(trade.entry);
@@ -186,7 +246,7 @@ const TradeCard: React.FC<TradeCardProps> = ({
     const isSegmented = explanationSegments.length >= 2; // Assume structured if at least 2 parts found.
 
     return (
-        <div className="bg-[hsl(var(--color-bg-800))] border border-[hsl(var(--color-border-700))] rounded-lg p-4 flex flex-col h-full">
+        <div ref={cardRef} className="bg-[hsl(var(--color-bg-800))] border border-[hsl(var(--color-border-700))] rounded-lg p-4 flex flex-col h-full">
             <div className="space-y-4">
                 <div className="flex justify-between items-start">
                     <div className="flex-grow space-y-1">
@@ -389,6 +449,23 @@ const TradeCard: React.FC<TradeCardProps> = ({
                                             {hasResultImage ? <EditIcon className="w-5 h-5" /> : <AddResultImageIcon className="w-5 h-5" />}
                                         </button>
                                     )}
+                                    <button
+                                        onClick={handleShareCard}
+                                        disabled={isSharing}
+                                        className="p-2 rounded-full text-gray-400 hover:text-blue-400 hover:bg-blue-500/10 disabled:opacity-50"
+                                        title="Share Trade Card"
+                                    >
+                                        {isSharing ? (
+                                            <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                            </svg>
+                                        ) : (
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                                            </svg>
+                                        )}
+                                    </button>
                                 </div>
                             )}
 
