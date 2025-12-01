@@ -505,6 +505,11 @@ const TradeCard: React.FC<TradeCardProps> = ({
                         </div>
                     </div>
 
+                    {/* Heat Meter */}
+                    <div className="mb-6">
+                        <HeatMeter level={trade.heat} />
+                    </div>
+
                     {/* Trade Details Grid */}
                     <div className="space-y-4">
                         {/* Entry */}
