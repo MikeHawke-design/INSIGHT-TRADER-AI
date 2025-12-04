@@ -54,7 +54,6 @@ const Dashboard: React.FC<DashboardProps> = ({
 
     const uploaderRef = useRef<ImageUploaderHandles>(null);
     const [uploaderPhase, setUploaderPhase] = useState<'idle' | 'gathering' | 'validating' | 'ready' | 'analyzing'>('idle');
-    const [useRealTimeContext, setUseRealTimeContext] = useState<boolean>(true);
     const [isComparisonMode, setIsComparisonMode] = useState<boolean>(false);
     const [isPromptVisible, setIsPromptVisible] = useState(false);
 
@@ -62,12 +61,19 @@ const Dashboard: React.FC<DashboardProps> = ({
         setIsPromptVisible(false);
     }, [viewedStrategy]);
 
+    // Reset uploader state when switching analysis modes to ensure a clean slate
+    useEffect(() => {
+        if (uploaderRef.current) {
+            uploaderRef.current.resetState();
+        }
+    }, [isComparisonMode]);
+
     const info = viewedStrategy ? strategyLogicData[viewedStrategy] : null;
 
     const handleTriggerAnalysis = () => {
         if (!uploaderRef.current) return;
         setIsAnalyzing(true);
-        uploaderRef.current.triggerAnalysis(useRealTimeContext);
+        uploaderRef.current.triggerAnalysis(true);
     }
 
     // Allow analysis if API key is in config OR environment variable
@@ -200,10 +206,10 @@ const Dashboard: React.FC<DashboardProps> = ({
                     </Section>
 
                     <Section number={2} title="Add Context" disabled={dashboardSelectedStrategies.length === 0} fontSize={userSettings.headingFontSize}>
-                        <div className="grid grid-cols-1 gap-6">
-                            <div className="bg-gray-800/50 p-3 rounded-lg border border-gray-700 mb-2">
+                        <div className="flex flex-col gap-6">
+                            <div className="mb-2">
                                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Analysis Mode</p>
-                                <div className="flex bg-gray-900 p-1 rounded-lg border border-gray-700">
+                                <div className="flex bg-gray-900 p-1 rounded-lg border border-gray-700 max-w-md">
                                     <button
                                         onClick={() => setIsComparisonMode(false)}
                                         className={`flex-1 py-2 px-4 rounded-md text-sm font-semibold transition-all ${!isComparisonMode
@@ -223,7 +229,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                                         Asset Comparison
                                     </button>
                                 </div>
-                                <p className="text-xs text-gray-500 mt-2 px-1">
+                                <p className="text-xs text-gray-500 mt-2">
                                     {isComparisonMode
                                         ? "Rank multiple assets against each other based on strategy criteria."
                                         : "Deep dive analysis into a single asset or setup with multi-timeframe context."}
@@ -249,20 +255,7 @@ const Dashboard: React.FC<DashboardProps> = ({
 
                     <Section number={3} title="Analyze" disabled={isSubmitDisabled} fontSize={userSettings.headingFontSize}>
                         <div className="flex flex-col gap-4">
-                            <div className="bg-gray-800/50 p-4 rounded-lg border border-gray-700">
-                                <label className="flex items-center space-x-3 cursor-pointer">
-                                    <input
-                                        type="checkbox"
-                                        checked={useRealTimeContext}
-                                        onChange={(e) => setUseRealTimeContext(e.target.checked)}
-                                        className="h-5 w-5 rounded bg-gray-700 border-gray-600 text-yellow-500 focus:ring-yellow-500/50"
-                                    />
-                                    <div>
-                                        <span className="font-semibold text-white">Enable Real-Time Context</span>
-                                        <p className="text-xs text-gray-400">Allows AI to use current date/time for seasonal awareness.</p>
-                                    </div>
-                                </label>
-                            </div>
+
 
                             <button
                                 onClick={handleTriggerAnalysis}
@@ -277,7 +270,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                                     </>
                                 ) : (
                                     <>
-                                        <span>GENERATE TRADE SETUP</span>
+                                        <span>{isComparisonMode ? 'COMPARE ASSETS' : 'GENERATE TRADE SETUP'}</span>
                                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
                                             <path fillRule="evenodd" d="M3 10a.75.75 0 0 1 .75-.75h10.638L10.23 5.29a.75.75 0 1 1 1.04-1.08l5.5 5.25a.75.75 0 0 1 0 1.08l-5.5 5.25a.75.75 0 1 1-1.04-1.08l4.158-3.96H3.75A.75.75 0 0 1 3 10Z" clipRule="evenodd" />
                                         </svg>

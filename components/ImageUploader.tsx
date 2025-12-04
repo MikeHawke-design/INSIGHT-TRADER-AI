@@ -182,6 +182,7 @@ type Phase = 'idle' | 'gathering' | 'validating' | 'ready' | 'analyzing';
 
 export interface ImageUploaderHandles {
     triggerAnalysis: (useRealTimeContext: boolean) => void;
+    resetState: () => void;
 }
 
 interface ImageUploaderProps {
@@ -528,6 +529,7 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
 
     useImperativeHandle(ref, () => ({
         triggerAnalysis,
+        resetState,
     }));
 
     return (

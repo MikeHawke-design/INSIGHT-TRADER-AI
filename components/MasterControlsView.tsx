@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { GoogleGenAI } from "@google/genai";
-import { ActiveView, StrategyKey, StrategyLogicData, User, UserSettings, TokenUsageRecord, ApiConfiguration, CourseModule, RiskManagementSettings } from '../types';
+import { ActiveView, StrategyKey, StrategyLogicData, User, UserSettings, TokenUsageRecord, ApiConfiguration, CourseModule } from '../types';
 // @ts-ignore - pdfjs-dist doesn't have proper TypeScript declarations
 import * as pdfjsLib from 'pdfjs-dist/build/pdf.mjs';
 import JSZip from 'jszip';
@@ -11,7 +11,6 @@ import { ALL_PERSISTENT_STORAGE_KEYS } from '../constants';
 import { getAllEntries } from '../idb';
 import UserManualView from './UserManualView';
 import { generateAccessKey } from '../authUtils';
-import TradingDashboard from './TradingDashboard';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://aistudiocdn.com/pdfjs-dist@5.4.149/build/pdf.worker.mjs`;
 
@@ -85,26 +84,7 @@ export const MasterControlsView: React.FC<MasterControlsViewProps> = ({
     onRestoreData,
     onNavClick: _onNavClick,
 }) => {
-    const [activeTab, setActiveTab] = useState<'strategies' | 'settings' | 'data' | 'manual' | 'trading'>('strategies');
-
-    // Risk Management Settings State
-    const [riskSettings, setRiskSettings] = useState<RiskManagementSettings>(() => {
-        const saved = localStorage.getItem('riskManagementSettings');
-        return saved ? JSON.parse(saved) : {
-            riskPercentagePerTrade: 2,
-            maxPositionSize: 10,
-            useStopLoss: true,
-            useTakeProfit: true,
-            minRiskRewardRatio: 2,
-            maxDailyTrades: 5,
-            maxOpenPositions: 3
-        };
-    });
-
-    // Save risk settings to localStorage whenever they change
-    useEffect(() => {
-        localStorage.setItem('riskManagementSettings', JSON.stringify(riskSettings));
-    }, [riskSettings]);
+    const [activeTab, setActiveTab] = useState<'strategies' | 'settings' | 'data' | 'manual'>('strategies');
 
     // Strategy Management State
     const [isEditing, setIsEditing] = useState<StrategyKey | null>(null);
@@ -775,7 +755,6 @@ export const MasterControlsView: React.FC<MasterControlsViewProps> = ({
                 <div className="overflow-x-auto mobile-tab-scroll">
                     <nav className="-mb-px flex space-x-6 min-w-max" aria-label="Tabs">
                         <TabButton name="strategies" activeTab={activeTab} setActiveTab={setActiveTab}>My Strategies</TabButton>
-                        <TabButton name="trading" activeTab={activeTab} setActiveTab={setActiveTab}>Trading</TabButton>
                         <TabButton name="settings" activeTab={activeTab} setActiveTab={setActiveTab}>Settings</TabButton>
                         <TabButton name="data" activeTab={activeTab} setActiveTab={setActiveTab}>Data Management</TabButton>
                         <TabButton name="manual" activeTab={activeTab} setActiveTab={setActiveTab}>User Manual</TabButton>
@@ -832,14 +811,7 @@ export const MasterControlsView: React.FC<MasterControlsViewProps> = ({
                         {renderStrategyList()}
                     </div>
                 )}
-                {activeTab === 'trading' && (
-                    <div className="p-6">
-                        <TradingDashboard
-                            riskSettings={riskSettings}
-                            onUpdateRiskSettings={setRiskSettings}
-                        />
-                    </div>
-                )}
+
                 {activeTab === 'settings' && renderSettings()}
                 {activeTab === 'data' && renderDataManagement()}
                 {activeTab === 'manual' && <UserManualView />}
@@ -936,7 +908,7 @@ export const MasterControlsView: React.FC<MasterControlsViewProps> = ({
 
 // --- SUB-COMPONENTS ---
 
-const TabButton: React.FC<{ name: 'strategies' | 'settings' | 'data' | 'manual' | 'trading'; activeTab: 'strategies' | 'settings' | 'data' | 'manual' | 'trading'; setActiveTab: (name: 'strategies' | 'settings' | 'data' | 'manual' | 'trading') => void; children: React.ReactNode }> = ({ name, activeTab, setActiveTab, children }) => (
+const TabButton: React.FC<{ name: 'strategies' | 'settings' | 'data' | 'manual'; activeTab: 'strategies' | 'settings' | 'data' | 'manual'; setActiveTab: (name: 'strategies' | 'settings' | 'data' | 'manual') => void; children: React.ReactNode }> = ({ name, activeTab, setActiveTab, children }) => (
     <button onClick={() => setActiveTab(name)} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg ${activeTab === name ? 'border-yellow-400 text-yellow-300' : 'border-transparent text-gray-400 hover:text-gray-200'}`}>
         {children}
     </button>
