@@ -370,6 +370,38 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
         e.target.value = '';
     };
 
+    const handlePasteClick = async () => {
+        try {
+            const clipboardItems = await navigator.clipboard.read();
+            let foundImage = false;
+            for (const item of clipboardItems) {
+                const imageType = item.types.find(type => type.startsWith('image/'));
+                if (imageType) {
+                    const blob = await item.getType(imageType);
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const result = e.target?.result;
+                        if (typeof result === 'string') {
+                            handleImageUpload({
+                                name: `pasted_image_${Date.now()}.png`,
+                                type: imageType,
+                                dataUrl: result
+                            });
+                        }
+                    };
+                    reader.readAsDataURL(blob);
+                    foundImage = true;
+                }
+            }
+            if (!foundImage) {
+                setError("No image found in clipboard.");
+            }
+        } catch (err) {
+            console.error("Failed to read clipboard:", err);
+            setError("Failed to access clipboard. Please use Ctrl+V / Cmd+V to paste.");
+        }
+    };
+
     // Screen Share Logic
     const stopMediaStream = useCallback(() => {
         if (streamRef.current) {
@@ -385,12 +417,21 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
 
     const handleInitiateScreenCapture = async () => {
         setCaptureError(null);
+
+        // Reuse existing stream if active
+        if (streamRef.current && streamRef.current.active) {
+            setIsCaptureModalOpen(true);
+            return;
+        }
+
         stopMediaStream();
         try {
             const stream = await navigator.mediaDevices.getDisplayMedia({ video: { cursor: "always" } as any, audio: false });
             streamRef.current = stream;
             setCaptureStream(stream);
             setIsCaptureModalOpen(true);
+
+            // Handle stream ending (e.g. user clicks "Stop sharing" in browser UI)
             stream.getVideoTracks()[0].onended = () => {
                 stopMediaStream();
                 setIsCaptureModalOpen(false);
@@ -409,7 +450,7 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
             dataUrl: dataUrl
         });
         setIsCaptureModalOpen(false);
-        stopMediaStream();
+        // Do NOT stop the stream here, allowing reuse
     };
 
     useEffect(() => {
@@ -546,7 +587,7 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
                         <button onClick={() => fileInputRef.current?.click()} className="text-sm font-semibold p-3 rounded-md bg-blue-600 hover:bg-blue-500 text-white transition-colors">
                             Upload Image
                         </button>
-                        <button className="text-sm font-semibold p-3 rounded-md bg-blue-600 hover:bg-blue-500 text-white transition-colors" title="Paste from Clipboard">
+                        <button onClick={handlePasteClick} className="text-sm font-semibold p-3 rounded-md bg-blue-600 hover:bg-blue-500 text-white transition-colors" title="Paste from Clipboard">
                             Paste Image
                         </button>
                         <button onClick={handleInitiateScreenCapture} className="text-sm font-semibold p-3 rounded-md bg-blue-600 hover:bg-blue-500 text-white transition-colors">
@@ -587,7 +628,7 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
                     <div className="mt-4 p-3 bg-gray-900/50 border-t border-gray-700">
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                             <button onClick={() => fileInputRef.current?.click()} className="text-xs font-semibold p-2 rounded-md bg-gray-700 hover:bg-gray-600 text-white">Upload</button>
-                            <button className="text-xs font-semibold p-2 rounded-md bg-gray-700 hover:bg-gray-600 text-white" title="Press Ctrl+V">Paste</button>
+                            <button onClick={handlePasteClick} className="text-xs font-semibold p-2 rounded-md bg-gray-700 hover:bg-gray-600 text-white" title="Paste from Clipboard">Paste</button>
                             <button onClick={handleInitiateScreenCapture} className="text-xs font-semibold p-2 rounded-md bg-gray-700 hover:bg-gray-600 text-white">Screen Share</button>
                         </div>
                     </div>
