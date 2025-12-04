@@ -88,7 +88,7 @@ const StrategyBuilderView: React.FC<StrategyBuilderViewProps> = ({
             let aiText = responseText;
 
             // Robust JSON extraction
-            const fenceRegex = /```json\s*([\s\S]*?)\s*```/;
+            const fenceRegex = /```(?:json)?\s*([\s\S]*?)\s*```/;
             const match = responseText.match(fenceRegex);
 
             if (match && match[1]) {
@@ -97,12 +97,27 @@ const StrategyBuilderView: React.FC<StrategyBuilderViewProps> = ({
                     const parsed = JSON.parse(jsonStr);
                     if (parsed.name && parsed.prompt) {
                         // Strip the JSON from the displayed text to keep chat clean
-                        // We replace the whole code block with a placeholder message
-                        aiText = responseText.replace(fenceRegex, "I've drafted the strategy based on your requirements. Check the preview panel on the right!");
+                        aiText = responseText.replace(fenceRegex, "I've drafted the strategy based on your requirements. Check the preview panel on the right! 👉");
                         setCurrentDraft(parsed);
                     }
                 } catch (e) {
-                    console.error("Failed to parse strategy JSON", e);
+                    console.error("Failed to parse strategy JSON from code block", e);
+                }
+            } else {
+                // Fallback: Try to find a JSON object directly in the text
+                try {
+                    const firstBrace = responseText.indexOf('{');
+                    const lastBrace = responseText.lastIndexOf('}');
+                    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+                        const potentialJson = responseText.substring(firstBrace, lastBrace + 1);
+                        const parsed = JSON.parse(potentialJson);
+                        if (parsed.name && parsed.prompt) {
+                            aiText = responseText.substring(0, firstBrace) + "\n\n[Strategy Drafted - See Preview Panel] 👉";
+                            setCurrentDraft(parsed);
+                        }
+                    }
+                } catch (e) {
+                    console.error("Failed to parse fallback JSON strategy", e);
                 }
             }
 
