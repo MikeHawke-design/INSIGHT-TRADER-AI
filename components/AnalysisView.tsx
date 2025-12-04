@@ -3,6 +3,7 @@ import { AnalysisResults, StrategyKey, UploadedImageKeys, User, Trade, UserSetti
 
 import TradeCard from './TradeCard';
 import AISuggestionCard from './AISuggestionCard';
+import HeatMeter from './HeatMeter';
 
 
 interface AnalysisViewProps {
@@ -23,6 +24,51 @@ interface AnalysisViewProps {
 const TRADE_CATEGORIES: Array<keyof AnalysisResults> = ['Top Longs', 'Top Shorts'];
 
 const formatStrategyName = (name: string = ''): string => name.replace(/^\d+-/, '').replace(/-/g, ' ');
+
+const AssetComparisonCard: React.FC<{ result: any; userSettings: UserSettings }> = ({ result, userSettings }) => {
+    const [isExpanded, setIsExpanded] = React.useState(true);
+    const sentimentColors = {
+        'Bullish': 'text-green-400 bg-green-400/10 border-green-400/30',
+        'Bearish': 'text-red-400 bg-red-400/10 border-red-400/30',
+        'Neutral': 'text-gray-400 bg-gray-400/10 border-gray-400/30'
+    };
+    const sentimentColor = sentimentColors[result.sentiment as keyof typeof sentimentColors] || sentimentColors['Neutral'];
+
+    return (
+        <div className="bg-[hsl(var(--color-bg-800))] border border-[hsl(var(--color-border-700))] rounded-lg p-4 flex flex-col h-full animate-fadeIn">
+            <div className="flex justify-between items-start mb-4">
+                <div>
+                    <h3 className="font-bold text-white" style={{ fontSize: `${userSettings.headingFontSize}px` }}>{result.asset}</h3>
+                    <span className={`inline-block px-2 py-0.5 text-xs font-semibold rounded-full border mt-1 ${sentimentColor}`}>
+                        {result.sentiment.toUpperCase()}
+                    </span>
+                </div>
+                <div className="text-right">
+                    <span className="text-xs text-gray-500 block mb-1">Setup Potential</span>
+                    <HeatMeter level={result.heat} />
+                </div>
+            </div>
+
+            <div className="mt-2">
+                <div
+                    className="flex items-center cursor-pointer select-none mb-2"
+                    onClick={() => setIsExpanded(!isExpanded)}
+                >
+                    <p className="text-xs text-gray-400 font-semibold">Analysis:</p>
+                    <span className="ml-2 text-yellow-400 transition-transform duration-200" style={{ transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)' }}>▶</span>
+                </div>
+
+                {isExpanded && (
+                    <div className="bg-[hsl(var(--color-bg-900)/0.5)] p-3 rounded-md border border-[hsl(var(--color-border-700)/0.5)] text-gray-300 leading-relaxed animate-fadeIn" style={{ fontSize: `${userSettings.uiFontSize}px` }}>
+                        {result.brief.split('|||').map((segment: string, i: number) => (
+                            <p key={i} className="mb-2 last:mb-0">{segment.trim()}</p>
+                        ))}
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
 
 
 
@@ -150,9 +196,25 @@ const AnalysisView: React.FC<AnalysisViewProps> = ({
                 </div>
             )}
 
+            {analysisResults.assetComparisonResults && analysisResults.assetComparisonResults.length > 0 && (
+                <div className="mb-8">
+                    <h3 className="font-semibold text-white mb-3 border-b-2 border-blue-500 pb-2" style={{ fontSize: `${userSettings.headingFontSize}px` }}>Asset Comparison & Ranking</h3>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+                        {analysisResults.assetComparisonResults.map((result, index) => (
+                            <AssetComparisonCard key={index} result={result} userSettings={userSettings} />
+                        ))}
+                    </div>
+                </div>
+            )}
+
             {TRADE_CATEGORIES.map(category => {
                 const tradesToDisplay = getDisplayTrades(category);
                 const title = category === 'Top Longs' ? 'Top Long Setups' : 'Top Short Setups';
+
+                if (analysisResults.assetComparisonResults && analysisResults.assetComparisonResults.length > 0 && tradesToDisplay.length === 0) {
+                    return null;
+                }
+
                 return (
                     <div key={category}>
                         <h3 className="font-semibold text-white mb-3 border-b-2 border-yellow-500 pb-2" style={{ fontSize: `${userSettings.headingFontSize}px` }}>{title}</h3>

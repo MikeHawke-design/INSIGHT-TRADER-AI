@@ -42,12 +42,19 @@ export interface TradeFeedback {
 
 export type UploadedImageKeys = Record<number, string | null>;
 
+export interface AssetComparisonResult {
+    asset: string;
+    sentiment: 'Bullish' | 'Bearish' | 'Neutral';
+    heat: number;
+    brief: string;
+}
+
 export interface AnalysisResults {
     'Top Longs': Trade[];
     'Top Shorts': Trade[];
     strategySuggestion: StrategySuggestion;
     chartMetadata?: Record<string, string>;
-    assetComparisonResults?: any[]; // Keeping optional for backward compatibility if needed, but we are removing the feature
+    assetComparisonResults?: AssetComparisonResult[];
 }
 
 export interface SavedTrade extends Trade {

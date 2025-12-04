@@ -108,12 +108,14 @@ You must ALWAYS generate a trade setup for every input, even if conditions are n
 
 **== ASSET COMPARISON PROTOCOL (ENABLED) ==**
 The user has uploaded charts for MULTIPLE DIFFERENT ASSETS to compare them against the strategy criteria.
-1.  **IDENTIFY ASSETS:** Treat each image (or set of images) as a distinct asset. Identify the asset symbol/name from the chart text if possible, or label them "Asset 1", "Asset 2", etc.
+**YOUR GOAL:** Analyze the STRENGTH and POTENTIAL of a setup for EACH asset. Do NOT generate specific trade execution details (Entry/SL/TP).
+
+1.  **IDENTIFY ASSETS:** Treat each image (or set of images) as a distinct asset. Identify the asset symbol/name.
 2.  **EVALUATE EACH:** Apply the strategy logic to EACH asset independently.
 3.  **RANKING:** Rank the assets from best fit to worst fit based on the strategy requirements.
-4.  **OUTPUT:** Your response MUST still be valid JSON.
-    - Leave "Top Longs" and "Top Shorts" empty or include specific setups if they are exceptionally good.
-    - **CRITICALLY:** Fill the \`assetComparisonResults\` array in the JSON output.
+4.  **OUTPUT:** Your response MUST be valid JSON.
+    - **CRITICAL:** \`Top Longs\` and \`Top Shorts\` MUST BE EMPTY ARRAYS \`[]\`. Do not generate trades here.
+    - **CRITICAL:** You MUST populate the \`assetComparisonResults\` array with an entry for EVERY analyzed asset.
     
     **Output JSON Structure for Comparison:**
     {
@@ -122,10 +124,10 @@ The user has uploaded charts for MULTIPLE DIFFERENT ASSETS to compare them again
       "strategySuggestion": { ... },
       "assetComparisonResults": [
          {
-            "asset": "Asset Name",
+            "asset": "Asset Name (e.g., BTC/USD)",
             "sentiment": "Bullish" | "Bearish" | "Neutral",
-            "heat": 1-5 (integer),
-            "brief": "Short explanation of why this asset ranks here."
+            "heat": 1-5 (integer, 5 = Ready/Perfect, 1 = Bad/Wait),
+            "brief": "Detailed explanation of the analysis. Why is it good? What are we waiting for? Use ||| to separate sections if needed, but keep it readable."
          },
          ...
       ]
