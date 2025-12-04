@@ -5,10 +5,7 @@ import {
     Trade, StrategyLogicData, SavedTrade, TradeFeedback,
     KnowledgeBaseDocument, UserCourseProgress, SavedCoachingSession,
     ApiConfiguration,
-    EodhdUsageStats,
-    MarketDataCache,
     TokenUsageRecord,
-    SavedAssetComparison,
     UserUsage,
 } from './types';
 import {
@@ -16,11 +13,9 @@ import {
     DASHBOARD_STRATEGIES_LOCALSTORAGE_KEY, USER_SETTINGS_LOCALSTORAGE_KEY, SAVED_TRADES_LOCALSTORAGE_KEY,
     STRATEGY_LOGIC_LOCALSTORAGE_KEY, AUTH_SESSION_LOCALSTORAGE_KEY, KB_DOCS_LOCALSTORAGE_KEY,
     COURSE_PROGRESS_LOCALSTORAGE_KEY,
-    DEFAULT_API_CONFIGURATION, MARKET_DATA_CACHE_LOCALSTORAGE_KEY,
+    DEFAULT_API_CONFIGURATION,
     ADJECTIVES, NOUNS,
     COACHING_SESSIONS_LOCALSTORAGE_KEY, TOKEN_USAGE_HISTORY_LOCALSTORAGE_KEY,
-    DASHBOARD_MARKET_DATA_LOCALSTORAGE_KEY,
-    SAVED_ASSET_COMPARISONS_LOCALSTORAGE_KEY,
 } from './constants';
 import useLocalStorage from './hooks/useLocalStorage';
 import useSessionStorage from './hooks/useSessionStorage';
@@ -67,21 +62,15 @@ const App: React.FC = () => {
     const [userSettings, setUserSettings] = useLocalStorage<UserSettings>(USER_SETTINGS_LOCALSTORAGE_KEY, DEFAULT_USER_SETTINGS);
     const [apiConfig, setApiConfig] = useState<ApiConfiguration>(DEFAULT_API_CONFIGURATION);
     const [dashboardSelectedStrategies, setDashboardSelectedStrategies] = useLocalStorage<StrategyKey[]>(DASHBOARD_STRATEGIES_LOCALSTORAGE_KEY, []);
-    const [dashboardSelectedMarketData, setDashboardSelectedMarketData] = useLocalStorage<string[]>(DASHBOARD_MARKET_DATA_LOCALSTORAGE_KEY, []);
     const [strategyLogicData, setStrategyLogicData] = useLocalStorage<Record<StrategyKey, StrategyLogicData>>(STRATEGY_LOGIC_LOCALSTORAGE_KEY, {});
     const [savedTrades, setSavedTrades] = useLocalStorage<SavedTrade[]>(SAVED_TRADES_LOCALSTORAGE_KEY, []);
     const [knowledgeBaseDocuments, _setKnowledgeBaseDocuments] = useLocalStorage<KnowledgeBaseDocument[]>(KB_DOCS_LOCALSTORAGE_KEY, []);
     const [userCourseProgress, setUserCourseProgress] = useLocalStorage<UserCourseProgress>(COURSE_PROGRESS_LOCALSTORAGE_KEY, { completedLessons: [], quizScores: {}, exerciseStates: {} });
     const [savedCoachingSessions, setSavedCoachingSessions] = useLocalStorage<SavedCoachingSession[]>(COACHING_SESSIONS_LOCALSTORAGE_KEY, []);
-    const [savedAssetComparisons, setSavedAssetComparisons] = useLocalStorage<SavedAssetComparison[]>(SAVED_ASSET_COMPARISONS_LOCALSTORAGE_KEY, []);
     const [tokenUsageHistory, setTokenUsageHistory] = useLocalStorage<TokenUsageRecord[]>(TOKEN_USAGE_HISTORY_LOCALSTORAGE_KEY, []);
-    const [marketDataCache, setMarketDataCache] = useLocalStorage<MarketDataCache>(MARKET_DATA_CACHE_LOCALSTORAGE_KEY, {});
 
     // User Usage State
     const [userUsage, _setUserUsage] = useState<UserUsage>({ creditsRemaining: 9999 });
-
-    // Session-only State
-    const [eodhdUsage, setEodhdUsage] = useState<EodhdUsageStats | null>(null);
 
     // Modal & Coaching State
     const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
@@ -280,30 +269,7 @@ const App: React.FC = () => {
         }
     };
 
-    const handleFetchEodhdUsage = useCallback(async () => {
-        if (!apiConfig.eodhdApiKey) return;
-        try {
-            const url = `https://eodhd.com/api/user?api_token=${apiConfig.eodhdApiKey}&fmt=json`;
-            const response = await fetch(url);
-            if (!response.ok) throw new Error(`EODHD user API failed: ${response.statusText}`);
-            const data = await response.json();
-            setEodhdUsage({
-                dailyLimit: data.apiRequestsLimit,
-                usedCalls: data.apiRequests,
-                remainingCalls: data.apiRequestsLimit - data.apiRequests,
-                resetTimestamp: new Date(data.dailyRateLimitResetDate + ' UTC').getTime() / 1000
-            });
-        } catch (error) {
-            console.error(error);
-            setEodhdUsage(null);
-        }
-    }, [apiConfig.eodhdApiKey]);
 
-    const handleFetchAndLoadData = async (_symbol: string, _timeframe: string, _from: string, _to: string) => {
-        // Implementation of fetch market data (simulated or real depending on API key availability)
-        // ... (Existing implementation)
-        return { count: 0, key: '' }; // Placeholder for brevity, full implementation assumed
-    };
 
     return (
         <div className="bg-[hsl(var(--color-bg-900))] text-gray-100 min-h-screen flex flex-col">
@@ -400,8 +366,6 @@ const App: React.FC = () => {
                     dashboardSelectedStrategies={dashboardSelectedStrategies}
                     onDashboardStrategyChange={(key) => setDashboardSelectedStrategies(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key])}
                     onSetDashboardStrategies={setDashboardSelectedStrategies}
-                    dashboardSelectedMarketData={dashboardSelectedMarketData}
-                    setDashboardSelectedMarketData={setDashboardSelectedMarketData}
                     strategyLogicData={strategyLogicData}
                     knowledgeBaseDocuments={knowledgeBaseDocuments}
                     isAnalyzing={isAnalyzing}
@@ -412,8 +376,6 @@ const App: React.FC = () => {
                     onInitiateCoaching={(strat, goal, key) => { setCoachingContext({ strategy: strat, goal, strategyKey: key }); setActiveView('analyze'); }}
                     viewedStrategy={viewedStrategy}
                     setViewedStrategy={setViewedStrategy}
-                    marketDataCache={marketDataCache}
-                    onSaveAssetComparison={(comp) => setSavedAssetComparisons(prev => [comp, ...prev])}
                 />;
             case 'analyze_new':
                 return analysisResults ? (
@@ -424,8 +386,6 @@ const App: React.FC = () => {
                         uploadedImages={uploadedImagesForAnalysis}
                         onReset={handleResetAnalysis}
                         onPerformRedo={handlePerformRedo}
-                        onSaveAssetComparison={(comp) => setSavedAssetComparisons(prev => [comp, ...prev])}
-                        onAnalyzeAsset={() => setActiveView('analyze')}
                         currentUser={currentUser}
                         userUsage={userUsage}
                         savedTrades={savedTrades}
@@ -442,8 +402,6 @@ const App: React.FC = () => {
                     dashboardSelectedStrategies={dashboardSelectedStrategies}
                     onDashboardStrategyChange={(key) => setDashboardSelectedStrategies(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key])}
                     onSetDashboardStrategies={setDashboardSelectedStrategies}
-                    dashboardSelectedMarketData={dashboardSelectedMarketData}
-                    setDashboardSelectedMarketData={setDashboardSelectedMarketData}
                     strategyLogicData={strategyLogicData}
                     knowledgeBaseDocuments={knowledgeBaseDocuments}
                     isAnalyzing={isAnalyzing}
@@ -454,8 +412,6 @@ const App: React.FC = () => {
                     onInitiateCoaching={(strat, goal, key) => { setCoachingContext({ strategy: strat, goal, strategyKey: key }); setActiveView('analyze'); }}
                     viewedStrategy={viewedStrategy}
                     setViewedStrategy={setViewedStrategy}
-                    marketDataCache={marketDataCache}
-                    onSaveAssetComparison={(comp) => setSavedAssetComparisons(prev => [comp, ...prev])}
                 />;
             case 'journal':
                 return <JournalView
@@ -468,9 +424,6 @@ const App: React.FC = () => {
                     onUpdateCoachingSessionNotes={(sid, n) => setSavedCoachingSessions(prev => prev.map(s => s.id === sid ? { ...s, userNotes: n } : s))}
                     onDeleteCoachingSession={(sid) => setSavedCoachingSessions(prev => prev.filter(s => s.id !== sid))}
                     userSettings={userSettings}
-                    savedAssetComparisons={savedAssetComparisons}
-                    onUpdateAssetComparisonNotes={(id, n) => setSavedAssetComparisons(prev => prev.map(c => c.id === id ? { ...c, userNotes: n } : c))}
-                    onDeleteAssetComparison={(id) => setSavedAssetComparisons(prev => prev.filter(c => c.id !== id))}
                     onContinueSession={(session) => {
                         const strategy = strategyLogicData[session.strategyKey];
                         if (strategy) {
@@ -487,7 +440,7 @@ const App: React.FC = () => {
                 />;
             case 'settings':
                 return <MasterControlsView
-                    strategyLogicData={strategyLogicData} setStrategyLogicData={setStrategyLogicData} apiConfig={apiConfig} setApiConfig={setApiConfig} userSettings={userSettings} onUserSettingsChange={handleUserSettingsChange} currentUser={currentUser} tokenUsageHistory={tokenUsageHistory} onLogTokenUsage={handleLogTokenUsage} onOpenLegal={setActiveLegalModal} marketDataCache={marketDataCache} onFetchAndLoadData={handleFetchAndLoadData} onRemoveMarketData={(k) => setMarketDataCache(prev => { const n = { ...prev }; delete n[k]; return n; })} onRestoreData={handleRestoreData} eodhdUsage={eodhdUsage} onFetchEodhdUsage={handleFetchEodhdUsage} onNavClick={handleNavClick}
+                    strategyLogicData={strategyLogicData} setStrategyLogicData={setStrategyLogicData} apiConfig={apiConfig} setApiConfig={setApiConfig} userSettings={userSettings} onUserSettingsChange={handleUserSettingsChange} currentUser={currentUser} tokenUsageHistory={tokenUsageHistory} onLogTokenUsage={handleLogTokenUsage} onOpenLegal={setActiveLegalModal} onRestoreData={handleRestoreData} onNavClick={handleNavClick}
                 />;
             case 'academy':
                 return <AcademyView

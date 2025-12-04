@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { GoogleGenAI } from "@google/genai";
-import { ActiveView, StrategyKey, StrategyLogicData, User, UserSettings, TokenUsageRecord, ApiConfiguration, MarketDataCache, EodhdUsageStats, CourseModule, MarketDataCandle, RiskManagementSettings } from '../types';
+import { ActiveView, StrategyKey, StrategyLogicData, User, UserSettings, TokenUsageRecord, ApiConfiguration, CourseModule, RiskManagementSettings } from '../types';
 // @ts-ignore - pdfjs-dist doesn't have proper TypeScript declarations
 import * as pdfjsLib from 'pdfjs-dist/build/pdf.mjs';
 import JSZip from 'jszip';
@@ -9,7 +9,6 @@ import ConfirmationModal from './ConfirmationModal';
 import Logo from './Logo';
 import { ALL_PERSISTENT_STORAGE_KEYS } from '../constants';
 import { getAllEntries } from '../idb';
-import InteractiveChartModal from './InteractiveChartModal';
 import UserManualView from './UserManualView';
 import { generateAccessKey } from '../authUtils';
 import TradingDashboard from './TradingDashboard';
@@ -27,12 +26,7 @@ interface MasterControlsViewProps {
     tokenUsageHistory: TokenUsageRecord[];
     onLogTokenUsage: (tokens: number) => void;
     onOpenLegal: (type: 'privacy' | 'terms') => void;
-    marketDataCache: MarketDataCache;
-    onFetchAndLoadData: (symbol: string, timeframe: string, from: string, to: string) => Promise<{ count: number; key: string; }>;
-    onRemoveMarketData: (cacheKey: string) => void;
     onRestoreData: (data: Record<string, any>) => void;
-    eodhdUsage: EodhdUsageStats | null;
-    onFetchEodhdUsage: () => void;
     onNavClick: (view: ActiveView) => void;
 }
 
@@ -64,32 +58,9 @@ async function retryWithBackoff<T>(
     }
 }
 
-const EODHD_SYMBOLS = [
-    // Forex
-    'EURUSD.FOREX', 'GBPUSD.FOREX', 'USDJPY.FOREX', 'USDCHF.FOREX', 'AUDUSD.FOREX', 'USDCAD.FOREX', 'NZDUSD.FOREX',
-    'EURGBP.FOREX', 'EURJPY.FOREX', 'GBPJPY.FOREX',
-    // Crypto (Format: TICKER-CURRENCY.CC)
-    'BTC-USD.CC', 'ETH-USD.CC', 'XRP-USD.CC', 'ADA-USD.CC', 'SOL-USD.CC', 'LTC-USD.CC',
-    // Indices (Format: TICKER.INDX)
-    'GSPC.INDX',  // S&P 500
-    'NDX.INDX',   // NASDAQ 100
-    'DJI.INDX',   // Dow Jones Industrial Average
-    'VIX.INDX',   // CBOE Volatility Index
-    'DAX.INDX',   // DAX Performance-Index (Germany)
-    'FTSE.INDX',  // FTSE 100 (UK)
-    // Commodities
-    'XAUUSD.FOREX', // Gold
-    'XAGUSD.FOREX', // Silver
-    'CL.COMM',      // Crude Oil Futures
-    'NG.COMM',      // Natural Gas Futures
-    'HG.COMM',      // Copper Futures
-    // US Stocks (Format: TICKER.US)
-    'AAPL.US', 'MSFT.US', 'GOOGL.US', 'AMZN.US', 'TSLA.US', 'NVDA.US'
-];
-
 
 // --- ICONS ---
-const ViewIcon = (props: { className?: string }) => <svg {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M10 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z" /><path fillRule="evenodd" d="M.664 10.59a1.651 1.651 0 0 1 0-1.18l.88-1.473a1.65 1.65 0 0 1 1.505-.882H16.95a1.65 1.65 0 0 1 1.505.882l.88 1.473c.447.746.447 1.613 0 2.358l-.88 1.473a1.65 1.65 0 0 1-1.505.882H3.05a1.65 1.65 0 0 1-1.505-.882l-.88-1.473ZM2.65 9.7a.15.15 0 0 1 .136.08l.88 1.473a.15.15 0 0 0 .137.08H16.19a.15.15 0 0 0 .136-.08l.88-1.473a.15.15 0 0 1 0-.16l-.88-1.473a.15.15 0 0 0-.136-.08H3.05a.15.15 0 0 0-.136.08l-.88 1.473a.15.15 0 0 1 0 .16Z" clipRule="evenodd" /></svg>;
+
 const EditIcon = (props: { className?: string }) => <svg {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M2.695 14.763l-1.262 3.154a.5.5 0 0 0 .65.65l3.155-1.262a4 4 0 0 0 1.343-.885L17.5 5.5a2.121 2.121 0 0 0-3-3L3.58 13.42a4 4 0 0 0-.885 1.343Z" /></svg>;
 const TrashIcon = (props: { className?: string }) => <svg {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M8.75 1A2.75 2.75 0 0 0 6 3.75v.443c-.795.077-1.58.22-2.365.468a.75.75 0 1 0 .214 1.482l.025.007c.786.246 1.573.393 2.37.468v6.618A2.75 2.75 0 0 0 8.75 18h2.5A2.75 2.75 0 0 0 14 15.25V5.162c.797-.075 1.585-.222 2.37-.468a.75.75 0 1 0-.214-1.482l-.025-.007a33.58 33.58 0 0 0-2.365-.468V3.75A2.75 2.75 0 0 0 11.25 1h-2.5ZM10 4c.84 0 1.673.025 2.5.075V15.25a1.25 1.25 0 0 1-1.25 1.25h-2.5A1.25 1.25 0 0 1 7.5 15.25V4.075C8.327 4.025 9.16 4 10 4Z" clipRule="evenodd" /></svg>;
 const ToggleOnIcon = (props: { className?: string }) => <svg {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path fillRule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25Zm4.28 10.28a.75.75 0 0 0 0-1.06l-3-3a.75.75 0 1 0-1.06 1.06l1.72 1.72H8.25a.75.75 0 0 0 0 1.5h5.69l-1.72 1.72a.75.75 0 1 0 1.06 1.06l3-3Z" clipRule="evenodd" /></svg>;
@@ -111,12 +82,7 @@ export const MasterControlsView: React.FC<MasterControlsViewProps> = ({
     tokenUsageHistory: _tokenUsageHistory,
     onLogTokenUsage,
     onOpenLegal,
-    marketDataCache,
-    onFetchAndLoadData,
-    onRemoveMarketData,
     onRestoreData,
-    eodhdUsage,
-    onFetchEodhdUsage,
     onNavClick: _onNavClick,
 }) => {
     const [activeTab, setActiveTab] = useState<'strategies' | 'settings' | 'data' | 'manual' | 'trading'>('strategies');
@@ -159,11 +125,6 @@ export const MasterControlsView: React.FC<MasterControlsViewProps> = ({
     // Data Management State
     const [isExporting, setIsExporting] = useState(false);
     const backupFileInputRef = useRef<HTMLInputElement>(null);
-    const [marketDataForm, setMarketDataForm] = useState({ symbol: '', timeframe: 'D', from: '', to: '' });
-    const [isFetchingData, setIsFetchingData] = useState(false);
-    const [fetchDataMessage, setFetchDataMessage] = useState('');
-    const [cacheKeyToDelete, setCacheKeyToDelete] = useState<string | null>(null);
-    const [viewingChartData, setViewingChartData] = useState<{ key: string, data: MarketDataCandle[] } | null>(null);
 
     // General State
     const [error, setError] = useState<string | null>(null);
@@ -194,15 +155,11 @@ export const MasterControlsView: React.FC<MasterControlsViewProps> = ({
 
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const today = useMemo(() => new Date().toISOString().split('T')[0], []);
 
 
 
-    useEffect(() => {
-        if (activeTab === 'data' && apiConfig.eodhdApiKey) {
-            onFetchEodhdUsage();
-        }
-    }, [activeTab, apiConfig.eodhdApiKey, onFetchEodhdUsage]);
+
+
 
     const getAiClient = useCallback(() => {
         const apiKey = apiConfig.geminiApiKey || import.meta.env.VITE_API_KEY;
@@ -606,20 +563,7 @@ export const MasterControlsView: React.FC<MasterControlsViewProps> = ({
         e.target.value = '';
     };
 
-    const handleFetchMarketData = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setIsFetchingData(true);
-        setFetchDataMessage('');
-        try {
-            const { count, key } = await onFetchAndLoadData(marketDataForm.symbol, marketDataForm.timeframe, marketDataForm.from, marketDataForm.to);
-            setFetchDataMessage(`Success! Fetched ${count} candles for ${key}.`);
-        } catch (error) {
-            const message = error instanceof Error ? error.message : "An unknown error occurred.";
-            setFetchDataMessage(`Error: ${message}`);
-        } finally {
-            setIsFetchingData(false);
-        }
-    };
+
 
     const { parentStrategies, childrenByParent } = useMemo(() => {
         const parents: [StrategyKey, StrategyLogicData][] = [];
@@ -716,82 +660,6 @@ export const MasterControlsView: React.FC<MasterControlsViewProps> = ({
                     <input type="file" ref={backupFileInputRef} onChange={handleBackupFileChange} className="hidden" accept=".json,.zip" />
                 </div>
             </div>
-
-            <div className="bg-gray-900/50 p-4 rounded-lg border border-gray-700">
-                <h4 className="font-semibold text-white mb-3">Market Data Feed (EODHD)</h4>
-                {!apiConfig.eodhdApiKey ? (
-                    <div className="space-y-2">
-                        <p className="text-sm text-yellow-300">To fetch historical market data, please configure your EODHD API key in the <strong>Settings</strong> tab.</p>
-                        <button onClick={() => setActiveTab('settings')} className="text-blue-400 hover:text-blue-300 text-sm underline">Go to Settings</button>
-                    </div>
-                ) : (
-                    <>
-                        {eodhdUsage && (
-                            <div className="text-sm text-gray-400 mb-4 p-3 bg-gray-800 rounded-md border border-gray-700/50">
-                                API Usage: <span className="font-bold text-white">{eodhdUsage.usedCalls || 0} / {eodhdUsage.dailyLimit || 'N/A'}</span> calls used.
-                                {eodhdUsage.resetTimestamp && !isNaN(eodhdUsage.resetTimestamp) ? (
-                                    <> Resets at <span className="font-bold text-white">{new Date(eodhdUsage.resetTimestamp * 1000).toLocaleTimeString()}</span>.</>
-                                ) : ' Reset time unknown.'}
-                            </div>
-                        )}
-                        <form onSubmit={handleFetchMarketData} className="space-y-4">
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                                <div>
-                                    <label htmlFor="symbol" className="block text-xs font-medium text-gray-400">Symbol</label>
-                                    <input list="symbols" id="symbol" value={marketDataForm.symbol} onChange={e => setMarketDataForm(p => ({ ...p, symbol: e.target.value.toUpperCase() }))} required className="mt-1 w-full bg-gray-700 border border-gray-600 p-2 rounded-md text-sm" />
-                                    <datalist id="symbols">
-                                        {EODHD_SYMBOLS.map(s => <option key={s} value={s} />)}
-                                    </datalist>
-                                </div>
-                                <div>
-                                    <label htmlFor="timeframe" className="block text-xs font-medium text-gray-400">Timeframe</label>
-                                    <select id="timeframe" value={marketDataForm.timeframe} onChange={e => setMarketDataForm(p => ({ ...p, timeframe: e.target.value }))} required className="mt-1 w-full bg-gray-700 border border-gray-600 p-2 rounded-md text-sm">
-                                        <option value="D">Daily</option>
-                                        <option value="W">Weekly</option>
-                                        <option value="M">Monthly</option>
-                                        <option value="1h">1 Hour</option>
-                                        <option value="5m">5 Minute</option>
-                                        <option value="1m">1 Minute</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label htmlFor="from" className="block text-xs font-medium text-gray-400">From</label>
-                                    <input type="date" id="from" value={marketDataForm.from} onChange={e => setMarketDataForm(p => ({ ...p, from: e.target.value }))} required className="mt-1 w-full bg-gray-700 border border-gray-600 p-2 rounded-md text-sm" max={marketDataForm.to || today} />
-                                </div>
-                                <div>
-                                    <label htmlFor="to" className="block text-xs font-medium text-gray-400">To</label>
-                                    <input type="date" id="to" value={marketDataForm.to} onChange={e => setMarketDataForm(p => ({ ...p, to: e.target.value }))} required className="mt-1 w-full bg-gray-700 border border-gray-600 p-2 rounded-md text-sm" min={marketDataForm.from} max={today} />
-                                </div>
-                            </div>
-                            <button type="submit" disabled={isFetchingData} className="w-full font-semibold py-2 px-4 rounded-lg bg-blue-600 hover:bg-blue-500 text-white disabled:bg-gray-500">
-                                {isFetchingData ? 'Fetching...' : 'Fetch & Cache Data'}
-                            </button>
-                            {fetchDataMessage && <p className={`text-sm text-center ${fetchDataMessage.startsWith('Error') ? 'text-red-400' : 'text-green-400'}`}>{fetchDataMessage}</p>}
-                        </form>
-                    </>
-                )}
-            </div>
-
-            <div className="bg-gray-900/50 p-4 rounded-lg border border-gray-700">
-                <h4 className="font-semibold text-white mb-3">Cached Market Data</h4>
-                <div className="max-h-96 overflow-y-auto pr-2 space-y-2">
-                    {Object.keys(marketDataCache).length > 0 ? Object.entries(marketDataCache).map(([key, data]) => (
-                        <div key={key} className="bg-gray-800 p-3 rounded-md flex justify-between items-center">
-                            <div>
-                                <p className="font-semibold text-white">{key}</p>
-                                <p className="text-xs text-gray-400">
-                                    {/* SAFE CHECK ADDED: Ensure data is array before accessing length */}
-                                    {Array.isArray(data) ? (data as MarketDataCandle[]).length : 0} candles
-                                </p>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <button onClick={() => setViewingChartData({ key, data: data as MarketDataCandle[] })} className="p-2 text-gray-400 hover:text-blue-400 rounded-full hover:bg-blue-500/10"><ViewIcon className="w-5 h-5" /></button>
-                                <button onClick={() => setCacheKeyToDelete(key)} className="p-2 text-gray-500 hover:text-red-400 rounded-full hover:bg-red-500/10"><TrashIcon className="w-5 h-5" /></button>
-                            </div>
-                        </div>
-                    )) : <p className="text-sm text-gray-500 text-center py-4">No data cached yet.</p>}
-                </div>
-            </div>
         </div>
     );
 
@@ -811,47 +679,6 @@ export const MasterControlsView: React.FC<MasterControlsViewProps> = ({
                                 className="w-full bg-gray-800 border border-gray-600 rounded p-2 text-white focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 outline-none"
                             />
                             <p className="text-xs text-gray-500 mt-1">Required for AI analysis. Your key is stored locally in your browser.</p>
-                        </div>
-                        <div>
-                            <label className="block font-medium text-sm text-gray-300 mb-1">EODHD API Key (Optional)</label>
-                            <input
-                                type="password"
-                                value={localApiKeys.eodhdApiKey}
-                                onChange={(e) => setLocalApiKeys(prev => ({ ...prev, eodhdApiKey: e.target.value }))}
-                                placeholder="Enter EODHD API Key for market data"
-                                className="w-full bg-gray-800 border border-gray-600 rounded p-2 text-white focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 outline-none"
-                            />
-                        </div>
-                        <div>
-                            <label className="block font-medium text-sm text-gray-300 mb-1">MEXC API Key (For Live Trading)</label>
-                            <input
-                                type="password"
-                                value={localApiKeys.mexcApiKey || ''}
-                                onChange={(e) => setLocalApiKeys(prev => ({ ...prev, mexcApiKey: e.target.value }))}
-                                placeholder="Enter your MEXC API Key"
-                                className="w-full bg-gray-800 border border-gray-600 rounded p-2 text-white focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 outline-none"
-                            />
-                            <p className="text-xs text-gray-500 mt-1">Optional. Required for live trade execution on MEXC exchange.</p>
-                        </div>
-                        <div>
-                            <label className="block font-medium text-sm text-gray-300 mb-1">MEXC Secret Key</label>
-                            <input
-                                type="password"
-                                value={localApiKeys.mexcSecretKey || ''}
-                                onChange={(e) => setLocalApiKeys(prev => ({ ...prev, mexcSecretKey: e.target.value }))}
-                                placeholder="Enter your MEXC Secret Key"
-                                className="w-full bg-gray-800 border border-gray-600 rounded p-2 text-white focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 outline-none"
-                            />
-                            <p className="text-xs text-gray-500 mt-1">Keep this secure. Never share your secret key.</p>
-                        </div>
-                        <div className="bg-yellow-900/30 border border-yellow-500/30 rounded-md p-3">
-                            <p className="text-yellow-300 font-semibold text-sm">⚠️ MEXC API Security</p>
-                            <ul className="text-xs text-gray-300 mt-2 space-y-1 list-disc list-inside">
-                                <li>Enable "Trade" permission when creating your API key</li>
-                                <li>DO NOT enable "Withdraw" permission for security</li>
-                                <li>Consider using IP whitelist for added security</li>
-                                <li>Keys are stored locally and encrypted</li>
-                            </ul>
                         </div>
                         <div className="flex items-center gap-3">
                             <button
@@ -1008,7 +835,6 @@ export const MasterControlsView: React.FC<MasterControlsViewProps> = ({
                 {activeTab === 'trading' && (
                     <div className="p-6">
                         <TradingDashboard
-                            apiConfig={apiConfig}
                             riskSettings={riskSettings}
                             onUpdateRiskSettings={setRiskSettings}
                         />
@@ -1029,22 +855,7 @@ export const MasterControlsView: React.FC<MasterControlsViewProps> = ({
                 message={`Are you sure you want to delete the "${strategyToDelete ? strategyLogicData[strategyToDelete]?.name : ''}" strategy? This action cannot be undone.`}
             />
 
-            <ConfirmationModal
-                isOpen={!!cacheKeyToDelete}
-                onConfirm={() => { onRemoveMarketData(cacheKeyToDelete!); setCacheKeyToDelete(null); }}
-                onCancel={() => setCacheKeyToDelete(null)}
-                title="Confirm Deletion"
-                message={`Are you sure you want to delete the cached data for "${cacheKeyToDelete}"?`}
-            />
 
-            {viewingChartData && (
-                <InteractiveChartModal
-                    isOpen={!!viewingChartData}
-                    onClose={() => setViewingChartData(null)}
-                    chartData={viewingChartData.data}
-                    title={viewingChartData.key}
-                />
-            )}
 
             {isFinalizeModalOpen && pendingStrategy && (
                 <div className="fixed inset-0 bg-gray-900/80 z-50 flex items-center justify-center p-4 animate-fadeIn">

@@ -92,6 +92,38 @@ const AddResultImageIcon = (props: { className?: string }) => (
     </svg>
 );
 
+const ClipboardIcon = (props: { className?: string }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" {...props}>
+        <path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" />
+        <path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z" />
+    </svg>
+);
+
+const CheckIcon = (props: { className?: string }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" {...props}>
+        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+    </svg>
+);
+
+const CopyButton = ({ text, className }: { text: string, className?: string }) => {
+    const [copied, setCopied] = useState(false);
+
+    const handleCopy = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        // Strip HTML tags if present
+        const cleanText = text.replace(/<[^>]*>/g, '').trim();
+        navigator.clipboard.writeText(cleanText);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
+
+    return (
+        <button onClick={handleCopy} className={`text-gray-500 hover:text-white transition-colors p-1 rounded hover:bg-gray-700 ${className}`} title="Copy to clipboard">
+            {copied ? <CheckIcon className="w-3 h-3 text-green-400" /> : <ClipboardIcon className="w-3 h-3" />}
+        </button>
+    );
+};
+
 const EditIcon = (props: { className?: string }) => (
     <svg {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
         <path d="M5.433 13.917l1.262-3.155A4 4 0 0 1 7.58 9.42l6.92-6.918a2.121 2.121 0 0 1 3 3l-6.92 6.918a4 4 0 0 1-1.343.885l-3.154 1.262a.5.5 0 0 1-.65-.65Z" />
@@ -293,7 +325,10 @@ const TradeCard: React.FC<TradeCardProps> = ({
                     <div className="grid grid-cols-2 gap-x-4 gap-y-3">
                         <div className="col-span-2 text-left">
                             <p className="text-gray-400 uppercase font-semibold" style={{ fontSize: `${userSettings.uiFontSize - 2}px` }}>Entry</p>
-                            <div className={`${isEntryDescriptive ? '' : 'font-mono text-center'} font-bold text-white mt-1`} style={{ fontSize: `${isEntryDescriptive ? userSettings.dataFontSize - 2 : userSettings.dataFontSize}px`, lineHeight: isEntryDescriptive ? '1.5' : '1' }} dangerouslySetInnerHTML={{ __html: trade.entry || '-' }} />
+                            <div className="flex items-center justify-center gap-2 mt-1">
+                                <div className={`${isEntryDescriptive ? '' : 'font-mono text-center'} font-bold text-white`} style={{ fontSize: `${isEntryDescriptive ? userSettings.dataFontSize - 2 : userSettings.dataFontSize}px`, lineHeight: isEntryDescriptive ? '1.5' : '1' }} dangerouslySetInnerHTML={{ __html: trade.entry || '-' }} />
+                                <CopyButton text={trade.entry} />
+                            </div>
                             <div className={`mt-1 flex items-center ${isEntryDescriptive ? 'justify-start' : 'justify-center'} space-x-2`}>
                                 <span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${trade.entryType === 'Limit Order' ? 'bg-blue-600 text-blue-100' : 'bg-orange-600 text-orange-100'}`}>{trade.entryType}</span>
                                 {trade.entryType === 'Confirmation Entry' && trade.entryExplanation && (
@@ -308,7 +343,10 @@ const TradeCard: React.FC<TradeCardProps> = ({
                         </div>
                         <div className="col-span-2 text-left">
                             <p className="text-red-400 uppercase font-semibold" style={{ fontSize: `${userSettings.uiFontSize - 2}px` }}>Stop Loss</p>
-                            <div className={`${isSlDescriptive ? '' : 'font-mono text-center'} font-bold text-white mt-1`} style={{ fontSize: `${isSlDescriptive ? userSettings.dataFontSize - 2 : userSettings.dataFontSize}px`, lineHeight: isSlDescriptive ? '1.5' : '1' }} dangerouslySetInnerHTML={{ __html: trade.stopLoss || '-' }} />
+                            <div className="flex items-center justify-center gap-2 mt-1">
+                                <div className={`${isSlDescriptive ? '' : 'font-mono text-center'} font-bold text-white`} style={{ fontSize: `${isSlDescriptive ? userSettings.dataFontSize - 2 : userSettings.dataFontSize}px`, lineHeight: isSlDescriptive ? '1.5' : '1' }} dangerouslySetInnerHTML={{ __html: trade.stopLoss || '-' }} />
+                                <CopyButton text={trade.stopLoss} />
+                            </div>
                         </div>
                         <div className="col-span-2 text-center py-2 my-1 border-y-2 border-[hsl(var(--color-border-700)/0.5)]">
                             <p className={`font-mono font-bold ${rrColor}`} style={{ fontSize: `${userSettings.dataFontSize + 8}px` }}>{rr.toFixed(2)} : 1</p>
@@ -316,11 +354,17 @@ const TradeCard: React.FC<TradeCardProps> = ({
                         </div>
                         <div className="text-center">
                             <p className="text-green-400 uppercase font-semibold" style={{ fontSize: `${userSettings.uiFontSize - 2}px` }}>TP 1</p>
-                            <p className="font-mono font-bold text-white" style={{ fontSize: `${userSettings.dataFontSize}px` }} dangerouslySetInnerHTML={{ __html: trade.takeProfit1 }} />
+                            <div className="flex items-center justify-center gap-2">
+                                <p className="font-mono font-bold text-white" style={{ fontSize: `${userSettings.dataFontSize}px` }} dangerouslySetInnerHTML={{ __html: trade.takeProfit1 }} />
+                                <CopyButton text={trade.takeProfit1} />
+                            </div>
                         </div>
                         <div className="text-center">
                             <p className="text-green-400 uppercase font-semibold" style={{ fontSize: `${userSettings.uiFontSize - 2}px` }}>TP 2</p>
-                            <p className="font-mono font-bold text-white" style={{ fontSize: `${userSettings.dataFontSize}px` }} dangerouslySetInnerHTML={{ __html: trade.takeProfit2 }} />
+                            <div className="flex items-center justify-center gap-2">
+                                <p className="font-mono font-bold text-white" style={{ fontSize: `${userSettings.dataFontSize}px` }} dangerouslySetInnerHTML={{ __html: trade.takeProfit2 }} />
+                                <CopyButton text={trade.takeProfit2} />
+                            </div>
                         </div>
                     </div>
 

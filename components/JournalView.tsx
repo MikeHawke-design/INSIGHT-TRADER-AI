@@ -1,7 +1,7 @@
 
 // ... (Previous imports and components remain the same until JournalView main component)
 import React, { useMemo, useState, useEffect, useRef, useCallback } from 'react';
-import { SavedTrade, TradeFeedback, StrategyLogicData, StrategyKey, SavedCoachingSession, UserSettings, SavedAssetComparison } from '../types';
+import { SavedTrade, TradeFeedback, StrategyLogicData, StrategyKey, SavedCoachingSession, UserSettings } from '../types';
 import TradeCard from './TradeCard';
 import PerformanceChart from './PerformanceChart';
 import ConfirmationModal from './ConfirmationModal';
@@ -15,19 +15,7 @@ const TrashIcon = (props: { className?: string }) => <svg {...props} xmlns="http
 
 const UploadIcon = (props: { className?: string }) => <svg {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M9.25 13.25a.75.75 0 0 0 1.5 0V4.636l2.955 3.129a.75.75 0 0 0 1.09-1.03l-4.25-4.5a.75.75 0 0 0-1.09 0l-4.25 4.5a.75.75 0 0 0 1.09 1.03L9.25 4.636V13.25Z" /><path d="M3.5 12.75a.75.75 0 0 0-1.5 0v2.5A2.75 2.75 0 0 0 4.75 18h10.5A2.75 2.75 0 0 0 18 15.25v-2.5a.75.75 0 0 0-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5Z" /></svg>;
 const ScreenIcon = (props: { className?: string }) => <svg {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M3.25 3A2.25 2.25 0 0 0 1 5.25v9.5A2.25 2.25 0 0 0 3.25 17h13.5A2.25 2.25 0 0 0 19 14.75v-9.5A2.25 2.25 0 0 0 16.75 3H3.25Zm12.5 11.5H4.25a.75.75 0 0 1-.75-.75V6.25a.75.75 0 0 1 .75-.75h11.5a.75.75 0 0 1 .75.75v8.5a.75.75 0 0 1-.75-.75Z" clipRule="evenodd" /></svg>;
-const HeatMeter: React.FC<{ level: number; }> = ({ level }) => {
-    const colors = ['bg-gray-600', 'bg-red-500', 'bg-orange-500', 'bg-yellow-400', 'bg-green-500', 'bg-teal-400'];
-    return (
-        <div className="flex items-center space-x-1">
-            <span className="text-xs font-medium text-gray-400">Heat:</span>
-            <div className="flex space-x-1">
-                {Array.from({ length: 5 }).map((_, i) => (
-                    <div key={i} className={`w-3 h-4 rounded-sm ${i < level ? colors[Math.min(level, colors.length - 1)] : 'bg-gray-700'}`}></div>
-                ))}
-            </div>
-        </div>
-    );
-};
+
 
 const ChatMessageImage: React.FC<{ imageKey: string }> = ({ imageKey }) => {
     const [imageUrl, setImageUrl] = useState<string | null>(null);
@@ -60,20 +48,7 @@ const ChatMessageImage: React.FC<{ imageKey: string }> = ({ imageKey }) => {
     );
 };
 
-const IdbImage: React.FC<{ imageKey: string, className?: string }> = ({ imageKey, className }) => {
-    const [imageUrl, setImageUrl] = useState<string | null>(null);
-    useEffect(() => {
-        let isMounted = true;
-        getImage(imageKey).then(url => {
-            if (isMounted && url) setImageUrl(url);
-        });
-        return () => { isMounted = false; };
-    }, [imageKey]);
 
-    if (!imageUrl) return <div className={`animate-pulse bg-gray-700 rounded-md ${className}`}></div>;
-
-    return <img src={imageUrl} alt="Journaled asset" className={className} />;
-}
 
 const ExpandIcon = (props: { className?: string }) => <svg {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M3 10a.75.75 0 0 1 .75-.75h10.5a.75.75 0 0 1 0 1.5H3.75A.75.75 0 0 1 3 10Z" clipRule="evenodd" /><path fillRule="evenodd" d="M.22 10a.75.75 0 0 1 .75-.75h18.06a.75.75 0 0 1 0 1.5H.97a.75.75 0 0 1-.75-.75ZM9.25 4.122a.75.75 0 0 1 1.5 0v11.756a.75.75 0 0 1-1.5 0V4.122ZM10 .22a.75.75 0 0 1 .75.75v18.06a.75.75 0 0 1-1.5 0V.97a.75.75 0 0 1 .75-.75Z" clipRule="evenodd" /></svg>;
 const CompressIcon = (props: { className?: string }) => <svg {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M6.22 8.22a.75.75 0 0 1 1.06 0l1.97 1.97V6.75a.75.75 0 0 1 1.5 0v4.5a.75.75 0 0 1-.75.75h-4.5a.75.75 0 0 1 0-1.5h3.44L6.22 9.28a.75.75 0 0 1 0-1.06Z" /><path d="M13.78 11.78a.75.75 0 0 1-1.06 0l-1.97-1.97v3.44a.75.75 0 0 1-1.5 0v-4.5a.75.75 0 0 1 .75-.75h4.5a.75.75 0 0 1 0 1.5h-3.44l1.97 1.97a.75.75 0 0 1 0 1.06Z" /></svg>;
@@ -99,9 +74,6 @@ interface JournalViewProps {
     onUpdateCoachingSessionNotes: (sessionId: string, notes: string) => void;
     onDeleteCoachingSession: (sessionId: string) => void;
     userSettings: UserSettings;
-    savedAssetComparisons: SavedAssetComparison[];
-    onUpdateAssetComparisonNotes: (id: string, notes: string) => void;
-    onDeleteAssetComparison: (id: string) => void;
     onContinueSession: (session: SavedCoachingSession) => void;
 }
 
@@ -148,12 +120,9 @@ const JournalView: React.FC<JournalViewProps> = ({
     onUpdateCoachingSessionNotes,
     onDeleteCoachingSession,
     userSettings,
-    savedAssetComparisons,
-    onUpdateAssetComparisonNotes,
-    onDeleteAssetComparison,
     onContinueSession
 }) => {
-    const [activeTab, setActiveTab] = useState<'trades' | 'comparisons' | 'mentorship'>('trades');
+    const [activeTab, setActiveTab] = useState<'trades' | 'mentorship'>('trades');
 
     const [tradeToRemove, setTradeToRemove] = useState<SavedTrade | null>(null);
     const [viewingImagesForTrade, setViewingImagesForTrade] = useState<SavedTrade | null>(null);
@@ -171,7 +140,7 @@ const JournalView: React.FC<JournalViewProps> = ({
 
     const [expandedSessionId, setExpandedSessionId] = useState<string | null>(null);
     const [sessionNotes, setSessionNotes] = useState<Record<string, string>>({});
-    const [sessionToDelete, setSessionToDelete] = useState<SavedCoachingSession | SavedAssetComparison | null>(null);
+    const [sessionToDelete, setSessionToDelete] = useState<SavedCoachingSession | null>(null);
 
     const [sessionFontSize, setSessionFontSize] = useState<number>(14);
     const [fullscreenSessionId, setFullscreenSessionId] = useState<string | null>(null);
@@ -193,11 +162,7 @@ const JournalView: React.FC<JournalViewProps> = ({
 
     const handleConfirmSessionRemove = () => {
         if (sessionToDelete) {
-            if ('chatHistory' in sessionToDelete) {
-                onDeleteCoachingSession(sessionToDelete.id);
-            } else {
-                onDeleteAssetComparison(sessionToDelete.id);
-            }
+            onDeleteCoachingSession(sessionToDelete.id);
             setSessionToDelete(null);
         }
     };
@@ -304,26 +269,20 @@ const JournalView: React.FC<JournalViewProps> = ({
         setSessionNotes(prev => ({ ...prev, [sessionId]: text }));
     };
 
-    const handleSaveNotes = (sessionId: string, type: 'coaching' | 'comparison') => {
+    const handleSaveNotes = (sessionId: string) => {
         if (sessionNotes[sessionId] !== undefined) {
-            if (type === 'coaching') {
-                onUpdateCoachingSessionNotes(sessionId, sessionNotes[sessionId]);
-            } else {
-                onUpdateAssetComparisonNotes(sessionId, sessionNotes[sessionId]);
-            }
+            onUpdateCoachingSessionNotes(sessionId, sessionNotes[sessionId]);
         }
     };
 
-    const handleToggleExpandSession = (sessionId: string, type: 'coaching' | 'comparison') => {
+    const handleToggleExpandSession = (sessionId: string) => {
         setExpandedSessionId(prev => {
-            const newId = `${type}-${sessionId}`;
+            const newId = `coaching-${sessionId}`;
             if (prev === newId) {
-                handleSaveNotes(sessionId, type);
+                handleSaveNotes(sessionId);
                 return null;
             } else {
-                const session = type === 'coaching'
-                    ? savedCoachingSessions.find(s => s.id === sessionId)
-                    : savedAssetComparisons.find(c => c.id === sessionId);
+                const session = savedCoachingSessions.find(s => s.id === sessionId);
                 if (session) {
                     setSessionNotes(prev => ({ ...prev, [sessionId]: session.userNotes }));
                 }
@@ -385,7 +344,6 @@ const JournalView: React.FC<JournalViewProps> = ({
 
     const sortedTradesForDisplay = [...savedTrades].sort((a, b) => new Date(b.savedDate).getTime() - new Date(a.savedDate).getTime());
     const sortedSessionsForDisplay = [...savedCoachingSessions].sort((a, b) => new Date(b.savedDate).getTime() - new Date(a.savedDate).getTime());
-    const sortedComparisonsForDisplay = [...savedAssetComparisons].sort((a, b) => new Date(b.savedDate).getTime() - new Date(a.savedDate).getTime());
 
     const renderCoachingLogModal = () => {
         if (!viewingCoachingLogForTrade) return null;
@@ -504,82 +462,13 @@ const JournalView: React.FC<JournalViewProps> = ({
             </div>
             <div className={`space-y-2 mt-2 ${isFullscreenView ? 'flex-shrink-0 w-full' : ''}`}>
                 <label htmlFor={`notes-${session.id}`} className="block font-medium text-gray-300" style={{ fontSize: `${userSettings.uiFontSize}px` }}>Your Notes & Reflections:</label>
-                <textarea id={`notes-${session.id}`} value={sessionNotes[session.id] || ''} onChange={e => handleNotesChange(session.id, e.target.value)} onBlur={() => handleSaveNotes(session.id, 'coaching')} rows={4} className="w-full bg-gray-900 p-2 rounded-md text-gray-200 border border-gray-600 focus:ring-yellow-500 focus:border-yellow-500" placeholder="e.g., This trade worked well because..." style={{ fontSize: `${userSettings.uiFontSize}px` }} />
+                <label htmlFor={`notes-${session.id}`} className="block font-medium text-gray-300" style={{ fontSize: `${userSettings.uiFontSize}px` }}>Your Notes & Reflections:</label>
+                <textarea id={`notes-${session.id}`} value={sessionNotes[session.id] || ''} onChange={e => handleNotesChange(session.id, e.target.value)} onBlur={() => handleSaveNotes(session.id)} rows={4} className="w-full bg-gray-900 p-2 rounded-md text-gray-200 border border-gray-600 focus:ring-yellow-500 focus:border-yellow-500" placeholder="e.g., This trade worked well because..." style={{ fontSize: `${userSettings.uiFontSize}px` }} />
             </div>
         </>
     );
 
-    const renderAssetComparisons = () => (
-        <div className="space-y-4">
-            <div className="text-center p-4 bg-[hsl(var(--color-bg-800))] rounded-lg border border-gray-700">
-                <h3 className="font-bold text-yellow-400 mb-2" style={{ fontSize: `${userSettings.headingFontSize}px` }}>Saved Asset Comparisons</h3>
-                <p className="text-gray-400" style={{ fontSize: `${userSettings.uiFontSize}px` }}>Review your past market scans and add notes.</p>
-            </div>
-            {sortedComparisonsForDisplay.length > 0 ? (
-                sortedComparisonsForDisplay.map(comp => (
-                    <div key={comp.id} className="bg-[hsl(var(--color-bg-800))] rounded-lg border border-gray-700 group">
-                        <div className="w-full p-4 text-left flex justify-between items-center">
-                            <div className="flex-grow cursor-pointer" onClick={() => handleToggleExpandSession(comp.id, 'comparison')}>
-                                <p className="font-bold text-white" style={{ fontSize: `${userSettings.headingFontSize - 2}px` }}>
-                                    Comparison using: <span className="text-purple-300">{strategyLogicData[comp.strategyKey]?.name || comp.strategyKey}</span>
-                                </p>
-                                <p className="text-xs text-gray-500">Saved: {new Date(comp.savedDate).toLocaleString()}</p>
-                            </div>
-                            <div className="flex items-center gap-1">
-                                <button onClick={(e) => { e.stopPropagation(); setSessionToDelete(comp); }} className="p-2 rounded-full text-gray-500 hover:text-red-400 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-opacity" title="Delete Comparison">
-                                    <TrashIcon className="w-5 h-5" />
-                                </button>
-                                <button onClick={() => handleToggleExpandSession(comp.id, 'comparison')} className="p-1">
-                                    <span className={`transition-transform duration-300 ${expandedSessionId === `comparison-${comp.id}` ? 'rotate-180' : ''}`}>
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-                                    </span>
-                                </button>
-                            </div>
-                        </div>
-                        {expandedSessionId === `comparison-${comp.id}` && (
-                            <div className="p-4 border-t border-gray-700 space-y-4">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <h4 className="font-semibold text-gray-300">Ranked Results</h4>
-                                        {comp.results.map((result, index) => (
-                                            <div key={index} className="bg-[hsl(var(--color-bg-900)/0.5)] p-3 rounded-md border border-gray-700/50">
-                                                <div className="flex justify-between items-start">
-                                                    <div>
-                                                        <h5 className="font-bold text-white">{result.asset}</h5>
-                                                        <p className={`text-sm font-semibold ${result.sentiment === 'Bullish' ? 'text-green-400' : result.sentiment === 'Bearish' ? 'text-red-400' : 'text-gray-400'}`}>{result.sentiment}</p>
-                                                    </div>
-                                                    <HeatMeter level={result.heat} />
-                                                </div>
-                                                <p className="text-xs text-gray-300 mt-2 italic">"{result.brief}"</p>
-                                            </div>
-                                        ))}
-                                    </div>
-                                    <div className="space-y-2">
-                                        <h4 className="font-semibold text-gray-300">Charts Analyzed</h4>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            {Object.values(comp.imageKeys).filter(Boolean).map((key, i) => (
-                                                <IdbImage key={i} imageKey={key!} className="w-full h-auto object-cover rounded-md border border-gray-600" />
-                                            ))}
-                                        </div>
-                                    </div>
-                                </div>
-                                <div>
-                                    <label htmlFor={`notes-${comp.id}`} className="block font-medium text-gray-300">Your Notes:</label>
-                                    <textarea id={`notes-${comp.id}`} value={sessionNotes[comp.id] || ''} onChange={e => handleNotesChange(comp.id, e.target.value)} onBlur={() => handleSaveNotes(comp.id, 'comparison')} rows={3} className="w-full bg-gray-900 p-2 mt-1 rounded-md text-gray-200 border border-gray-600 focus:ring-yellow-500 focus:border-yellow-500" />
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                ))
-            ) : (
-                <div className="text-center bg-[hsl(var(--color-bg-800)/0.5)] rounded-lg py-12">
-                    <svg className="mx-auto h-12 w-12 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V7a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                    <h3 className="mt-2 font-medium text-white" style={{ fontSize: `${userSettings.uiFontSize}px` }}>No saved comparisons</h3>
-                    <p className="mt-1 text-gray-500" style={{ fontSize: `${userSettings.uiFontSize}px` }}>Compare assets on the Oracle tab to save them here.</p>
-                </div>
-            )}
-        </div>
-    );
+
 
     const renderMentorshipSessions = () => (
         <div className="space-y-4">
@@ -591,7 +480,7 @@ const JournalView: React.FC<JournalViewProps> = ({
                 sortedSessionsForDisplay.map(session => (
                     <div key={session.id} className="bg-[hsl(var(--color-bg-800))] rounded-lg border border-gray-700 group">
                         <div className="w-full p-4 text-left flex justify-between items-center">
-                            <div className="flex-grow cursor-pointer" onClick={() => handleToggleExpandSession(session.id, 'coaching')}>
+                            <div className="flex-grow cursor-pointer" onClick={() => handleToggleExpandSession(session.id)}>
                                 <p className="font-bold text-white" style={{ fontSize: `${userSettings.headingFontSize - 2}px` }}>
                                     {session.title || `Session on ${session.strategyKey}`}
                                 </p>
@@ -604,7 +493,7 @@ const JournalView: React.FC<JournalViewProps> = ({
                                 <button onClick={(e) => { e.stopPropagation(); setSessionToDelete(session); }} className="p-2 rounded-full text-gray-500 hover:text-red-400 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-opacity" title="Delete Session">
                                     <TrashIcon className="w-5 h-5" />
                                 </button>
-                                <button onClick={() => handleToggleExpandSession(session.id, 'coaching')} className="p-1">
+                                <button onClick={() => handleToggleExpandSession(session.id)} className="p-1">
                                     <span className={`transition-transform duration-300 ${expandedSessionId === `coaching-${session.id}` ? 'rotate-180' : ''}`}>
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                                     </span>
@@ -637,7 +526,6 @@ const JournalView: React.FC<JournalViewProps> = ({
                     <nav className="-mb-px flex space-x-8 overflow-x-auto whitespace-nowrap justify-start md:justify-center px-4 no-scrollbar" aria-label="Tabs">
                         <button onClick={() => setActiveTab('trades')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg ${activeTab === 'trades' ? 'border-yellow-400 text-yellow-300' : 'border-transparent text-gray-400 hover:text-gray-200'}`}>Trade Log</button>
                         <button onClick={() => setActiveTab('mentorship')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg ${activeTab === 'mentorship' ? 'border-yellow-400 text-yellow-300' : 'border-transparent text-gray-400 hover:text-gray-200'}`}>Mentorship</button>
-                        <button onClick={() => setActiveTab('comparisons')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg ${activeTab === 'comparisons' ? 'border-yellow-400 text-yellow-300' : 'border-transparent text-gray-400 hover:text-gray-200'}`}>Comparisons</button>
                     </nav>
                 </div>
             </div>
@@ -645,7 +533,6 @@ const JournalView: React.FC<JournalViewProps> = ({
             <div className="mt-8">
                 {activeTab === 'trades' && renderTradeLog()}
                 {activeTab === 'mentorship' && renderMentorshipSessions()}
-                {activeTab === 'comparisons' && renderAssetComparisons()}
             </div>
 
             <ConfirmationModal

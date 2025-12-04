@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { AnalysisResults, StrategyKey, UserSettings, UploadedImageKeys, User, UserUsage, StrategyLogicData, KnowledgeBaseDocument, ApiConfiguration, MarketDataCache, MarketDataCandle } from '../types';
+import { AnalysisResults, StrategyKey, UserSettings, UploadedImageKeys, User, UserUsage, StrategyLogicData, KnowledgeBaseDocument, ApiConfiguration } from '../types';
 import ImageUploader, { ImageUploaderHandles } from './ImageUploader';
 import UserSettingsEditor from './UserSettings';
 import Logo from './Logo';
@@ -16,8 +16,6 @@ interface DashboardProps {
     dashboardSelectedStrategies: StrategyKey[];
     onDashboardStrategyChange: (key: StrategyKey) => void;
     onSetDashboardStrategies: (keys: StrategyKey[]) => void;
-    dashboardSelectedMarketData: string[];
-    setDashboardSelectedMarketData: React.Dispatch<React.SetStateAction<string[]>>;
     strategyLogicData: Record<StrategyKey, StrategyLogicData>;
     knowledgeBaseDocuments: KnowledgeBaseDocument[];
     isAnalyzing: boolean;
@@ -28,8 +26,6 @@ interface DashboardProps {
     onInitiateCoaching: (strategy: StrategyLogicData, goal: 'learn_basics' | 'build_setup', strategyKey: StrategyKey) => void;
     viewedStrategy: StrategyKey | null;
     setViewedStrategy: (key: StrategyKey | null) => void;
-    marketDataCache: MarketDataCache;
-    onSaveAssetComparison: (comp: any) => void;
 }
 
 const WarningIcon: React.FC<{ className?: string }> = (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M8.257 3.099c.636-1.1 2.29-1.1 2.926 0l5.578 9.663c.636 1.1-.18 2.488-1.463 2.488H4.142c-1.282 0-2.098-1.387-1.463-2.488l5.578-9.663zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" /></svg>;
@@ -51,10 +47,9 @@ const Section: React.FC<{ number: number, title: string, children: React.ReactNo
 const Dashboard: React.FC<DashboardProps> = ({
     onAnalysisComplete, userSettings, onUserSettingsChange, initialImages, currentUser,
     dashboardSelectedStrategies, onDashboardStrategyChange: _onDashboardStrategyChange, onSetDashboardStrategies,
-    dashboardSelectedMarketData, setDashboardSelectedMarketData,
     strategyLogicData, isAnalyzing, setIsAnalyzing, onLogTokenUsage,
     apiConfig, onInitiateCoaching,
-    viewedStrategy, setViewedStrategy, marketDataCache
+    viewedStrategy, setViewedStrategy
 }) => {
 
     const uploaderRef = useRef<ImageUploaderHandles>(null);
@@ -78,15 +73,15 @@ const Dashboard: React.FC<DashboardProps> = ({
     // Allow analysis if API key is in config OR environment variable
     const canAnalyze = !!apiConfig.geminiApiKey || !!import.meta.env.VITE_API_KEY;
 
-    const isSubmitDisabled = (uploaderPhase !== 'ready' && dashboardSelectedMarketData.length === 0) || isAnalyzing || !canAnalyze || dashboardSelectedStrategies.length === 0;
+    const isSubmitDisabled = (uploaderPhase !== 'ready') || isAnalyzing || !canAnalyze || dashboardSelectedStrategies.length === 0;
 
     let submitButtonTooltip = "";
     if (!canAnalyze) {
         submitButtonTooltip = "Please set your API key in Master Controls.";
     } else if (dashboardSelectedStrategies.length === 0) {
         submitButtonTooltip = "Please select at least one strategy.";
-    } else if (uploaderPhase !== 'ready' && dashboardSelectedMarketData.length === 0) {
-        submitButtonTooltip = "Please complete the guided chart upload or select a cached dataset to enable analysis.";
+    } else if (uploaderPhase !== 'ready') {
+        submitButtonTooltip = "Please complete the guided chart upload to enable analysis.";
     }
 
     const { parentStrategies, childrenByParent } = useMemo(() => {
@@ -109,46 +104,7 @@ const Dashboard: React.FC<DashboardProps> = ({
         return { parentStrategies: parents.sort((a, b) => a[1].name.localeCompare(b[1].name)), childrenByParent: childrenMap };
     }, [strategyLogicData]);
 
-    const groupedMarketData = useMemo(() => {
-        const grouped: Record<string, { key: string; timeframe: string; count: number; dateRange: string; }[]> = {};
-        Object.entries(marketDataCache).forEach(([key, candlesUntyped]) => {
-            const candles = candlesUntyped as MarketDataCandle[];
-            if (!Array.isArray(candles) || candles.length === 0) return;
 
-            const lastDashIndex = key.lastIndexOf('-');
-            const symbol = lastDashIndex > -1 ? key.substring(0, lastDashIndex) : key;
-            const timeframe = lastDashIndex > -1 ? key.substring(lastDashIndex + 1) : 'Unknown';
-
-            if (!grouped[symbol]) {
-                grouped[symbol] = [];
-            }
-
-            const sortedDates = candles.map(c => new Date(c.date)).sort((a, b) => a.getTime() - b.getTime());
-            const startDate = sortedDates[0].toLocaleDateString(undefined, { year: '2-digit', month: 'short', day: 'numeric' });
-            const endDate = sortedDates[sortedDates.length - 1].toLocaleDateString(undefined, { year: '2-digit', month: 'short', day: 'numeric' });
-
-            grouped[symbol].push({
-                key,
-                timeframe,
-                count: candles.length,
-                dateRange: `${startDate} to ${endDate}`
-            });
-        });
-        return grouped;
-    }, [marketDataCache]);
-
-
-    const handleMarketDataSelectionChange = (key: string) => {
-        setDashboardSelectedMarketData(prev => {
-            const newSet = new Set(prev);
-            if (newSet.has(key)) {
-                newSet.delete(key);
-            } else {
-                newSet.add(key);
-            }
-            return Array.from(newSet);
-        });
-    };
 
     return (
         <div className="p-4 md:p-6">
@@ -286,39 +242,8 @@ const Dashboard: React.FC<DashboardProps> = ({
                                 onPhaseChange={setUploaderPhase}
                                 apiConfig={apiConfig}
                                 onLogTokenUsage={onLogTokenUsage}
-                                marketDataCache={marketDataCache}
-                                dashboardSelectedMarketData={dashboardSelectedMarketData}
                                 isComparisonMode={isComparisonMode}
                             />
-
-                            {Object.keys(groupedMarketData).length > 0 && (
-                                <div className="bg-gray-800/70 p-4 rounded-lg border border-gray-700">
-                                    <h4 className="font-bold text-gray-200 mb-3">Select Cached Market Data</h4>
-                                    <div className="space-y-3 max-h-60 overflow-y-auto pr-2">
-                                        {Object.entries(groupedMarketData).map(([symbol, items]) => (
-                                            <div key={symbol} className="bg-gray-900/50 p-3 rounded-md">
-                                                <p className="font-semibold text-yellow-500 mb-2">{symbol}</p>
-                                                <div className="grid grid-cols-2 gap-2">
-                                                    {(items as { key: string; timeframe: string; count: number; dateRange: string; }[]).map(item => (
-                                                        <label key={item.key} className={`flex items-center p-2 rounded border cursor-pointer transition-colors ${dashboardSelectedMarketData.includes(item.key) ? 'bg-blue-900/30 border-blue-500' : 'bg-gray-800 border-gray-700 hover:border-gray-600'}`}>
-                                                            <input
-                                                                type="checkbox"
-                                                                checked={dashboardSelectedMarketData.includes(item.key)}
-                                                                onChange={() => handleMarketDataSelectionChange(item.key)}
-                                                                className="h-4 w-4 rounded bg-gray-700 border-gray-600 text-blue-500 focus:ring-blue-500/50"
-                                                            />
-                                                            <div className="ml-2">
-                                                                <span className="block text-sm text-gray-200 font-mono">{item.timeframe}</span>
-                                                                <span className="block text-[10px] text-gray-500">{item.count} candles</span>
-                                                            </div>
-                                                        </label>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
                         </div>
                     </Section>
 

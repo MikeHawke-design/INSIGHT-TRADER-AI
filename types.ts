@@ -17,11 +17,6 @@ export interface TradeManagement {
     partial_take_profit_2: string;
 }
 
-// New interface for dynamic chart timeframes detected by AI
-export interface ChartMetadata {
-    [imageIndex: string]: string; // e.g., "0": "4H", "1": "15m"
-}
-
 export interface Trade {
     type: string;
     direction: TradeDirection;
@@ -47,19 +42,12 @@ export interface TradeFeedback {
 
 export type UploadedImageKeys = Record<number, string | null>;
 
-export interface AssetComparisonResult {
-    asset: string;
-    sentiment: 'Bullish' | 'Bearish' | 'Neutral';
-    heat: number;
-    brief: string;
-}
-
 export interface AnalysisResults {
     'Top Longs': Trade[];
     'Top Shorts': Trade[];
     strategySuggestion: StrategySuggestion;
-    chartMetadata?: ChartMetadata; // Added to store AI-detected timeframes
-    assetComparisonResults?: AssetComparisonResult[]; // Added for comparison mode
+    chartMetadata?: Record<string, string>;
+    assetComparisonResults?: any[]; // Keeping optional for backward compatibility if needed, but we are removing the feature
 }
 
 export interface SavedTrade extends Trade {
@@ -74,7 +62,7 @@ export interface SavedTrade extends Trade {
     };
     isFromCoaching?: boolean;
     coachingSessionChat?: ChatMessage[];
-    chartMetadata?: ChartMetadata; // Added to persist timeframe labels
+    chartMetadata?: Record<string, string>;
 }
 
 export interface StrategySuggestion {
@@ -242,10 +230,7 @@ export interface GlossaryTerm {
 export type ActiveView = 'analyze' | 'analyze_new' | 'academy' | 'journal' | 'settings' | 'profile' | 'strategy_builder';
 
 export interface ApiConfiguration {
-    eodhdApiKey: string; // Kept optional for market data
     geminiApiKey?: string;
-    mexcApiKey?: string;
-    mexcSecretKey?: string;
 }
 
 export interface RiskManagementSettings {
@@ -258,35 +243,7 @@ export interface RiskManagementSettings {
     maxOpenPositions: number; // Maximum concurrent open positions
 }
 
-export interface EodhdUsageStats {
-    dailyLimit: number;
-    usedCalls: number;
-    remainingCalls: number;
-    resetTimestamp: number;
-}
-
 export interface TokenUsageRecord {
     date: string;
     tokens: number;
-}
-
-export interface MarketDataCandle {
-    symbol: string;
-    date: string;
-    open: number;
-    high: number;
-    low: number;
-    close: number;
-    volume: number;
-}
-
-export type MarketDataCache = Record<string, MarketDataCandle[]>;
-
-export interface SavedAssetComparison {
-    id: string;
-    savedDate: string;
-    strategyKey: StrategyKey;
-    results: AssetComparisonResult[];
-    imageKeys: UploadedImageKeys;
-    userNotes: string;
 }

@@ -27,7 +27,7 @@ export const DEFAULT_USER_SETTINGS: UserSettings = {
 };
 
 export const DEFAULT_API_CONFIGURATION: ApiConfiguration = {
-    eodhdApiKey: '',
+    // No default keys
 };
 
 export const USER_TIERS = {
@@ -107,7 +107,6 @@ export const BETA_ACCESS_KEYS = [
 export const SAVED_TRADES_LOCALSTORAGE_KEY = 'chartOracle_savedTrades';
 export const USER_SETTINGS_LOCALSTORAGE_KEY = 'chartOracle_userSettings';
 export const DASHBOARD_STRATEGIES_LOCALSTORAGE_KEY = 'chartOracle_dashboardStrategies';
-export const DASHBOARD_MARKET_DATA_LOCALSTORAGE_KEY = 'chartOracle_dashboardMarketData';
 export const STRATEGY_LOGIC_LOCALSTORAGE_KEY = 'chartOracle_strategyLogicData';
 export const KB_DOCS_LOCALSTORAGE_KEY = 'chartOracle_knowledgeBaseDocuments';
 export const CHAT_MESSAGES_LOCALSTORAGE_KEY = 'chartOracle_chatMessages';
@@ -116,8 +115,6 @@ export const COURSE_PROGRESS_LOCALSTORAGE_KEY = 'chartOracle_courseProgress';
 export const COACHING_ONBOARDING_LOCALSTORAGE_KEY = 'chartOracle_coachingOnboardingComplete';
 export const COACHING_SESSIONS_LOCALSTORAGE_KEY = 'chartOracle_coachingSessions';
 export const TOKEN_USAGE_HISTORY_LOCALSTORAGE_KEY = 'chartOracle_tokenUsageHistory';
-export const MARKET_DATA_CACHE_LOCALSTORAGE_KEY = 'chartOracle_marketDataCache';
-export const SAVED_ASSET_COMPARISONS_LOCALSTORAGE_KEY = 'chartOracle_assetComparisons';
 export const API_CONFIG_LOCALSTORAGE_KEY = 'chartOracle_apiConfig';
 
 
@@ -126,7 +123,6 @@ export const ALL_PERSISTENT_STORAGE_KEYS = [
     SAVED_TRADES_LOCALSTORAGE_KEY,
     USER_SETTINGS_LOCALSTORAGE_KEY,
     DASHBOARD_STRATEGIES_LOCALSTORAGE_KEY,
-    DASHBOARD_MARKET_DATA_LOCALSTORAGE_KEY,
     STRATEGY_LOGIC_LOCALSTORAGE_KEY,
     KB_DOCS_LOCALSTORAGE_KEY,
     CHAT_MESSAGES_LOCALSTORAGE_KEY,
@@ -135,14 +131,10 @@ export const ALL_PERSISTENT_STORAGE_KEYS = [
     COACHING_ONBOARDING_LOCALSTORAGE_KEY,
     COACHING_SESSIONS_LOCALSTORAGE_KEY,
     TOKEN_USAGE_HISTORY_LOCALSTORAGE_KEY,
-    MARKET_DATA_CACHE_LOCALSTORAGE_KEY,
-    SAVED_ASSET_COMPARISONS_LOCALSTORAGE_KEY,
     API_CONFIG_LOCALSTORAGE_KEY,
 ];
 
-export const DEMO_TICKERS: string[] = [
-    'AAPL.US', 'MSFT.US', 'TSLA.US', 'MCD.US', 'VTI.US', 'SWPPX.US', 'EURUSD.FOREX', 'BTC-USD.CC'
-];
+export const DEMO_TICKERS: string[] = [];
 
 export const STRATEGY_BUILDER_PROMPT = `
 You are an expert Trading Strategy Architect. Your goal is to help the user define a robust, rule-based trading strategy.

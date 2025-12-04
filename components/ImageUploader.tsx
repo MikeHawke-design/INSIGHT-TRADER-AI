@@ -21,8 +21,6 @@ import {
     UploadedImageKeys,
     UploadedImageData,
     ApiConfiguration,
-    MarketDataCache,
-    MarketDataCandle,
     Trade,
 } from '../types';
 import ClarityFeedback from './ClarityFeedback';
@@ -60,7 +58,6 @@ const generateSystemInstructionContent = (
     userSettings: UserSettings,
     uploadedImagesData: UploadedImageKeys,
     strategyLogicData: Record<StrategyKey, StrategyLogicData>,
-    selectedMarketData: Record<string, any[]>,
     currentPrice: number | null,
     isComparisonMode: boolean
 ): string => {
@@ -78,11 +75,7 @@ ${logic.prompt}
         `The user has provided screenshots. These are your PRIMARY source for market conditions.` :
         "No screenshots were provided. Rely solely on the cached historical data.";
 
-    const historicalDataContextPrompt = (Object.keys(selectedMarketData).length > 0) ? `
-You have been provided with cached historical data for broader context. Use this data to establish a macro view.
-Available Datasets:
-${Object.keys(selectedMarketData).map(key => `- ${key}: ${selectedMarketData[key]?.length || 0} candles available.`).join('\n')}
-` : '';
+
 
     const currentPriceAnchorPrompt = currentPrice ?
         `THE CURRENT PRICE IS \`${currentPrice.toFixed(4)}\`. This is your non-negotiable anchor point.` :
@@ -107,7 +100,6 @@ You must ALWAYS generate a trade setup for every input, even if conditions are n
     - Stop Loss Logic: ${userSettings.stopLossStrategy}
 3.  **MARKET DATA:**
     - **Current Price Anchor:** ${currentPriceAnchorPrompt}
-    - **Cached Historical Data:** ${historicalDataContextPrompt}
     - **Chart Screenshots:** ${imageReferencesExplanation}
 `;
 
@@ -203,8 +195,6 @@ interface ImageUploaderProps {
     onPhaseChange: (phase: Phase) => void;
     apiConfig: ApiConfiguration;
     onLogTokenUsage: (tokens: number) => void;
-    marketDataCache: MarketDataCache;
-    dashboardSelectedMarketData: string[];
     isComparisonMode: boolean;
 }
 
@@ -219,8 +209,6 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
     onPhaseChange,
     apiConfig,
     onLogTokenUsage,
-    marketDataCache,
-    dashboardSelectedMarketData,
     isComparisonMode,
 }, ref) => {
 
@@ -458,8 +446,8 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
         setIsAnalyzing(true);
         setError(null);
 
-        if (Object.keys(uploadedImagesData).length === 0 && dashboardSelectedMarketData.length === 0) {
-            setError("No context provided. Please complete the guided chart upload or select cached market data to run an analysis.");
+        if (Object.keys(uploadedImagesData).length === 0) {
+            setError("No context provided. Please complete the guided chart upload to run an analysis.");
             setIsAnalyzing(false);
             return;
         }
@@ -472,33 +460,11 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
         }
 
         let currentPrice: number | null = null;
-        let latestTimestamp = 0;
-
-        const selectedMarketData = dashboardSelectedMarketData.reduce((acc, key) => {
-            if (marketDataCache[key]) acc[key] = marketDataCache[key];
-            return acc;
-        }, {} as Record<string, MarketDataCandle[]>);
-
-        if (Object.keys(selectedMarketData).length > 0) {
-            Object.values(selectedMarketData).forEach(candlesUntyped => {
-                const candles = candlesUntyped as MarketDataCandle[];
-                if (candles && candles.length > 0) {
-                    const sortedCandles = [...candles].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-                    const lastCandle = sortedCandles[sortedCandles.length - 1];
-                    const candleTimestamp = new Date(lastCandle.date).getTime();
-                    if (candleTimestamp > latestTimestamp) {
-                        latestTimestamp = candleTimestamp;
-                        currentPrice = lastCandle.close;
-                    }
-                }
-            });
-        }
-
 
         try {
             const systemInstruction = generateSystemInstructionContent(
                 selectedStrategies, userSettings, uploadedImagesData, strategyLogicData,
-                selectedMarketData, currentPrice, isComparisonMode
+                currentPrice, isComparisonMode
             );
 
             const imageParts: Part[] = [];
@@ -544,7 +510,7 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
                 trades.map(trade => ({
                     ...trade,
                     direction: direction,
-                    entry: (trade.entry && String(trade.entry).trim()) ? String(trade.entry) : (currentPrice !== null ? currentPrice.toFixed(4) : 'N/A')
+                    entry: (trade.entry && String(trade.entry).trim()) ? String(trade.entry) : 'N/A'
                 }));
 
             results['Top Longs'] = fillMissingEntry(results['Top Longs'] ?? [], 'Long');
