@@ -105,17 +105,26 @@ const CheckIcon = (props: { className?: string }) => (
     </svg>
 );
 
-const CopyButton = ({ text, className }: { text: string, className?: string }) => {
+const CopyButton = ({ text, className }: { text: string | undefined | null, className?: string }) => {
     const [copied, setCopied] = useState(false);
 
-    const handleCopy = (e: React.MouseEvent) => {
+    const handleCopy = async (e: React.MouseEvent) => {
         e.stopPropagation();
-        // Strip HTML tags if present
-        const cleanText = text.replace(/<[^>]*>/g, '').trim();
-        navigator.clipboard.writeText(cleanText);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
+        if (!text) return;
+
+        try {
+            // Strip HTML tags if present and ensure it's a string
+            const cleanText = String(text).replace(/<[^>]*>/g, '').trim();
+            await navigator.clipboard.writeText(cleanText);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        } catch (err) {
+            console.error('Failed to copy text:', err);
+            // Optional: Show a toast or visual feedback for failure
+        }
     };
+
+    if (!text) return null; // Don't render button if no text
 
     return (
         <button onClick={handleCopy} className={`text-gray-500 hover:text-white transition-colors p-1 rounded hover:bg-gray-700 ${className}`} title="Copy to clipboard">
