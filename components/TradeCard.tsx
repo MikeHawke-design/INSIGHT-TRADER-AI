@@ -170,7 +170,22 @@ const TradeCard: React.FC<TradeCardProps> = ({
 
         setIsSharing(true);
         try {
-            // Capture the simplified share card as canvas
+            // 1. Copy Trade Details to Clipboard
+            const tradeDetailsText = `🚀 TRADE SETUP: ${trade.symbol || 'ASSET'} (${trade.direction})
+Entry: ${trade.entry}
+SL: ${trade.stopLoss}
+TP1: ${trade.takeProfit1}
+TP2: ${trade.takeProfit2 || 'N/A'}
+R:R: 1:${rr.toFixed(2)}`;
+
+            try {
+                await navigator.clipboard.writeText(tradeDetailsText);
+                // We'll notify the user about this in the final alert/toast
+            } catch (clipboardErr) {
+                console.warn('Failed to copy trade details to clipboard:', clipboardErr);
+            }
+
+            // 2. Capture the simplified share card as canvas
             const canvas = await html2canvas(shareCardRef.current, {
                 backgroundColor: '#1f2937', // Match the card background
                 scale: 2, // Higher quality
@@ -178,7 +193,7 @@ const TradeCard: React.FC<TradeCardProps> = ({
                 useCORS: true,
             });
 
-            // Convert canvas to blob
+            // 3. Convert canvas to blob and Share/Download
             canvas.toBlob(async (blob) => {
                 if (!blob) {
                     alert('Failed to generate image');
@@ -194,17 +209,19 @@ const TradeCard: React.FC<TradeCardProps> = ({
                         await navigator.share({
                             files: [file],
                             title: `${trade.symbol} - ${trade.direction} Trade Call`,
-                            text: `Check out this ${trade.direction} trade setup for ${trade.symbol}!`
+                            text: tradeDetailsText // Try to pass text to the native share sheet too
                         });
                     } catch (err) {
                         if ((err as Error).name !== 'AbortError') {
                             // Fallback to download if share was not aborted by user
                             downloadImage(canvas);
+                            alert("Trade card downloaded! Trade details have also been copied to your clipboard.");
                         }
                     }
                 } else {
                     // Fallback: download the image
                     downloadImage(canvas);
+                    alert("Trade card downloaded! Trade details have also been copied to your clipboard.");
                 }
                 setIsSharing(false);
             }, 'image/png');

@@ -398,7 +398,7 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
             }
         } catch (err) {
             console.error("Failed to read clipboard:", err);
-            setError("Failed to access clipboard. Please use Ctrl+V / Cmd+V to paste.");
+            setError("Clipboard access denied. Please allow clipboard permissions in your browser settings (click the lock icon in the URL bar) or use Ctrl+V / Cmd+V to paste.");
         }
     };
 
