@@ -488,9 +488,88 @@ R:R: 1:${rr.toFixed(2)}`;
 
                             {isCouncilOpen && (
                                 <div className="animate-fadeIn mt-2 bg-purple-900/10 border border-purple-500/30 rounded-md p-3">
-                                    <div className="text-purple-300 text-[10px] font-bold uppercase tracking-wider mb-2">Transcript</div>
-                                    <div className="text-gray-300 text-xs leading-relaxed whitespace-pre-wrap font-mono max-h-60 overflow-y-auto custom-scrollbar">
-                                        {councilDiscussion}
+                                    <div className="space-y-4">
+                                        {(() => {
+                                            // Parse the transcript
+                                            const opinions = councilDiscussion.split('------------------------------------------------').filter(s => s.trim().length > 0);
+                                            const parsedOpinions = opinions.map(opinionBlock => {
+                                                const match = opinionBlock.match(/--- OPINION FROM (.*?) ---\s*([\s\S]*)/);
+                                                if (!match) return null;
+                                                const provider = match[1].trim();
+                                                const content = match[2].trim();
+
+                                                let parsedContent: any = null;
+                                                try {
+                                                    // Try to find JSON block
+                                                    const jsonMatch = content.match(/\{[\s\S]*\}/);
+                                                    if (jsonMatch) {
+                                                        parsedContent = JSON.parse(jsonMatch[0]);
+                                                    }
+                                                } catch (e) {
+                                                    // Failed to parse JSON, keep as string
+                                                }
+
+                                                return { provider, content, parsedContent };
+                                            }).filter(Boolean);
+
+                                            if (parsedOpinions.length === 0) {
+                                                // Fallback to raw text if parsing fails completely
+                                                return (
+                                                    <div className="text-gray-300 text-xs leading-relaxed whitespace-pre-wrap font-mono max-h-60 overflow-y-auto custom-scrollbar">
+                                                        {councilDiscussion}
+                                                    </div>
+                                                );
+                                            }
+
+                                            return parsedOpinions.map((op, idx) => (
+                                                <div key={idx} className="bg-purple-900/20 rounded-md p-3 border border-purple-500/20">
+                                                    <h5 className="text-purple-300 text-xs font-bold uppercase mb-2 border-b border-purple-500/20 pb-1">{op?.provider}</h5>
+
+                                                    {op?.parsedContent ? (
+                                                        <div className="space-y-2">
+                                                            {/* Reasoning */}
+                                                            {op.parsedContent.strategySuggestion?.reasoning && (
+                                                                <div>
+                                                                    <span className="text-gray-400 text-[10px] uppercase font-semibold">Reasoning:</span>
+                                                                    <p className="text-gray-300 text-xs mt-0.5 leading-relaxed">{op.parsedContent.strategySuggestion.reasoning}</p>
+                                                                </div>
+                                                            )}
+
+                                                            {/* Found Trades Summary */}
+                                                            {(() => {
+                                                                const longs = op.parsedContent['Top Longs'] || [];
+                                                                const shorts = op.parsedContent['Top Shorts'] || [];
+                                                                const allTrades = [...longs.map((t: any) => ({ ...t, dir: 'Long' })), ...shorts.map((t: any) => ({ ...t, dir: 'Short' }))];
+
+                                                                if (allTrades.length > 0) {
+                                                                    return (
+                                                                        <div className="mt-2">
+                                                                            <span className="text-gray-400 text-[10px] uppercase font-semibold">Proposed Setups:</span>
+                                                                            <ul className="mt-1 space-y-1">
+                                                                                {allTrades.map((t: any, tIdx: number) => (
+                                                                                    <li key={tIdx} className="text-xs text-gray-300 flex items-center gap-2 bg-black/20 p-1.5 rounded">
+                                                                                        <span className={`font-bold ${t.dir === 'Long' ? 'text-green-400' : 'text-red-400'}`}>{t.dir}</span>
+                                                                                        <span className="font-mono text-gray-400">{t.symbol || 'Asset'}</span>
+                                                                                        <span className="text-gray-500">@</span>
+                                                                                        <span className="font-mono text-white">{t.entry}</span>
+                                                                                    </li>
+                                                                                ))}
+                                                                            </ul>
+                                                                        </div>
+                                                                    );
+                                                                } else {
+                                                                    return (
+                                                                        <div className="mt-2 text-xs text-gray-500 italic">No valid setups found.</div>
+                                                                    );
+                                                                }
+                                                            })()}
+                                                        </div>
+                                                    ) : (
+                                                        <p className="text-gray-300 text-xs whitespace-pre-wrap">{op?.content}</p>
+                                                    )}
+                                                </div>
+                                            ));
+                                        })()}
                                     </div>
                                 </div>
                             )}
