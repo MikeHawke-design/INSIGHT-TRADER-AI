@@ -626,9 +626,12 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
             }
 
             let jsonText = fullResponseText;
-            const fenceRegex = /^```(\w*)?\s*\n?(.*?)\n?\s*```$/s;
-            const match = jsonText.match(fenceRegex);
-            if (match && match[2]) jsonText = match[2].trim();
+            const firstOpen = jsonText.indexOf('{');
+            const lastClose = jsonText.lastIndexOf('}');
+
+            if (firstOpen !== -1 && lastClose !== -1 && lastClose > firstOpen) {
+                jsonText = jsonText.substring(firstOpen, lastClose + 1);
+            }
 
             const results: AnalysisResults = JSON.parse(jsonText);
             if (councilDiscussion) {

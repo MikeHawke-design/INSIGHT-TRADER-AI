@@ -186,6 +186,7 @@ ${councilTranscript}
             contents: contents,
             config: {
                 systemInstruction: systemInstruction,
+                maxOutputTokens: 8192,
             }
         });
 
@@ -216,6 +217,7 @@ ${councilTranscript}
         const response = await client.chat.completions.create({
             model: model,
             messages: messages,
+            max_tokens: 4096,
         });
 
         return {
@@ -254,6 +256,7 @@ ${councilTranscript}
         const response = await client.chat.completions.create({
             model: model,
             messages: messages,
+            max_tokens: 4096,
         });
 
         return {
@@ -283,7 +286,7 @@ ${councilTranscript}
 
         const chat = client.chats.create({
             model: model,
-            config: { systemInstruction },
+            config: { systemInstruction, maxOutputTokens: 8192 },
             history: geminiHistory
         });
 
@@ -331,6 +334,7 @@ ${councilTranscript}
         const response = await client.chat.completions.create({
             model: model,
             messages: messages,
+            max_tokens: 4096,
         });
 
         return {
@@ -386,6 +390,7 @@ ${councilTranscript}
         const response = await client.chat.completions.create({
             model: model,
             messages: messages,
+            max_tokens: 4096,
         });
 
         return {
