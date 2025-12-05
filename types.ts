@@ -260,3 +260,12 @@ export interface TokenUsageRecord {
     date: string;
     tokens: number;
 }
+
+export interface MarketDataCandle {
+    date: string;
+    open: number;
+    high: number;
+    low: number;
+    close: number;
+    volume?: number;
+}

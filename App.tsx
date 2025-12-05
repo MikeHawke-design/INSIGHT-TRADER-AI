@@ -158,6 +158,13 @@ const App: React.FC = () => {
     }, [setIsAuthenticated, firebaseLogout]);
 
     const handleNavClick = useCallback((view: ActiveView) => {
+        if (view === 'analyze') {
+            setAnalysisResults(null);
+            setSelectedStrategiesForAnalysis([]);
+            setUploadedImagesForAnalysis(null);
+            setTokenCountForAnalysis(0);
+            setModifiedAnalysis(null);
+        }
         setActiveView(view);
         window.scrollTo(0, 0);
     }, []);
