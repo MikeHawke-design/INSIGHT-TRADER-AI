@@ -421,20 +421,21 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
 
 
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files[0]) {
-            const file = e.target.files[0];
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                const result = event.target?.result;
-                if (typeof result === 'string') {
-                    handleImageUpload({
-                        name: file.name,
-                        type: file.type,
-                        dataUrl: result
-                    });
-                }
-            };
-            reader.readAsDataURL(file);
+        if (e.target.files && e.target.files.length > 0) {
+            Array.from(e.target.files).forEach(file => {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const result = event.target?.result;
+                    if (typeof result === 'string') {
+                        handleImageUpload({
+                            name: file.name,
+                            type: file.type,
+                            dataUrl: result
+                        });
+                    }
+                };
+                reader.readAsDataURL(file);
+            });
         }
         e.target.value = '';
     };
@@ -703,7 +704,7 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
                 </div>
             )}
 
-            <input type="file" ref={fileInputRef} onChange={handleFileSelect} accept="image/*" className="hidden" />
+            <input type="file" ref={fileInputRef} onChange={handleFileSelect} accept="image/*" multiple className="hidden" />
             <ScreenCaptureModal isOpen={isCaptureModalOpen} stream={captureStream} onCapture={handleCaptureSubmit} onClose={() => { setIsCaptureModalOpen(false); stopMediaStream(); }} error={captureError} />
         </div>
     );
