@@ -87,7 +87,7 @@ const Dashboard: React.FC<DashboardProps> = ({
     } else if (dashboardSelectedStrategies.length === 0) {
         submitButtonTooltip = "Please select at least one strategy.";
     } else if (uploaderPhase !== 'ready') {
-        submitButtonTooltip = "Please complete the guided chart upload to enable analysis.";
+        submitButtonTooltip = "Please upload at least one chart to enable analysis.";
     }
 
     const { parentStrategies, childrenByParent } = useMemo(() => {

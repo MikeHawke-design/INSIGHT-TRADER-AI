@@ -357,9 +357,8 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
 
     const handleImageUpload = useCallback(async (imageData: UploadedImageData) => {
         // If in simple mode (no guided chat yet), add the image to list and render it
-        if (conversation.length === 0 && phase === 'idle') {
-            setUploadedImagesData(prev => ({ ...prev, [Object.keys(prev).length]: imageData.dataUrl }));
-            setConversation(prev => [...prev, { sender: 'user', image: imageData.dataUrl }]);
+        if (conversation.length === 0 && (phase === 'idle' || phase === 'ready')) {
+            setUploadedImagesData(prev => ({ ...prev, [Date.now()]: imageData.dataUrl }));
             setPhase('ready');
             return;
         }
@@ -641,12 +640,12 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
     return (
         <div className="bg-gray-800/70 p-4 rounded-lg border border-gray-700">
             {/* Simplified Interaction for Direct Upload */}
-            {phase === 'idle' && (
+            {(phase === 'idle' || (phase === 'ready' && conversation.length === 0)) && (
                 <div>
                     <h4 className="font-bold text-gray-200">Provide Market Context</h4>
                     <p className="text-sm text-gray-400 mb-4">Upload screenshots of your charts for analysis.</p>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4">
                         <button onClick={() => fileInputRef.current?.click()} className="text-sm font-semibold p-3 rounded-md bg-blue-600 hover:bg-blue-500 text-white transition-colors">
                             Upload Image
                         </button>
@@ -658,6 +657,36 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
                         </button>
                     </div>
 
+                    {/* Uploaded Images Gallery */}
+                    {Object.keys(uploadedImagesData).length > 0 && (
+                        <div className="mb-4">
+                            <h5 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Uploaded Context ({Object.keys(uploadedImagesData).length})</h5>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                {Object.entries(uploadedImagesData).map(([key, url]) => (
+                                    <div key={key} className="relative group aspect-video bg-gray-900 rounded-md overflow-hidden border border-gray-700">
+                                        {url && <img src={url} alt={`Uploaded ${key}`} className="w-full h-full object-cover" />}
+                                        <button
+                                            onClick={() => {
+                                                setUploadedImagesData(prev => {
+                                                    const newState = { ...prev };
+                                                    delete newState[parseInt(key)];
+                                                    return newState;
+                                                });
+                                                // Also remove from conversation if present (optional, but good for consistency if we switch modes)
+                                            }}
+                                            className="absolute top-1 right-1 bg-red-600/80 hover:bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                            title="Remove Image"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3">
+                                                <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
                     {/* Guided Option Link */}
                     <button onClick={handleStartGuidedUpload} disabled={selectedStrategies.length === 0 || isAnalyzing} className="mt-4 text-xs text-yellow-500 hover:underline disabled:text-gray-600">
                         {isAnalyzing ? "Initializing..." : "Or start Guided Acquisition Assistant"}
@@ -666,7 +695,7 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
             )}
 
             {/* Chat Interface for Guided Mode OR Result Display */}
-            {phase !== 'idle' && (
+            {phase !== 'idle' && !(phase === 'ready' && conversation.length === 0) && (
                 <>
                     <div className="space-y-3 min-h-[100px] max-h-[300px] overflow-y-auto pr-2">
                         {conversation.map((msg, index) => (
