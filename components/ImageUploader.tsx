@@ -242,9 +242,15 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
 
     // 2. Replace getAiClient with getAiManager.
     const getAiManager = useCallback(() => {
-        const provider = userSettings.aiSystemMode === 'hybrid'
-            ? userSettings.aiProviderAnalysis
-            : userSettings.aiProvider;
+        let provider: 'gemini' | 'openai' | 'groq' | 'council';
+
+        if (userSettings.aiSystemMode === 'council') {
+            provider = 'council';
+        } else if (userSettings.aiSystemMode === 'hybrid') {
+            provider = userSettings.aiProviderAnalysis;
+        } else {
+            provider = userSettings.aiProvider;
+        }
 
         return new AiManager({
             apiConfig,

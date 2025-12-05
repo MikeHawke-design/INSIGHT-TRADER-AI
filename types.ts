@@ -124,7 +124,7 @@ export interface UserSettings {
     dataFontSize: number;
     chatFontSize: number;
     uiDarkness: number;
-    aiSystemMode: 'single' | 'hybrid';
+    aiSystemMode: 'single' | 'hybrid' | 'council';
     aiProvider: 'gemini' | 'openai' | 'groq';
     aiProviderAnalysis: 'gemini' | 'openai' | 'groq';
     aiProviderChat: 'gemini' | 'openai' | 'groq';

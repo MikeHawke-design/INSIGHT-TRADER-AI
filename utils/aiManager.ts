@@ -11,12 +11,12 @@ export interface StandardizedResponse {
 
 export interface AiManagerConfig {
     apiConfig: ApiConfiguration;
-    preferredProvider: 'gemini' | 'openai' | 'groq';
+    preferredProvider: 'gemini' | 'openai' | 'groq' | 'council';
 }
 
 export class AiManager {
     private apiConfig: ApiConfiguration;
-    private provider: 'gemini' | 'openai' | 'groq';
+    private provider: 'gemini' | 'openai' | 'groq' | 'council';
 
     constructor(config: AiManagerConfig) {
         this.apiConfig = config.apiConfig;
@@ -52,7 +52,9 @@ export class AiManager {
         model?: string
     ): Promise<StandardizedResponse> {
         try {
-            if (this.provider === 'gemini') {
+            if (this.provider === 'council') {
+                return this.generateCouncil(systemInstruction, userPrompt);
+            } else if (this.provider === 'gemini') {
                 return this.generateGemini(systemInstruction, userPrompt, model);
             } else if (this.provider === 'openai') {
                 return this.generateOpenAI(systemInstruction, userPrompt, model);
@@ -64,6 +66,77 @@ export class AiManager {
             console.error(`AI Generation Error (${this.provider}):`, error);
             throw error;
         }
+    }
+
+    private async generateCouncil(systemInstruction: string, userPrompt: string | Part[]): Promise<StandardizedResponse> {
+        const promises: Promise<{ provider: string, response: StandardizedResponse | null, error?: any }>[] = [];
+
+        // 1. Launch Parallel Requests
+        if (this.apiConfig.geminiApiKey || import.meta.env.VITE_API_KEY) {
+            promises.push(this.generateGemini(systemInstruction, userPrompt).then(res => ({ provider: 'Gemini', response: res })).catch(err => ({ provider: 'Gemini', response: null, error: err })));
+        }
+        if (this.apiConfig.openaiApiKey) {
+            promises.push(this.generateOpenAI(systemInstruction, userPrompt).then(res => ({ provider: 'OpenAI', response: res })).catch(err => ({ provider: 'OpenAI', response: null, error: err })));
+        }
+        if (this.apiConfig.groqApiKey) {
+            promises.push(this.generateGroq(systemInstruction, userPrompt).then(res => ({ provider: 'Groq', response: res })).catch(err => ({ provider: 'Groq', response: null, error: err })));
+        }
+
+        const results = await Promise.all(promises);
+        const successfulResponses = results.filter(r => r.response !== null);
+
+        if (successfulResponses.length === 0) {
+            throw new Error("Council Mode Failed: All providers failed to generate a response.");
+        }
+
+        // 2. Synthesize Results
+        // We need a "Judge" to synthesize. We prefer Gemini or OpenAI for this reasoning task.
+        let judgeProvider: 'gemini' | 'openai' = 'gemini';
+
+        if (this.apiConfig.openaiApiKey) {
+            judgeProvider = 'openai';
+        } else {
+            judgeProvider = 'gemini'; // Default to Gemini (usually free/available)
+        }
+
+        const councilTranscript = successfulResponses.map(r => `
+--- OPINION FROM ${r.provider.toUpperCase()} ---
+${r.response?.text}
+------------------------------------------------
+`).join('\n\n');
+
+        const synthesisPrompt = `
+You are the High Council Judge.
+You have received independent analyses from multiple AI experts regarding a trading setup.
+Your job is to SYNTHESIZE these opinions into a SINGLE, FINAL VERDICT.
+
+**RULES FOR JUDGMENT:**
+1.  **Filter Hallucinations:** If one model sees a pattern that others explicitly contradict or miss, be skeptical. Look for consensus.
+2.  **Strict Strategy Adherence:** The user's strategy is law. If a model proposes a trade that violates the strategy rules (provided in the system instruction), REJECT IT.
+3.  **Best Setup Wins:** If one model found a valid, high-quality setup and others missed it, adopt the valid setup.
+4.  **Unified Output:** Produce a single JSON response following the exact format required by the system instruction. Do NOT output a meta-commentary. Output the final JSON as if YOU performed the analysis, but backed by the wisdom of the council.
+
+**THE OPINIONS:**
+${councilTranscript}
+`;
+
+        // Call the Judge
+        let finalResponse: StandardizedResponse;
+        if (judgeProvider === 'openai') {
+            finalResponse = await this.generateOpenAI(systemInstruction, synthesisPrompt); // Pass system instruction again to keep context
+        } else {
+            finalResponse = await this.generateGemini(systemInstruction, synthesisPrompt);
+        }
+
+        // Sum up tokens for billing/tracking
+        const totalTokens = successfulResponses.reduce((acc, r) => acc + (r.response?.usage.totalTokenCount || 0), 0) + finalResponse.usage.totalTokenCount;
+
+        return {
+            text: finalResponse.text,
+            usage: {
+                totalTokenCount: totalTokens
+            }
+        };
     }
 
     async generateChat(

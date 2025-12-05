@@ -675,11 +675,24 @@ export const MasterControlsView: React.FC<MasterControlsViewProps> = ({
                                     />
                                     <span className="text-white">Hybrid (Advanced)</span>
                                 </label>
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                        type="radio"
+                                        name="aiSystemMode"
+                                        value="council"
+                                        checked={userSettings.aiSystemMode === 'council'}
+                                        onChange={() => onUserSettingsChange('aiSystemMode', 'council')}
+                                        className="text-yellow-500 focus:ring-yellow-500"
+                                    />
+                                    <span className="text-white font-bold text-yellow-400">Council Mode (New)</span>
+                                </label>
                             </div>
                             <p className="text-xs text-gray-500 mt-1">
                                 {userSettings.aiSystemMode === 'single'
                                     ? "Use one AI provider for all tasks."
-                                    : "Select different providers for Image Analysis vs. Chat/Strategy tasks."}
+                                    : userSettings.aiSystemMode === 'hybrid'
+                                        ? "Select different providers for Image Analysis vs. Chat/Strategy tasks."
+                                        : "Multiple AI models analyze the chart simultaneously and debate the best setup."}
                             </p>
                         </div>
 
