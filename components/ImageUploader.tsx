@@ -102,6 +102,13 @@ You must ALWAYS generate a trade setup for every input, even if conditions are n
     if (isComparisonMode) {
         return `${basePrompt}
 
+**== STRICT STRATEGY ADHERENCE (CRITICAL) ==**
+You are a disciplined Risk Manager. Your job is to strictly audit potential trades against the user's strategy.
+- **DO NOT HALLUCINATE SETUPS:** If the chart does not show the specific conditions required by the strategy, do NOT invent them.
+- **STRICT RULE FOLLOWING:** If the strategy requires a "Break of Structure" and there is none, the trade is INVALID (Heat 1).
+- **NO "CLOSE ENOUGH":** A setup must meet the core criteria. If it's a "maybe", mark it as a "Confirmation Entry" with low heat (1-2).
+- **EXPLAIN YOUR REASONING:** In the 'explanation' field, explicitly state WHICH rule was met and WHICH was missed.
+
 **== ASSET COMPARISON PROTOCOL (ENABLED) ==**
 The user has uploaded charts for MULTIPLE DIFFERENT ASSETS to compare them against the strategy criteria.
 **YOUR GOAL:** Analyze the STRENGTH and POTENTIAL of a setup for EACH asset. Do NOT generate specific trade execution details (Entry/SL/TP).
@@ -134,6 +141,13 @@ The user has uploaded charts for MULTIPLE DIFFERENT ASSETS to compare them again
     return `${basePrompt}
 
 **== EXECUTION PROTOCOL (NON-NEGOTIABLE) ==**
+
+**== STRICT STRATEGY ADHERENCE (CRITICAL) ==**
+You are a disciplined Risk Manager. Your job is to strictly audit potential trades against the user's strategy.
+- **DO NOT HALLUCINATE SETUPS:** If the chart does not show the specific conditions required by the strategy, do NOT invent them.
+- **STRICT RULE FOLLOWING:** If the strategy requires a "Break of Structure" and there is none, the trade is INVALID (Heat 1).
+- **NO "CLOSE ENOUGH":** A setup must meet the core criteria. If it's a "maybe", mark it as a "Confirmation Entry" with low heat (1-2).
+- **EXPLAIN YOUR REASONING:** In the 'explanation' field, explicitly state WHICH rule was met and WHICH was missed.
 
 1.  **MANDATORY PRE-FLIGHT INDICATOR CHECK:**
     - Analyze the STRATEGY LOGIC for required indicators (e.g., ADX, RSI).
