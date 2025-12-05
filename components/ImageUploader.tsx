@@ -153,8 +153,9 @@ You are a disciplined Risk Manager. Your job is to strictly audit potential trad
     - Analyze the STRATEGY LOGIC for required indicators (e.g., ADX, RSI).
     - If indicators are missing, DO NOT ABORT. Instead, proceed with price action analysis but lower the 'heat' score and mention the missing confirmation in the explanation.
 
-2.  **MANDATORY DATA COMPLETENESS:**
-    - **Symbol:** Identify the asset symbol (e.g., "EURUSD", "BTCUSDT"). If strictly invisible, use "Unknown Asset".
+2.  **MANDATORY DATA COMPLETENESS (CRITICAL):**
+    - **Symbol Extraction:** You MUST identify the asset symbol (e.g., "BTC/USD", "EUR/USD", "NVDA"). Look at the top-left corner, watermarks, or axis labels. Do NOT return "Asset" or "Unknown" unless the image is completely blank. Make a best guess based on price level if necessary (e.g., if price is ~90,000, it's likely BTC).
+    - **Timeframe Extraction:** You MUST identify the chart timeframe (e.g., "15m", "4H", "Daily"). Look next to the symbol.
     - **Entry/Exit Prices:** MUST be valid numeric strings. Do not use ranges (e.g., "1.05-1.06"). Pick a specific level.
     - **Consistency:** Ensure the values in the JSON match the values mentioned in your explanation text.
 
@@ -604,12 +605,32 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
             const totalTokenCount = response.usage.totalTokenCount;
             onLogTokenUsage(totalTokenCount);
 
-            let jsonText = (response.text || "").trim();
+            let fullResponseText = (response.text || "").trim();
+            let councilDiscussion = "";
+
+            // Extract Council Transcript if present
+            const transcriptStartMarker = "<<<COUNCIL_TRANSCRIPT_START>>>";
+            const transcriptEndMarker = "<<<COUNCIL_TRANSCRIPT_END>>>";
+            const transcriptStartIndex = fullResponseText.indexOf(transcriptStartMarker);
+
+            if (transcriptStartIndex !== -1) {
+                const transcriptEndIndex = fullResponseText.indexOf(transcriptEndMarker);
+                if (transcriptEndIndex !== -1) {
+                    councilDiscussion = fullResponseText.substring(transcriptStartIndex + transcriptStartMarker.length, transcriptEndIndex).trim();
+                    // Remove transcript from the text to be parsed as JSON
+                    fullResponseText = fullResponseText.substring(0, transcriptStartIndex).trim();
+                }
+            }
+
+            let jsonText = fullResponseText;
             const fenceRegex = /^```(\w*)?\s*\n?(.*?)\n?\s*```$/s;
             const match = jsonText.match(fenceRegex);
             if (match && match[2]) jsonText = match[2].trim();
 
             const results: AnalysisResults = JSON.parse(jsonText);
+            if (councilDiscussion) {
+                results.councilDiscussion = councilDiscussion;
+            }
 
             // Ensure every trade has an entry price and correct direction.
             const fillMissingEntry = (trades: Trade[], direction: 'Long' | 'Short') =>

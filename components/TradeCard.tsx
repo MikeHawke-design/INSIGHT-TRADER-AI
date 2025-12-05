@@ -22,6 +22,7 @@ interface TradeCardProps {
     onAddResultImage?: () => void;
     onViewImages?: () => void;
     onViewCoachingLog?: () => void;
+    councilDiscussion?: string;
 }
 
 const TRADE_CARD_ANIMATION_STYLE_ID = 'tradecard-animations';
@@ -39,6 +40,21 @@ const ensureAnimationStyles = () => {
     }
     .animate-fadeIn {
       animation: fadeIn 0.3s ease-out;
+    }
+    /* Custom Scrollbar for Council Transcript */
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 3px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: rgba(139, 92, 246, 0.3);
+      border-radius: 3px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: rgba(139, 92, 246, 0.5);
     }
   `;
     document.head.appendChild(styleElement);
@@ -164,10 +180,12 @@ const TradeCard: React.FC<TradeCardProps> = ({
     onViewCoachingLog,
     strategyLogicData,
     activeStrategies,
+    councilDiscussion,
 }) => {
     const isLong = trade.direction === 'Long';
     const [isExplanationOpen, setIsExplanationOpen] = useState(!onSave || isSaved);
     const [isEntryExplanationVisible, setIsEntryExplanationVisible] = useState(false);
+    const [isCouncilOpen, setIsCouncilOpen] = useState(false);
     const [feedbackText, setFeedbackText] = useState(feedback?.text || '');
     const isCoachingTrade = 'isFromCoaching' in trade && trade.isFromCoaching;
     const cardRef = useRef<HTMLDivElement>(null);
@@ -453,6 +471,31 @@ R:R: 1:${rr.toFixed(2)}`;
                             </div>
                         )}
                     </div>
+
+                    {/* Council Discussion Section */}
+                    {councilDiscussion && (
+                        <div className="mt-2">
+                            <div
+                                className="flex items-center cursor-pointer select-none"
+                                onClick={() => setIsCouncilOpen(!isCouncilOpen)}
+                                role="button"
+                                tabIndex={0}
+                                aria-expanded={isCouncilOpen}
+                            >
+                                <p className="text-xs text-purple-400 font-semibold mb-1">Council Discussion:</p>
+                                <span className="ml-2 text-purple-400 transition-transform duration-200" style={{ transform: isCouncilOpen ? 'rotate(90deg)' : 'rotate(0deg)' }}>▶</span>
+                            </div>
+
+                            {isCouncilOpen && (
+                                <div className="animate-fadeIn mt-2 bg-purple-900/10 border border-purple-500/30 rounded-md p-3">
+                                    <div className="text-purple-300 text-[10px] font-bold uppercase tracking-wider mb-2">Transcript</div>
+                                    <div className="text-gray-300 text-xs leading-relaxed whitespace-pre-wrap font-mono max-h-60 overflow-y-auto custom-scrollbar">
+                                        {councilDiscussion}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
 
                 <div className="flex-grow"></div>

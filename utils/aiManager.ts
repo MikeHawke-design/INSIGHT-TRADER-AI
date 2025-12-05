@@ -132,7 +132,7 @@ ${councilTranscript}
         const totalTokens = successfulResponses.reduce((acc, r) => acc + (r.response?.usage.totalTokenCount || 0), 0) + finalResponse.usage.totalTokenCount;
 
         return {
-            text: finalResponse.text,
+            text: finalResponse.text + "\n\n<<<COUNCIL_TRANSCRIPT_START>>>\n" + councilTranscript + "\n<<<COUNCIL_TRANSCRIPT_END>>>",
             usage: {
                 totalTokenCount: totalTokens
             }

@@ -55,6 +55,7 @@ export interface AnalysisResults {
     strategySuggestion: StrategySuggestion;
     chartMetadata?: Record<string, string>;
     assetComparisonResults?: AssetComparisonResult[];
+    councilDiscussion?: string;
 }
 
 export interface SavedTrade extends Trade {
