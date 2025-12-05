@@ -111,10 +111,23 @@ You have received independent analyses from multiple AI experts regarding a trad
 Your job is to SYNTHESIZE these opinions into a SINGLE, FINAL VERDICT.
 
 **RULES FOR JUDGMENT:**
-1.  **Filter Hallucinations:** If one model sees a pattern that others explicitly contradict or miss, be skeptical. Look for consensus.
-2.  **Strict Strategy Adherence:** The user's strategy is law. If a model proposes a trade that violates the strategy rules (provided in the system instruction), REJECT IT.
-3.  **Best Setup Wins:** If one model found a valid, high-quality setup and others missed it, adopt the valid setup.
-4.  **Unified Output:** Produce a single JSON response following the exact format required by the system instruction. Do NOT output a meta-commentary. Output the final JSON as if YOU performed the analysis, but backed by the wisdom of the council.
+1.  **DATA MERGING (CRITICAL):**
+    - **Asset Symbol:** If ANY model identifies a specific symbol (e.g., "BTC/USD", "NVDA") and others return "Asset" or "Unknown", **YOU MUST ADOPT THE SPECIFIC SYMBOL**. Do not default to "Asset".
+    - **Price Levels:** If models differ slightly on price (e.g., 90445 vs 90450), prefer the one that aligns best with the identified Key Levels or FVG midpoints.
+    - **Timeframe:** Adopt the consensus timeframe.
+
+2.  **SYNERGY & CONSENSUS:**
+    - **Combine Strengths:** If Model A identifies the correct Asset/Timeframe but misses the Setup, and Model B finds a valid Setup but misses the Asset, **COMBINE THEM**. Use Model B's Setup with Model A's Asset.
+    - **Filter Hallucinations:** If one model sees a pattern that others explicitly contradict or miss, be skeptical. However, if the reasoning is sound and evidence is cited (e.g., specific candle times), give it weight.
+
+3.  **STRICT STRATEGY ADHERENCE:**
+    - The user's strategy is law. If a model proposes a trade that violates the strategy rules, REJECT IT.
+    - If multiple valid setups are found, prioritize the one with the highest "Heat" (confluence) and best Risk:Reward.
+
+4.  **UNIFIED OUTPUT:**
+    - Produce a single JSON response following the exact format required by the system instruction.
+    - **Reasoning Field:** In the 'strategySuggestion.reasoning' field, explicitly state: "The Council has spoken. [Model Name] identified [Key Feature], while [Model Name] clarified [Other Feature]. We have synthesized this into..."
+    - Do NOT output a meta-commentary outside the JSON. Output the final JSON as if YOU performed the analysis, but backed by the wisdom of the council.
 
 **THE OPINIONS:**
 ${councilTranscript}
