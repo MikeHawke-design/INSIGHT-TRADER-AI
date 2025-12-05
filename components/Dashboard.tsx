@@ -76,8 +76,8 @@ const Dashboard: React.FC<DashboardProps> = ({
         uploaderRef.current.triggerAnalysis(true);
     }
 
-    // Allow analysis if API key is in config OR environment variable
-    const canAnalyze = !!apiConfig.geminiApiKey || !!import.meta.env.VITE_API_KEY;
+    // Allow analysis if ANY API key is in config OR environment variable
+    const canAnalyze = !!apiConfig.geminiApiKey || !!apiConfig.openaiApiKey || !!apiConfig.groqApiKey || !!import.meta.env.VITE_API_KEY;
 
     const isSubmitDisabled = (uploaderPhase !== 'ready') || isAnalyzing || !canAnalyze || dashboardSelectedStrategies.length === 0;
 
