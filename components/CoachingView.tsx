@@ -1,10 +1,10 @@
 /// <reference types="vite/client" />
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { GoogleGenAI, Part, Content } from "@google/genai";
 import { StrategyLogicData, UserSettings, ApiConfiguration, ChatMessage, Trade, SavedCoachingSession, StrategyKey } from '../types';
 import Logo from './Logo';
 import ScreenCaptureModal from './ScreenCaptureModal';
 import { storeImage, getImage } from '../idb';
+import { AiManager } from '../utils/aiManager';
 
 interface CoachingViewProps {
     context: {
@@ -49,45 +49,11 @@ const IdbImageDisplay: React.FC<{ imageKey: string, onZoom: (src: string) => voi
     );
 };
 
-
-async function transformHistoryForApi(chatHistory: ChatMessage[]): Promise<Content[]> {
-    const history: Content[] = [];
-    for (const msg of chatHistory) {
-        const role = msg.sender === 'user' ? 'user' : 'model';
-        const parts: Part[] = [];
-
-        // The API expects raw text, not HTML. We need to strip it so the model reads clean text.
-        if (msg.text) {
-            const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = msg.text;
-            const text = tempDiv.textContent || msg.text;
-            parts.push({ text });
-        }
-
-        if (msg.imageKeys && msg.imageKeys.length > 0) {
-            for (const key of msg.imageKeys) {
-                const base64 = await getImage(key);
-                if (base64) {
-                    const prefixMatch = base64.match(/^data:(image\/(?:png|jpeg|webp));base64,/);
-                    if (prefixMatch) {
-                        parts.push({ inlineData: { mimeType: prefixMatch[1], data: base64.substring(prefixMatch[0].length) } });
-                    }
-                }
-            }
-        }
-
-        if (parts.length > 0) {
-            history.push({ role, parts });
-        }
-    }
-    return history;
-}
-
 const CoachingView: React.FC<CoachingViewProps> = ({
     context,
     onClose,
     apiConfig,
-    userSettings: _userSettings,
+    userSettings,
     onLogTokenUsage,
     onSaveSession,
 }) => {
@@ -150,15 +116,52 @@ const CoachingView: React.FC<CoachingViewProps> = ({
         setIsSending(true);
 
         try {
-            // Use API key from config
-            const ai = new GoogleGenAI({ apiKey: apiConfig.geminiApiKey || import.meta.env.VITE_API_KEY });
+            const provider = userSettings.aiSystemMode === 'hybrid'
+                ? userSettings.aiProviderChat
+                : userSettings.aiProvider;
 
-            // Transform history for API
-            const apiHistory = await transformHistoryForApi(newHistory);
+            const manager = new AiManager({
+                apiConfig,
+                preferredProvider: provider
+            });
 
-            // Separate previous history and the new message
-            const historyForChat = apiHistory.slice(0, -1);
-            const lastMessageContent = apiHistory[apiHistory.length - 1];
+            // Prepare history for AiManager
+            const historyForManager = await Promise.all(newHistory.slice(0, -1).map(async (msg) => {
+                let content: any = msg.text;
+                if (msg.imageKeys && msg.imageKeys.length > 0) {
+                    const parts = [];
+                    if (msg.text) parts.push({ text: msg.text });
+                    for (const key of msg.imageKeys) {
+                        const base64 = await getImage(key);
+                        if (base64) {
+                            const prefixMatch = base64.match(/^data:(image\/(?:png|jpeg|webp));base64,/);
+                            if (prefixMatch) {
+                                parts.push({ inlineData: { mimeType: prefixMatch[1], data: base64.substring(prefixMatch[0].length) } });
+                            }
+                        }
+                    }
+                    content = parts;
+                }
+                return {
+                    role: msg.sender === 'user' ? 'user' as const : 'assistant' as const,
+                    content: content
+                };
+            }));
+
+            // Prepare new message
+            let newMessageContent: any = textToSend;
+            if (imageKey) {
+                const parts = [];
+                if (textToSend) parts.push({ text: textToSend });
+                const base64 = await getImage(imageKey);
+                if (base64) {
+                    const prefixMatch = base64.match(/^data:(image\/(?:png|jpeg|webp));base64,/);
+                    if (prefixMatch) {
+                        parts.push({ inlineData: { mimeType: prefixMatch[1], data: base64.substring(prefixMatch[0].length) } });
+                    }
+                }
+                newMessageContent = parts;
+            }
 
             // Define Strict System Instruction for formatting
             const systemInstruction = `You are an expert trading coach specializing in the "${context.strategy.name}" strategy.
@@ -179,23 +182,15 @@ const CoachingView: React.FC<CoachingViewProps> = ({
 **STRATEGY LOGIC SOURCE:**
 ${context.strategy.prompt}`;
 
-            // Create chat with history and system instruction
-            const chat = ai.chats.create({
-                model: "gemini-2.5-flash",
-                history: historyForChat,
-                config: {
-                    systemInstruction: systemInstruction
-                }
-            });
-
-            // Send the new message
-            const response = await chat.sendMessage({
-                message: lastMessageContent.parts || []
-            });
+            const response = await manager.generateChat(
+                systemInstruction,
+                historyForManager,
+                newMessageContent
+            );
 
             const text = response.text || "";
 
-            onLogTokenUsage(response.usageMetadata?.totalTokenCount || 0);
+            onLogTokenUsage(response.usage.totalTokenCount);
 
             const botMsg: ChatMessage = {
                 id: (Date.now() + 1).toString(),

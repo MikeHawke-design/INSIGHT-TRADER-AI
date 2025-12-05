@@ -647,20 +647,125 @@ export const MasterControlsView: React.FC<MasterControlsViewProps> = ({
         return (
             <div className="space-y-6">
                 <div className="bg-gray-900/50 p-4 rounded-lg border border-gray-700">
-                    <h4 className="font-semibold text-white mb-3">API Configuration</h4>
-                    <div className="space-y-4">
+                    <h4 className="font-semibold text-white mb-3">AI Configuration & Provider</h4>
+
+                    <div className="mb-6 space-y-4">
+                        <div>
+                            <label className="block font-medium text-sm text-gray-300 mb-1">AI System Mode</label>
+                            <div className="flex gap-4">
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                        type="radio"
+                                        name="aiSystemMode"
+                                        value="single"
+                                        checked={userSettings.aiSystemMode === 'single'}
+                                        onChange={() => onUserSettingsChange('aiSystemMode', 'single')}
+                                        className="text-yellow-500 focus:ring-yellow-500"
+                                    />
+                                    <span className="text-white">Single Provider (Simple)</span>
+                                </label>
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                        type="radio"
+                                        name="aiSystemMode"
+                                        value="hybrid"
+                                        checked={userSettings.aiSystemMode === 'hybrid'}
+                                        onChange={() => onUserSettingsChange('aiSystemMode', 'hybrid')}
+                                        className="text-yellow-500 focus:ring-yellow-500"
+                                    />
+                                    <span className="text-white">Hybrid (Advanced)</span>
+                                </label>
+                            </div>
+                            <p className="text-xs text-gray-500 mt-1">
+                                {userSettings.aiSystemMode === 'single'
+                                    ? "Use one AI provider for all tasks."
+                                    : "Select different providers for Image Analysis vs. Chat/Strategy tasks."}
+                            </p>
+                        </div>
+
+                        {userSettings.aiSystemMode === 'single' ? (
+                            <div>
+                                <label className="block font-medium text-sm text-gray-300 mb-1">Preferred AI Provider</label>
+                                <select
+                                    value={userSettings.aiProvider}
+                                    onChange={(e) => onUserSettingsChange('aiProvider', e.target.value)}
+                                    className="w-full bg-gray-800 border border-gray-600 rounded p-2 text-white focus:border-yellow-500 outline-none"
+                                >
+                                    <option value="gemini">Google Gemini (Recommended for Vision)</option>
+                                    <option value="openai">OpenAI (GPT-4o)</option>
+                                    <option value="groq">Groq (Llama 3.3 / 3.2 Vision - Fastest)</option>
+                                </select>
+                                <p className="text-xs text-gray-500 mt-1">Select which AI model powers the entire platform.</p>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block font-medium text-sm text-gray-300 mb-1">Image Analysis & Trades</label>
+                                    <select
+                                        value={userSettings.aiProviderAnalysis}
+                                        onChange={(e) => onUserSettingsChange('aiProviderAnalysis', e.target.value)}
+                                        className="w-full bg-gray-800 border border-gray-600 rounded p-2 text-white focus:border-yellow-500 outline-none"
+                                    >
+                                        <option value="gemini">Google Gemini (Best Vision)</option>
+                                        <option value="openai">OpenAI (GPT-4o)</option>
+                                        <option value="groq">Groq (Llama 3.2 Vision)</option>
+                                    </select>
+                                    <p className="text-xs text-gray-500 mt-1">Used for analyzing charts and generating trade setups.</p>
+                                </div>
+                                <div>
+                                    <label className="block font-medium text-sm text-gray-300 mb-1">Chat & Strategy Architect</label>
+                                    <select
+                                        value={userSettings.aiProviderChat}
+                                        onChange={(e) => onUserSettingsChange('aiProviderChat', e.target.value)}
+                                        className="w-full bg-gray-800 border border-gray-600 rounded p-2 text-white focus:border-yellow-500 outline-none"
+                                    >
+                                        <option value="gemini">Google Gemini</option>
+                                        <option value="openai">OpenAI (GPT-4o)</option>
+                                        <option value="groq">Groq (Llama 3.3 - Fast)</option>
+                                    </select>
+                                    <p className="text-xs text-gray-500 mt-1">Used for the Strategy Builder, Coaching, and general chat.</p>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="space-y-4 border-t border-gray-700 pt-4">
+                        <h5 className="text-sm font-bold text-gray-400 uppercase">API Keys</h5>
+
                         <div>
                             <label className="block font-medium text-sm text-gray-300 mb-1">Gemini API Key</label>
                             <input
                                 type="password"
-                                value={localApiKeys.geminiApiKey}
+                                value={localApiKeys.geminiApiKey || ''}
                                 onChange={(e) => setLocalApiKeys(prev => ({ ...prev, geminiApiKey: e.target.value }))}
                                 placeholder="Enter your Google Gemini API Key"
                                 className="w-full bg-gray-800 border border-gray-600 rounded p-2 text-white focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 outline-none"
                             />
-                            <p className="text-xs text-gray-500 mt-1">Required for AI analysis. Your key is stored locally in your browser.</p>
                         </div>
-                        <div className="flex items-center gap-3">
+
+                        <div>
+                            <label className="block font-medium text-sm text-gray-300 mb-1">OpenAI API Key</label>
+                            <input
+                                type="password"
+                                value={localApiKeys.openaiApiKey || ''}
+                                onChange={(e) => setLocalApiKeys(prev => ({ ...prev, openaiApiKey: e.target.value }))}
+                                placeholder="sk-..."
+                                className="w-full bg-gray-800 border border-gray-600 rounded p-2 text-white focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 outline-none"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block font-medium text-sm text-gray-300 mb-1">Groq API Key</label>
+                            <input
+                                type="password"
+                                value={localApiKeys.groqApiKey || ''}
+                                onChange={(e) => setLocalApiKeys(prev => ({ ...prev, groqApiKey: e.target.value }))}
+                                placeholder="gsk_..."
+                                className="w-full bg-gray-800 border border-gray-600 rounded p-2 text-white focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 outline-none"
+                            />
+                        </div>
+
+                        <div className="flex items-center gap-3 mt-4">
                             <button
                                 onClick={handleSaveApiKeys}
                                 className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg transition-colors flex items-center gap-2"

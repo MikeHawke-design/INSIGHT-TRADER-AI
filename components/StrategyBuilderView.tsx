@@ -1,13 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { UserSettings, StrategyLogicData, ChatMessage } from '../types';
-import { GoogleGenAI } from '@google/genai';
+import { UserSettings, StrategyLogicData, ChatMessage, ApiConfiguration } from '../types';
 import { STRATEGY_BUILDER_PROMPT } from '../constants';
+import { AiManager } from '../utils/aiManager';
 
 interface StrategyBuilderViewProps {
     userSettings: UserSettings;
     onSaveStrategy: (strategy: StrategyLogicData) => void;
     onCancel: () => void;
-    apiConfig: { geminiApiKey?: string };
+    apiConfig: ApiConfiguration;
 }
 
 const StrategyBuilderView: React.FC<StrategyBuilderViewProps> = ({
@@ -54,34 +54,23 @@ const StrategyBuilderView: React.FC<StrategyBuilderViewProps> = ({
         setIsGenerating(true);
 
         try {
-            const apiKey = apiConfig.geminiApiKey || import.meta.env.VITE_API_KEY;
+            const provider = userSettings.aiSystemMode === 'hybrid'
+                ? userSettings.aiProviderChat
+                : userSettings.aiProvider;
 
-            if (!apiKey) {
-                throw new Error("API Key missing");
-            }
-
-            const genAI = new GoogleGenAI({ apiKey });
-
-            const contentHistory = messages
-                .filter(m => m.id !== 'welcome')
-                .map(m => ({
-                    role: m.sender === 'user' ? 'user' : 'model',
-                    parts: [{ text: m.text }]
-                }));
-
-            const fullContents = [
-                ...contentHistory,
-                { role: 'user', parts: [{ text: input }] }
-            ];
-
-            const result = await genAI.models.generateContent({
-                model: "gemini-2.5-flash",
-                contents: fullContents,
-                config: {
-                    systemInstruction: STRATEGY_BUILDER_PROMPT
-                }
+            const manager = new AiManager({
+                apiConfig,
+                preferredProvider: provider
             });
 
+            const history = messages
+                .filter(m => m.id !== 'welcome')
+                .map(m => ({
+                    role: m.sender === 'user' ? 'user' as const : 'assistant' as const,
+                    content: m.text
+                }));
+
+            const result = await manager.generateChat(STRATEGY_BUILDER_PROMPT, history, input);
             const responseText = result.text || "";
 
             // Try to extract JSON if the AI decided to finalize the strategy

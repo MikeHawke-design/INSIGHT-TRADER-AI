@@ -7,12 +7,7 @@ import React, {
     forwardRef,
     useImperativeHandle,
 } from 'react';
-import {
-    GoogleGenAI,
-    GenerateContentResponse,
-    Part,
-    Chat
-} from "@google/genai";
+import { Part } from "@google/genai";
 import {
     AnalysisResults,
     StrategyKey,
@@ -26,6 +21,7 @@ import {
 import ClarityFeedback from './ClarityFeedback';
 import Logo from './Logo';
 import ScreenCaptureModal from './ScreenCaptureModal';
+import { AiManager } from '../utils/aiManager';
 
 // --- SYSTEM PROMPTS ---
 
@@ -227,15 +223,63 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
     const streamRef = useRef<MediaStream | null>(null);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const chatSessionRef = useRef<Chat | null>(null);
+    // 3. Remove chatSessionRef usage for API calls.
+    // const chatSessionRef = useRef<Chat | null>(null);
 
-    const getAiClient = useCallback(() => {
-        const apiKey = apiConfig.geminiApiKey || import.meta.env.VITE_API_KEY;
-        if (!apiKey) {
-            return null;
-        }
-        return new GoogleGenAI({ apiKey });
-    }, [apiConfig.geminiApiKey]);
+    // 2. Replace getAiClient with getAiManager.
+    const getAiManager = useCallback(() => {
+        const provider = userSettings.aiSystemMode === 'hybrid'
+            ? userSettings.aiProviderAnalysis
+            : userSettings.aiProvider;
+
+        return new AiManager({
+            apiConfig,
+            preferredProvider: provider
+        });
+    }, [apiConfig, userSettings.aiProvider, userSettings.aiProviderAnalysis, userSettings.aiSystemMode]);
+
+    // 4. Implement 'callAiChat' helper to construct history and call aiManager.generateChat.
+    const callAiChat = useCallback(async (newMessage: string | Part[], systemInstruction: string) => {
+        const manager = getAiManager();
+
+        // Construct history from conversation state
+        const history = conversation.map(msg => {
+            let content: string | Part[] = msg.text || '';
+
+            // If message has images, we need to resolve them
+            // Note: The local conversation state stores 'image' as a data URL string directly in the message for the user's last upload.
+            // But for history, we might need to look up uploadedImagesData if we were storing keys.
+            // However, the current logic in handleImageUpload stores the image in conversation as 'image: dataUrl'.
+            // So we can use that directly.
+
+            if (msg.image) {
+                const parts: Part[] = [];
+                if (msg.text) parts.push({ text: msg.text });
+
+                const dataUrl = msg.image;
+                const prefixMatch = dataUrl.match(/^data:(image\/(?:png|jpeg|webp));base64,/);
+                if (prefixMatch) {
+                    const mimeType = prefixMatch[1];
+                    const data = dataUrl.substring(prefixMatch[0].length);
+                    parts.push({
+                        inlineData: {
+                            mimeType: mimeType,
+                            data: data
+                        }
+                    });
+                }
+                content = parts;
+            }
+
+            return {
+                role: msg.sender === 'ai' ? 'assistant' as const : 'user' as const,
+                content: content
+            };
+        });
+
+        return await manager.generateChat(systemInstruction, history, newMessage);
+    }, [getAiManager, conversation]);
+
 
     useEffect(() => {
         onPhaseChange(phase);
@@ -246,7 +290,6 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
         setConversation([]);
         setUploadedImagesData({});
         setError(null);
-        chatSessionRef.current = null;
     }, []);
 
     useEffect(() => {
@@ -257,7 +300,6 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
             // Explicitly reset if initialImages is null and we are idle (e.g. new analysis)
             setUploadedImagesData({});
             setConversation([]);
-            chatSessionRef.current = null;
         }
     }, [initialImages, phase]);
 
@@ -275,22 +317,11 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
         setIsAnalyzing(true);
         setPhase('validating');
 
-        const ai = getAiClient();
-        if (!ai) {
-            setError("API Key not configured.");
-            setIsAnalyzing(false);
-            return;
-        }
-
         try {
             const systemInstruction = generateGuidedAcquisitionSystemPrompt(primaryStrategy);
-            chatSessionRef.current = ai.chats.create({
-                model: 'gemini-2.5-flash',
-                config: { systemInstruction },
-            });
-
-            const response = await chatSessionRef.current.sendMessage({ message: "Start." });
-            onLogTokenUsage(response.usageMetadata?.totalTokenCount || 0);
+            // Start the chat with "Start."
+            const response = await callAiChat("Start.", systemInstruction);
+            onLogTokenUsage(response.usage.totalTokenCount);
 
             setConversation([{ sender: 'ai', text: response.text || "" }]);
             setPhase('gathering');
@@ -306,9 +337,9 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
 
     const handleImageUpload = useCallback(async (imageData: UploadedImageData) => {
         // If in simple mode (no guided chat yet), add the image to list and render it
-        if (!chatSessionRef.current) {
+        if (conversation.length === 0 && phase === 'idle') {
             setUploadedImagesData(prev => ({ ...prev, [Object.keys(prev).length]: imageData.dataUrl }));
-            setConversation(prev => [...prev, { sender: 'user', image: imageData.dataUrl }]); // CRITICAL FIX: Add to conversation so it shows in UI
+            setConversation(prev => [...prev, { sender: 'user', image: imageData.dataUrl }]);
             setPhase('ready');
             return;
         }
@@ -330,11 +361,29 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
         const imagePart: Part = { inlineData: { mimeType, data } };
 
         try {
-            const response = await chatSessionRef.current.sendMessage({ message: [imagePart] });
-            onLogTokenUsage(response.usageMetadata?.totalTokenCount || 0);
+            // Regenerate system instruction as we don't persist it
+            const primaryStrategyKey = selectedStrategies[0];
+            const primaryStrategy = strategyLogicData[primaryStrategyKey];
+            const systemInstruction = primaryStrategy ? generateGuidedAcquisitionSystemPrompt(primaryStrategy) : "You are a helpful assistant.";
+
+            // We need to add the new image to uploadedImagesData BEFORE calling callAiChat
+            // because callAiChat uses uploadedImagesData to resolve images in history.
+            // However, React state updates are async.
+            // So we need to construct the new message manually with the image part.
+
+            // Actually, callAiChat uses conversation state. We just added the user message to conversation state.
+            // But we haven't added the image data to uploadedImagesData yet in the state (we do it after success in the original code).
+            // But for callAiChat to work, it needs to find the image data.
+            // Let's add it to uploadedImagesData temporarily or pass it directly.
+
+            // To be safe, let's pass the imagePart directly in the new message to callAiChat.
+            // callAiChat takes (newMessage, systemInstruction).
+
+            const response = await callAiChat([imagePart], systemInstruction);
+            onLogTokenUsage(response.usage.totalTokenCount);
             const responseText = (response.text || "").trim();
 
-            if (responseText === '[ANALYSIS_READY]') {
+            if (responseText.includes('[ANALYSIS_READY]')) {
                 setUploadedImagesData(prev => ({ ...prev, [Object.keys(prev).length]: imageData.dataUrl }));
                 setConversation(prev => [...prev, { sender: 'ai', text: "All charts have been provided. The 'Analyze' button is now enabled." }]);
                 setPhase('ready');
@@ -348,7 +397,7 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
             setConversation(prev => [...prev, { sender: 'ai', text: `An error occurred: ${errorMessage}. Please try uploading the image again.` }]);
             setPhase('gathering');
         }
-    }, [phase, isAnalyzing, onLogTokenUsage]);
+    }, [phase, isAnalyzing, onLogTokenUsage, conversation.length, selectedStrategies, callAiChat]);
 
 
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -496,13 +545,7 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
             return;
         }
 
-        const ai = getAiClient();
-        if (!ai) {
-            setError("API Key not configured. Please set it in Master Controls.");
-            setIsAnalyzing(false);
-            return;
-        }
-
+        const manager = getAiManager();
         let currentPrice: number | null = null;
 
         try {
@@ -527,19 +570,18 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
             }
 
             const requestContents = imageParts.length > 0
-                ? { parts: imageParts }
-                : "Analyze the provided cached historical data based on the system instructions.";
+                ? imageParts
+                : [{ text: "Analyze the provided cached historical data based on the system instructions." }];
 
-            const response: GenerateContentResponse = await ai.models.generateContent({
-                model: 'gemini-2.5-flash',
-                contents: requestContents,
-                config: {
-                    systemInstruction: systemInstruction,
-                    responseMimeType: 'application/json'
-                }
-            });
+            // Add "Output JSON" to the prompt to ensure JSON response from non-Gemini providers
+            const promptWithJsonInstruction = [
+                ...requestContents,
+                { text: "\n\nIMPORTANT: Output ONLY valid JSON matching the expected format. Do not include markdown formatting like ```json." }
+            ];
 
-            const totalTokenCount = response.usageMetadata?.totalTokenCount || 0;
+            const response = await manager.generateContent(systemInstruction, promptWithJsonInstruction);
+
+            const totalTokenCount = response.usage.totalTokenCount;
             onLogTokenUsage(totalTokenCount);
 
             let jsonText = (response.text || "").trim();

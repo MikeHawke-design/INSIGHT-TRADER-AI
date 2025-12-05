@@ -124,7 +124,10 @@ export interface UserSettings {
     dataFontSize: number;
     chatFontSize: number;
     uiDarkness: number;
-    aiProvider: 'gemini' | 'openai';
+    aiSystemMode: 'single' | 'hybrid';
+    aiProvider: 'gemini' | 'openai' | 'groq';
+    aiProviderAnalysis: 'gemini' | 'openai' | 'groq';
+    aiProviderChat: 'gemini' | 'openai' | 'groq';
 }
 
 export interface StrategyLogicData {
@@ -238,6 +241,8 @@ export type ActiveView = 'analyze' | 'analyze_new' | 'academy' | 'journal' | 'se
 
 export interface ApiConfiguration {
     geminiApiKey?: string;
+    openaiApiKey?: string;
+    groqApiKey?: string;
 }
 
 export interface RiskManagementSettings {

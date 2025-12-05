@@ -23,11 +23,16 @@ export const DEFAULT_USER_SETTINGS: UserSettings = {
     dataFontSize: 16,
     chatFontSize: 14,
     uiDarkness: 0,
+    aiSystemMode: 'single',
     aiProvider: 'gemini',
+    aiProviderAnalysis: 'gemini',
+    aiProviderChat: 'gemini',
 };
 
 export const DEFAULT_API_CONFIGURATION: ApiConfiguration = {
-    // No default keys
+    geminiApiKey: '',
+    openaiApiKey: '',
+    groqApiKey: ''
 };
 
 export const USER_TIERS = {

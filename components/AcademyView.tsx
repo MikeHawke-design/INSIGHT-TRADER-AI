@@ -1,9 +1,9 @@
 
 import React, { useState, useCallback, useRef, useMemo } from 'react';
-import { GoogleGenAI } from "@google/genai";
 import { CourseModule, CourseLesson, UserCourseProgress, User, UserSettings, StrategyKey, StrategyLogicData, ApiConfiguration } from '../types';
 import { storeImage } from '../idb';
 import Logo from './Logo';
+import { AiManager } from '../utils/aiManager';
 
 interface AcademyViewProps {
     userCourseProgress: UserCourseProgress;
@@ -37,10 +37,20 @@ export const AcademyView: React.FC<AcademyViewProps> = ({ userCourseProgress, se
         setExpandedUserModules(prev => ({ ...prev, [moduleId]: !prev[moduleId] }));
     };
 
-    const getAiClient = useCallback(() => {
-        const apiKey = apiConfig.geminiApiKey || import.meta.env.VITE_API_KEY;
-        return new GoogleGenAI({ apiKey });
-    }, [apiConfig.geminiApiKey]);
+    const getAiManager = useCallback((taskType: 'chat' | 'vision') => {
+        let provider = userSettings.aiProvider;
+
+        if (userSettings.aiSystemMode === 'hybrid') {
+            provider = taskType === 'vision'
+                ? userSettings.aiProviderAnalysis
+                : userSettings.aiProviderChat;
+        }
+
+        return new AiManager({
+            apiConfig,
+            preferredProvider: provider
+        });
+    }, [apiConfig, userSettings]);
 
 
     const handleSelectLesson = (lesson: CourseLesson, module: CourseModule) => {
@@ -69,9 +79,9 @@ export const AcademyView: React.FC<AcademyViewProps> = ({ userCourseProgress, se
     };
 
     const handleSubmitQuiz = async () => {
-        const ai = getAiClient();
-        if (!selectedModule || !ai) {
-            alert("Platform API key is missing. Cannot submit quiz for feedback.");
+        const manager = getAiManager('chat');
+        if (!selectedModule) {
+            alert("No module selected.");
             return;
         }
 
@@ -93,7 +103,7 @@ export const AcademyView: React.FC<AcademyViewProps> = ({ userCourseProgress, se
         const feedbackPrompt = `The user just scored ${score.toFixed(0)}% on the "${selectedModule.title}" quiz. Provide a brief, encouraging, and constructive feedback summary based on this score. If the score is low, suggest revisiting specific lessons.`;
 
         try {
-            const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: feedbackPrompt });
+            const response = await manager.generateContent(feedbackPrompt, feedbackPrompt); // System instruction same as prompt for simple feedback
             setQuizResult({ score, feedback: response.text || "Score recorded." });
         } catch (error) {
             console.error("Failed to get quiz feedback:", error);
@@ -114,8 +124,8 @@ export const AcademyView: React.FC<AcademyViewProps> = ({ userCourseProgress, se
     };
 
     const handleSubmitExercise = async (lessonId: string, blockIndex: number, validationPrompt: string) => {
-        const ai = getAiClient();
-        if (!exerciseImage || !ai) {
+        const manager = getAiManager('vision');
+        if (!exerciseImage) {
             setExerciseError("Please upload an image first.");
             return;
         }
@@ -139,11 +149,10 @@ export const AcademyView: React.FC<AcademyViewProps> = ({ userCourseProgress, se
             const mimeType = prefixMatch[1];
             const data = exerciseImage.substring(prefixMatch[0].length);
 
-            const response = await ai.models.generateContent({
-                model: 'gemini-2.5-flash',
-                contents: { parts: [{ inlineData: { mimeType, data } }] },
-                config: { systemInstruction: validationPrompt }
-            });
+            const response = await manager.generateContent(
+                validationPrompt,
+                [{ inlineData: { mimeType, data } }]
+            );
 
             const feedback = response.text || "";
             const status = feedback && feedback.startsWith("PASS:") ? 'passed' : 'failed';
