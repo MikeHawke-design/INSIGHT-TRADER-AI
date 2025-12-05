@@ -1,7 +1,6 @@
-
-import { GoogleGenAI, GenerateContentResponse, Part } from "@google/genai";
+import { GoogleGenAI, Part } from "@google/genai";
 import OpenAI from "openai";
-import { ApiConfiguration, UserSettings } from "../types";
+import { ApiConfiguration } from "../types";
 
 export interface StandardizedResponse {
     text: string;
@@ -145,9 +144,15 @@ export class AiManager {
         const client = this.getGroqClient();
         // Use Llama 3.2 90b Vision for multimodal, or 70b versatile for text
         // We need to detect if there are images
-        const hasImages = Array.isArray(userPrompt) && userPrompt.some(p => p.inlineData);
-        const defaultModel = hasImages ? 'llama-3.2-90b-vision-preview' : 'llama-3.3-70b-versatile';
-        const model = modelOverride || defaultModel;
+
+        const defaultModel = 'meta-llama/llama-4-scout-17b-16e-instruct';
+        let model = modelOverride || defaultModel;
+
+        // Safety check for deprecated models
+        if (model.includes('llama-3.2-90b') || model.includes('llama-3.2-11b') || model.includes('llama-3.3-70b')) {
+            console.warn(`Deprecated model ${model} detected. Switching to ${defaultModel}`);
+            model = defaultModel;
+        }
 
         const messages: any[] = [
             { role: "system", content: systemInstruction }
@@ -196,7 +201,7 @@ export class AiManager {
             history: geminiHistory
         });
 
-        const response = await chat.sendMessage(newParts);
+        const response = await chat.sendMessage({ message: newParts });
 
         return {
             text: response.text || "",
@@ -259,11 +264,16 @@ export class AiManager {
         const client = this.getGroqClient();
 
         // Detect images in history or new message
-        const hasImages = (Array.isArray(newMessage) && newMessage.some(p => p.inlineData)) ||
-            history.some(h => Array.isArray(h.content) && h.content.some(p => p.inlineData));
 
-        const defaultModel = hasImages ? 'llama-3.2-90b-vision-preview' : 'llama-3.3-70b-versatile';
-        const model = modelOverride || defaultModel;
+
+        const defaultModel = 'meta-llama/llama-4-scout-17b-16e-instruct';
+        let model = modelOverride || defaultModel;
+
+        // Safety check for deprecated models
+        if (model.includes('llama-3.2-90b') || model.includes('llama-3.2-11b') || model.includes('llama-3.3-70b')) {
+            console.warn(`Deprecated model ${model} detected. Switching to ${defaultModel}`);
+            model = defaultModel;
+        }
 
         const messages: any[] = [
             { role: "system", content: systemInstruction }

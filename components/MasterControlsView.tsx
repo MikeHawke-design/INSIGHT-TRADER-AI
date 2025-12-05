@@ -647,7 +647,7 @@ export const MasterControlsView: React.FC<MasterControlsViewProps> = ({
         return (
             <div className="space-y-6">
                 <div className="bg-gray-900/50 p-4 rounded-lg border border-gray-700">
-                    <h4 className="font-semibold text-white mb-3">AI Configuration & Provider</h4>
+                    <h4 className="font-semibold text-white mb-3">AI Configuration & Provider (Updated)</h4>
 
                     <div className="mb-6 space-y-4">
                         <div>
@@ -693,7 +693,7 @@ export const MasterControlsView: React.FC<MasterControlsViewProps> = ({
                                 >
                                     <option value="gemini">Google Gemini (Recommended for Vision)</option>
                                     <option value="openai">OpenAI (GPT-4o)</option>
-                                    <option value="groq">Groq (Llama 3.3 / 3.2 Vision - Fastest)</option>
+                                    <option value="groq">Groq (Llama 4 Scout 17b - Fastest)</option>
                                 </select>
                                 <p className="text-xs text-gray-500 mt-1">Select which AI model powers the entire platform.</p>
                             </div>
@@ -708,7 +708,7 @@ export const MasterControlsView: React.FC<MasterControlsViewProps> = ({
                                     >
                                         <option value="gemini">Google Gemini (Best Vision)</option>
                                         <option value="openai">OpenAI (GPT-4o)</option>
-                                        <option value="groq">Groq (Llama 3.2 Vision)</option>
+                                        <option value="groq">Groq (Llama 4 Scout 17b)</option>
                                     </select>
                                     <p className="text-xs text-gray-500 mt-1">Used for analyzing charts and generating trade setups.</p>
                                 </div>
@@ -721,7 +721,7 @@ export const MasterControlsView: React.FC<MasterControlsViewProps> = ({
                                     >
                                         <option value="gemini">Google Gemini</option>
                                         <option value="openai">OpenAI (GPT-4o)</option>
-                                        <option value="groq">Groq (Llama 3.3 - Fast)</option>
+                                        <option value="groq">Groq (Llama 4 Scout 17b - Fast)</option>
                                     </select>
                                     <p className="text-xs text-gray-500 mt-1">Used for the Strategy Builder, Coaching, and general chat.</p>
                                 </div>
