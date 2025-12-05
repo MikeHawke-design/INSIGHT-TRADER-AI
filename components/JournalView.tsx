@@ -386,21 +386,28 @@ const JournalView: React.FC<JournalViewProps> = ({
 
         return (
             <div className="space-y-8">
-                {savedTrades.length > 0 && (
-                    <div className="bg-[hsl(var(--color-bg-800))] rounded-lg p-4 md:p-6 border border-gray-700">
-                        <h3 className="font-bold text-yellow-400 mb-4 text-center" style={{ fontSize: `${userSettings.headingFontSize}px` }}>Performance Curve (in R units)</h3>
-                        <PerformanceChart data={performanceData} />
-                    </div>
-                )}
                 <div className="bg-[hsl(var(--color-bg-800))] rounded-lg p-6 border border-gray-700">
-                    <h3 className="font-bold text-yellow-400 mb-4 text-center" style={{ fontSize: `${userSettings.headingFontSize}px` }}>Performance Analytics</h3>
-                    <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-center">
+                    <h3 className="font-bold text-yellow-400 mb-6 text-center" style={{ fontSize: `${userSettings.headingFontSize}px` }}>Performance Analytics</h3>
+
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-center mb-8">
                         <div className="bg-[hsl(var(--color-bg-900)/0.5)] p-4 rounded-lg"><p className="font-bold text-white" style={{ fontSize: `${userSettings.dataFontSize + 4}px` }}>{analytics.totalTrades}</p><p className="text-gray-400" style={{ fontSize: `${userSettings.uiFontSize}px` }}>Total Logged</p></div>
                         <div className="bg-[hsl(var(--color-bg-900)/0.5)] p-4 rounded-lg"><p className={`font-bold ${analytics.winRate >= 50 ? 'text-green-400' : 'text-red-400'}`} style={{ fontSize: `${userSettings.dataFontSize + 4}px` }}>{analytics.winRate}%</p><p className="text-gray-400" style={{ fontSize: `${userSettings.uiFontSize}px` }}>Win Rate</p></div>
                         <div className="bg-[hsl(var(--color-bg-900)/0.5)] p-4 rounded-lg"><p className="font-bold" style={{ fontSize: `${userSettings.dataFontSize + 4}px` }}><span className="text-green-400">{analytics.winCount}</span>/<span className="text-red-400">{analytics.lossCount}</span>/<span className="text-blue-400">{analytics.breakevenCount}</span></p><p className="text-gray-400" style={{ fontSize: `${userSettings.uiFontSize}px` }}>W/L/BE</p></div>
                         <div className="bg-[hsl(var(--color-bg-900)/0.5)] p-4 rounded-lg"><p className="font-bold text-yellow-300" style={{ fontSize: `${userSettings.dataFontSize + 4}px` }}>{analytics.totalR}R</p><p className="text-gray-400" style={{ fontSize: `${userSettings.uiFontSize}px` }}>Total R</p></div>
                         <div className="bg-[hsl(var(--color-bg-900)/0.5)] p-4 rounded-lg"><p className="font-bold text-purple-400 truncate" title={analytics.topStrategy} style={{ fontSize: `${userSettings.dataFontSize + 4}px` }}>{analytics.topStrategy}</p><p className="text-gray-400" style={{ fontSize: `${userSettings.uiFontSize}px` }}>Top Strategy (Wins)</p></div>
                     </div>
+
+                    {savedTrades.length > 0 && (
+                        <div className="border-t border-gray-700 pt-6 pb-2">
+                            <div className="flex items-center justify-between mb-2 px-1">
+                                <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Equity Curve (R-Multiple)</h4>
+                            </div>
+                            <div className="h-32 w-full bg-[hsl(var(--color-bg-900)/0.3)] rounded-lg overflow-hidden border border-gray-800/50">
+                                <PerformanceChart data={performanceData} height={128} />
+                            </div>
+                        </div>
+                    )}
+
                     <p className="text-xs text-gray-500 mt-4 text-center">Metrics based on trades with a logged outcome. Win rate excludes break-even trades.</p>
                 </div>
                 <div>
