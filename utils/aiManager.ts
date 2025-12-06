@@ -181,29 +181,59 @@ ${councilTranscript}
             ? [{ role: 'user', parts: [{ text: userPrompt }] }]
             : [{ role: 'user', parts: userPrompt }];
 
-        const response = await client.models.generateContent({
-            model: model,
-            contents: contents,
-            config: {
-                systemInstruction: systemInstruction,
-                maxOutputTokens: 65536,
-            }
-        });
+        let retries = 0;
+        const maxRetries = 3;
 
-        let text = response.text || "";
-        if (!text && response.candidates && response.candidates.length > 0) {
-            const candidate = response.candidates[0];
-            if (candidate.finishReason && candidate.finishReason !== 'STOP') {
-                text = `AI_GENERATION_FAILED: ${candidate.finishReason}`;
+        while (true) {
+            try {
+                const response = await client.models.generateContent({
+                    model: model,
+                    contents: contents,
+                    config: {
+                        systemInstruction: systemInstruction,
+                        maxOutputTokens: 65536,
+                    }
+                });
+
+                let text = response.text || "";
+                if (!text && response.candidates && response.candidates.length > 0) {
+                    const candidate = response.candidates[0];
+                    if (candidate.finishReason && candidate.finishReason !== 'STOP') {
+                        text = `AI_GENERATION_FAILED: ${candidate.finishReason}`;
+                    }
+                }
+
+                return {
+                    text: text,
+                    usage: {
+                        totalTokenCount: response.usageMetadata?.totalTokenCount || 0
+                    }
+                };
+            } catch (error: any) {
+                // Check for 429 Resource Exhausted
+                if (error.status === 429 || error.code === 429 || (error.message && error.message.includes('429'))) {
+                    retries++;
+                    if (retries > maxRetries) {
+                        throw error;
+                    }
+
+                    // Extract retry delay from error message or default to 2s * retries
+                    let delay = 2000 * retries;
+
+                    // Try to parse "Please retry in X.Xs"
+                    const match = error.message?.match(/retry in ([0-9.]+)s/);
+                    if (match) {
+                        delay = parseFloat(match[1]) * 1000 + 100; // Add 100ms buffer
+                    }
+
+                    console.warn(`Gemini Rate Limit Hit. Retrying in ${delay}ms... (Attempt ${retries}/${maxRetries})`);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    continue;
+                }
+
+                throw error;
             }
         }
-
-        return {
-            text: text,
-            usage: {
-                totalTokenCount: response.usageMetadata?.totalTokenCount || 0
-            }
-        };
     }
 
     private async generateOpenAI(systemInstruction: string, userPrompt: string | Part[], modelOverride?: string): Promise<StandardizedResponse> {
