@@ -245,6 +245,7 @@ export interface ApiConfiguration {
     openaiApiKey?: string;
     groqApiKey?: string;
     freeCryptoApiKey?: string;
+    twelveDataApiKey?: string;
 }
 
 export interface FreeCryptoAssetData {

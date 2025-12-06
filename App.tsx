@@ -15,7 +15,7 @@ import {
     COURSE_PROGRESS_LOCALSTORAGE_KEY,
     DEFAULT_API_CONFIGURATION,
     ADJECTIVES, NOUNS,
-    COACHING_SESSIONS_LOCALSTORAGE_KEY, TOKEN_USAGE_HISTORY_LOCALSTORAGE_KEY,
+    COACHING_SESSIONS_LOCALSTORAGE_KEY, TOKEN_USAGE_HISTORY_LOCALSTORAGE_KEY, API_CONFIG_LOCALSTORAGE_KEY,
 } from './constants';
 import useLocalStorage from './hooks/useLocalStorage';
 import useSessionStorage from './hooks/useSessionStorage';
@@ -60,7 +60,7 @@ const App: React.FC = () => {
 
     // Persistent App State
     const [userSettings, setUserSettings] = useLocalStorage<UserSettings>(USER_SETTINGS_LOCALSTORAGE_KEY, DEFAULT_USER_SETTINGS);
-    const [apiConfig, setApiConfig] = useState<ApiConfiguration>(DEFAULT_API_CONFIGURATION);
+    const [apiConfig, setApiConfig] = useLocalStorage<ApiConfiguration>(API_CONFIG_LOCALSTORAGE_KEY, DEFAULT_API_CONFIGURATION);
     const [dashboardSelectedStrategies, setDashboardSelectedStrategies] = useLocalStorage<StrategyKey[]>(DASHBOARD_STRATEGIES_LOCALSTORAGE_KEY, []);
     const [strategyLogicData, setStrategyLogicData] = useLocalStorage<Record<StrategyKey, StrategyLogicData>>(STRATEGY_LOGIC_LOCALSTORAGE_KEY, {});
     const [savedTrades, setSavedTrades] = useLocalStorage<SavedTrade[]>(SAVED_TRADES_LOCALSTORAGE_KEY, []);

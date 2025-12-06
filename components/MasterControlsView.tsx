@@ -65,8 +65,7 @@ const TrashIcon = (props: { className?: string }) => <svg {...props} xmlns="http
 const ToggleOnIcon = (props: { className?: string }) => <svg {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path fillRule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25Zm4.28 10.28a.75.75 0 0 0 0-1.06l-3-3a.75.75 0 1 0-1.06 1.06l1.72 1.72H8.25a.75.75 0 0 0 0 1.5h5.69l-1.72 1.72a.75.75 0 1 0 1.06 1.06l3-3Z" clipRule="evenodd" /></svg>;
 const ToggleOffIcon = (props: { className?: string }) => <svg {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path fillRule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25Zm-1.72 6.97a.75.75 0 0 0-1.06 1.06L10.94 12l-1.72 1.72a.75.75 0 1 0 1.06 1.06L12 13.06l1.72 1.72a.75.75 0 1 0-1.06-1.06L13.06 12l1.72-1.72a.75.75 0 1 0-1.06-1.06L12 10.94l-1.72-1.72Z" clipRule="evenodd" /></svg>;
 const ClipboardIcon = (props: { className?: string }) => <svg {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M8 1a2.5 2.5 0 0 0-2.5 2.5V4h-2A2.5 2.5 0 0 0 1 6.5v11A2.5 2.5 0 0 0 3.5 20h13a2.5 2.5 0 0 0 2.5-2.5v-11A2.5 2.5 0 0 0 16.5 4h-2v-.5A2.5 2.5 0 0 0 12 1H8ZM6 3.5A1 1 0 0 1 7 2.5h6a1 1 0 0 1 1 1V4H6v-.5ZM3.5 5.5a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h13a1 1 0 0 0 1-1v-11a1 1 0 0 0-1-1h-13Z" clipRule="evenodd" /></svg>;
-const UploadIcon = (props: { className?: string }) => <svg {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M9.25 13.25a.75.75 0 0 0 1.5 0V4.636l2.955 3.129a.75.75 0 0 0 1.09-1.03l-4.25-4.5a.75.75 0 0 0-1.09 0l-4.25 4.5a.75.75 0 0 0 1.09 1.03L9.25 4.636V13.25Z" /><path d="M3.5 12.75a.75.75 0 0 0-1.5 0v2.5A2.75 2.75 0 0 0 4.75 18h10.5A2.75 2.75 0 0 0 18 15.25v-2.5a.75.75 0 0 0-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5Z" /></svg>;
-const CheckIcon = (props: { className?: string }) => <svg {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 0 1 0 1.414l-8 8a1 1 0 0 1-1.414 0l-4-4a1 1 0 0 1 1.414-1.414L8 12.586l7.293-7.293a1 1 0 0 1 1.414 0z" clipRule="evenodd" /></svg>;
+
 
 // --- COMPONENT ---
 
@@ -107,8 +106,8 @@ export const MasterControlsView: React.FC<MasterControlsViewProps> = ({
     const backupFileInputRef = useRef<HTMLInputElement>(null);
 
     // General State
-    const [error, setError] = useState<string | null>(null);
 
+    const [error, setError] = useState<string | null>(null);
     // API Key Local State
     const [localApiKeys, setLocalApiKeys] = useState(apiConfig);
     const [saveSuccessMessage, setSaveSuccessMessage] = useState<string | null>(null);
@@ -133,7 +132,7 @@ export const MasterControlsView: React.FC<MasterControlsViewProps> = ({
         setTimeout(() => setSaveSuccessMessage(null), 3000);
     };
 
-    const fileInputRef = useRef<HTMLInputElement>(null);
+
 
 
 
@@ -245,7 +244,7 @@ export const MasterControlsView: React.FC<MasterControlsViewProps> = ({
 - Create 2-3 lessons. Each lesson must have at least one 'text' block and one 'exercise' block.
 - Create 3-4 quiz questions.
 - The 'validationPrompt' for exercises is for an AI with computer vision. It MUST instruct the AI how to validate a user's chart markup, including PASS/FAIL examples. It MUST be extremely detailed.
-- Use unique IDs for the module and lessons (e.g., "C_${Date.now()}").
+- Use unique IDs for the module and lessons (e.g., "C_\${Date.now()}").
 - The entire response must be ONLY the JSON object, without any markdown formatting.`;
 
         const response = await ai.models.generateContent({
@@ -276,7 +275,7 @@ export const MasterControlsView: React.FC<MasterControlsViewProps> = ({
                 finalStrategy.courseModule = courseModule;
             }
 
-            const newKey: StrategyKey = `strat_${Date.now()}`;
+            const newKey: StrategyKey = `strat_\${Date.now()}`;
             setStrategyLogicData(prev => ({ ...prev, [newKey]: finalStrategy }));
 
             // Reset state
@@ -376,40 +375,6 @@ export const MasterControlsView: React.FC<MasterControlsViewProps> = ({
         }
     };
 
-    const handleStrategyFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-
-        if (file.type === 'application/pdf') {
-            const reader = new FileReader();
-            reader.onload = async (event) => {
-                const arrayBuffer = event.target?.result as ArrayBuffer;
-                try {
-                    const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
-                    let textContent = '';
-                    for (let i = 1; i <= pdf.numPages; i++) {
-                        const page = await pdf.getPage(i);
-                        const text = await page.getTextContent();
-                        textContent += text.items.map((item: any) => 'str' in item ? item.str : '').join(' ') + '\n';
-                    }
-                    await handleCreateStrategyFromText(textContent, file.name);
-                } catch (pdfError) {
-                    setError('Failed to parse PDF file.');
-                }
-            };
-            reader.readAsArrayBuffer(file);
-        } else {
-            const reader = new FileReader();
-            reader.onload = async (event) => {
-                const textContent = event.target?.result as string;
-                await handleCreateStrategyFromText(textContent, file.name);
-            };
-            reader.readAsText(file);
-        }
-
-        if (e.target) e.target.value = '';
-    };
-
     const handlePasteSubmit = () => {
         if (!pasteText.trim()) return;
         const name = pasteName.trim() || "New Strategy";
@@ -477,7 +442,7 @@ export const MasterControlsView: React.FC<MasterControlsViewProps> = ({
 
             const link = document.createElement("a");
             link.href = URL.createObjectURL(content);
-            link.download = `chart-oracle-backup_${new Date().toISOString().split('T')[0]}.zip`;
+            link.download = `chart-oracle-backup_\${new Date().toISOString().split('T')[0]}.zip`;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
@@ -790,242 +755,219 @@ export const MasterControlsView: React.FC<MasterControlsViewProps> = ({
                             <p className="text-xs text-gray-500 mt-1">Used for fetching live market data and top coins.</p>
                         </div>
 
+                        <div>
+                            <label className="block font-medium text-sm text-gray-300 mb-1">TwelveData API Key (Optional)</label>
+                            <input
+                                type="password"
+                                value={localApiKeys.twelveDataApiKey || ''}
+                                onChange={(e) => setLocalApiKeys(prev => ({ ...prev, twelveDataApiKey: e.target.value }))}
+                                placeholder="Enter your TwelveData API Key"
+                                className="w-full bg-gray-800 border border-gray-600 rounded p-2 text-white focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 outline-none"
+                            />
+                            <p className="text-xs text-gray-500 mt-1">Required for Forex, Stocks, Indices, and advanced Crypto data.</p>
+                        </div>
+
                         <div className="flex items-center gap-3 mt-4">
                             <button
                                 onClick={handleSaveApiKeys}
-                                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg transition-colors flex items-center gap-2"
+                                className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded font-bold transition-colors"
                             >
-                                <CheckIcon className="w-4 h-4" /> Save API Keys
+                                Save API Keys
                             </button>
-                            {saveSuccessMessage && (
-                                <span className="text-green-400 text-sm font-medium animate-fadeIn flex items-center gap-1">
-                                    <CheckIcon className="w-4 h-4" /> {saveSuccessMessage}
-                                </span>
-                            )}
+                            {saveSuccessMessage && <span className="text-green-400 text-sm animate-fadeIn">{saveSuccessMessage}</span>}
                         </div>
                     </div>
                 </div>
 
-                <div className="bg-gray-900/50 p-4 rounded-lg border border-gray-700">
-                    <h4 className="font-semibold text-white mb-3">Appearance</h4>
-                    <div className="space-y-4">
-                        <div>
-                            <label className="block font-medium text-sm text-gray-300">UI Darkness: {userSettings.uiDarkness}</label>
-                            <input
-                                type="range"
-                                name="uiDarkness"
-                                min="-5"
-                                max="5"
-                                value={userSettings.uiDarkness}
-                                onChange={(e) => onUserSettingsChange('uiDarkness', parseInt(e.target.value))}
-                                className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-yellow-500"
-                            />
-                            <p className="text-xs text-gray-500 mt-1">Adjust the background darkness intensity.</p>
-                        </div>
-                    </div>
-                </div>
-                <div className="bg-gray-900/50 p-4 rounded-lg border border-gray-700">
-                    <h4 className="font-semibold text-white mb-3">Legal & About</h4>
-                    <div className="flex gap-4">
-                        <button onClick={() => onOpenLegal('terms')} className="text-blue-400 hover:underline">Terms of Use</button>
-                        <button onClick={() => onOpenLegal('privacy')} className="text-blue-400 hover:underline">Privacy Policy</button>
-                    </div>
-                </div>
-
+                {/* Admin Access Key Generation */}
                 {isAdmin && (
                     <div className="bg-gray-900/50 p-4 rounded-lg border border-gray-700">
-                        <h4 className="font-semibold text-white mb-3">Admin: User Access Management</h4>
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block font-medium text-sm text-gray-300 mb-1">Generate Access Key for User</label>
-                                <div className="flex flex-col sm:flex-row gap-2">
-                                    <input
-                                        type="email"
-                                        value={adminEmailInput}
-                                        onChange={(e) => setAdminEmailInput(e.target.value)}
-                                        placeholder="User Email Address"
-                                        className="w-full sm:flex-grow bg-gray-800 border border-gray-600 rounded p-2 text-white focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 outline-none"
-                                    />
-                                    <button
-                                        onClick={() => setGeneratedKey(generateAccessKey(adminEmailInput))}
-                                        disabled={!adminEmailInput}
-                                        className="w-full sm:w-auto px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white font-semibold rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                                    >
-                                        Generate Key
-                                    </button>
-                                </div>
-                            </div>
-                            {generatedKey && (
-                                <div className="bg-gray-800 p-3 rounded border border-purple-500/30 animate-fadeIn">
-                                    <p className="text-xs text-gray-400 mb-1">Generated Key for <span className="text-white">{adminEmailInput}</span>:</p>
-                                    <div className="flex items-center justify-between bg-black/30 p-2 rounded">
-                                        <code className="text-yellow-400 font-mono text-lg tracking-wider">{generatedKey}</code>
-                                        <button
-                                            onClick={() => { navigator.clipboard.writeText(generatedKey); alert("Key copied!"); }}
-                                            className="text-gray-400 hover:text-white"
-                                            title="Copy to Clipboard"
-                                        >
-                                            <ClipboardIcon className="w-5 h-5" />
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
+                        <h4 className="font-semibold text-white mb-3">Admin: Generate Access Key</h4>
+                        <div className="flex gap-2">
+                            <input
+                                type="email"
+                                value={adminEmailInput}
+                                onChange={(e) => setAdminEmailInput(e.target.value)}
+                                placeholder="User Email (optional)"
+                                className="flex-1 bg-gray-800 border border-gray-600 rounded p-2 text-white focus:border-yellow-500 outline-none"
+                            />
+                            <button
+                                onClick={() => {
+                                    const key = generateAccessKey(adminEmailInput);
+                                    setGeneratedKey(key);
+                                }}
+                                className="bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded font-bold"
+                            >
+                                Generate
+                            </button>
                         </div>
+                        {generatedKey && (
+                            <div className="mt-4 p-3 bg-gray-800 rounded border border-gray-600 flex justify-between items-center">
+                                <code className="text-yellow-400 font-mono">{generatedKey}</code>
+                                <button
+                                    onClick={() => navigator.clipboard.writeText(generatedKey)}
+                                    className="text-gray-400 hover:text-white"
+                                    title="Copy to clipboard"
+                                >
+                                    <ClipboardIcon className="w-5 h-5" />
+                                </button>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
         );
-    }
+    };
 
-    return (
-        <div className="p-4 md:p-6 mx-auto">
-            <h2 className="text-3xl font-bold text-white text-center mb-6">Settings & Master Controls</h2>
+    // --- Sub-components for Strategy List ---
 
-            <div className="sticky top-[80px] z-30 bg-[hsl(var(--color-bg-900))] backdrop-blur-md -mx-4 md:-mx-6 px-4 md:px-6 border-b border-gray-700 shadow-md">
-                <div className="overflow-x-auto mobile-tab-scroll">
-                    <nav className="-mb-px flex space-x-6 min-w-max" aria-label="Tabs">
-                        <TabButton name="strategies" activeTab={activeTab} setActiveTab={setActiveTab}>My Strategies</TabButton>
-                        <TabButton name="settings" activeTab={activeTab} setActiveTab={setActiveTab}>Settings</TabButton>
-                        <TabButton name="data" activeTab={activeTab} setActiveTab={setActiveTab}>Data Management</TabButton>
-                        <TabButton name="manual" activeTab={activeTab} setActiveTab={setActiveTab}>User Manual</TabButton>
-                    </nav>
+    const StrategyListItem = ({ strategy, strategyKey, onEdit, setStrategyToDelete, onToggleEnable, isChild = false }: { strategy: StrategyLogicData, strategyKey: StrategyKey, onEdit: (key: StrategyKey) => void, setStrategyToDelete: (key: StrategyKey) => void, onToggleEnable: (key: StrategyKey) => void, isChild?: boolean }) => (
+        <div className={`flex items-center justify-between p-3 ${isChild ? 'bg-gray-800/50 rounded-md border border-gray-700/50' : ''}`}>
+            <div className="flex items-center gap-3 overflow-hidden">
+                <div className={`w-2 h-2 rounded-full flex-shrink-0 ${strategy.isEnabled ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' : 'bg-gray-600'}`} />
+                <div className="min-w-0">
+                    <h5 className={`font-bold truncate ${isChild ? 'text-sm text-gray-300' : 'text-white'}`}>{strategy.name}</h5>
+                    {!isChild && <p className="text-xs text-gray-500 truncate">{strategy.description}</p>}
                 </div>
             </div>
-            <style>{`
-                /* Custom scrollbar for tab container on small screens */
-                .mobile-tab-scroll::-webkit-scrollbar {
-                    height: 4px;
-                }
-                .mobile-tab-scroll::-webkit-scrollbar-track {
-                    background: transparent;
-                }
-                .mobile-tab-scroll::-webkit-scrollbar-thumb {
-                    background: #4b5563; /* gray-600 */
-                    border-radius: 2px;
-                }
-            `}</style>
+            <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                <button onClick={() => onToggleEnable(strategyKey)} className={`p-1.5 rounded hover:bg-gray-600 transition-colors ${strategy.isEnabled ? 'text-green-400' : 'text-gray-500'}`} title={strategy.isEnabled ? "Disable" : "Enable"}>
+                    {strategy.isEnabled ? <ToggleOnIcon className="w-5 h-5" /> : <ToggleOffIcon className="w-5 h-5" />}
+                </button>
+                <button onClick={() => onEdit(strategyKey)} className="p-1.5 rounded hover:bg-gray-600 text-blue-400 transition-colors" title="Edit">
+                    <EditIcon className="w-4 h-4" />
+                </button>
+                <button onClick={() => setStrategyToDelete(strategyKey)} className="p-1.5 rounded hover:bg-gray-600 text-red-400 transition-colors" title="Delete">
+                    <TrashIcon className="w-4 h-4" />
+                </button>
+            </div>
+        </div>
+    );
 
-            <div className="mt-8 max-w-5xl mx-auto">
-                {activeTab === 'strategies' && (
-                    <div className="space-y-6">
-                        <div className="bg-gray-900/50 p-4 rounded-lg border border-gray-700">
-                            <h4 className="font-semibold text-white mb-3">Add New Strategy</h4>
-                            <p className="text-sm text-gray-400 mb-2">Upload a PDF or text file containing your trading strategy, or paste the text directly. The AI will analyze it and create a new, usable logic blueprint.</p>
-                            <div className="space-y-4">
-                                {isCreatingStrategy ? (
-                                    <div className="p-4 bg-gray-800 rounded-lg text-center">
-                                        <Logo className="w-12 h-12 mx-auto mb-2" isLoading={true} />
-                                        <p className="font-semibold text-yellow-300">Creating Strategy... ({creationProgress.step}/{creationProgress.total})</p>
-                                        <p className="text-sm text-gray-400">{creationProgress.message}</p>
-                                        <div className="w-full bg-gray-700 rounded-full h-2.5 mt-2">
-                                            <div className="bg-yellow-400 h-2.5 rounded-full" style={{ width: `${(creationProgress.step / creationProgress.total) * 100}%` }}></div>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
-                                        <button onClick={() => fileInputRef.current?.click()} className="font-semibold py-2 px-4 rounded-lg bg-blue-600 hover:bg-blue-500 text-white disabled:bg-gray-500 flex items-center justify-center gap-2">
-                                            <UploadIcon className="w-5 h-5" /> Upload File (.pdf, .txt)
-                                        </button>
-                                        <button onClick={() => setIsPasteModalOpen(true)} className="font-semibold py-2 px-4 rounded-lg bg-purple-600 hover:bg-purple-500 text-white disabled:bg-gray-500 flex items-center justify-center gap-2">
-                                            <ClipboardIcon className="w-5 h-5" /> Paste Text Strategy
-                                        </button>
-                                    </div>
-                                )}
-                                <p className="text-sm text-gray-500 text-center sm:text-left">
-                                    Unlimited strategy slots enabled.
-                                </p>
-                            </div>
-                            <input type="file" ref={fileInputRef} onChange={handleStrategyFileChange} accept=".pdf,.txt,.md" className="hidden" />
-                            {error && <p className="text-red-400 text-sm mt-2">{error}</p>}
-                        </div>
-                        {renderStrategyList()}
-                    </div>
-                )}
+    // --- Form Field Components ---
 
+    const InputField = ({ label, name, value, onChange, type = "text" }: any) => (
+        <div>
+            <label className="block text-sm font-medium text-gray-400 mb-1">{label}</label>
+            <input type={type} name={name} value={value} onChange={onChange} className="w-full bg-gray-900 border border-gray-600 rounded p-2 text-white focus:border-yellow-500 outline-none transition-colors" />
+        </div>
+    );
+
+    const TextareaField = ({ label, name, value, onChange, rows = 3, isMono = false }: any) => (
+        <div>
+            <label className="block text-sm font-medium text-gray-400 mb-1">{label}</label>
+            <textarea name={name} value={value} onChange={onChange} rows={rows} className={`w-full bg-gray-900 border border-gray-600 rounded p-2 text-white focus:border-yellow-500 outline-none transition-colors ${isMono ? 'font-mono text-sm' : ''}`} />
+        </div>
+    );
+
+    const SelectField = ({ label, name, value, onChange, options }: any) => (
+        <div>
+            <label className="block text-sm font-medium text-gray-400 mb-1">{label}</label>
+            <select name={name} value={value} onChange={onChange} className="w-full bg-gray-900 border border-gray-600 rounded p-2 text-white focus:border-yellow-500 outline-none transition-colors">
+                <option value="">None</option>
+                {options.map((opt: any) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+            </select>
+        </div>
+    );
+
+    return (
+        <div className="p-4 md:p-6 max-w-6xl mx-auto">
+            <div className="flex items-center gap-3 mb-6">
+                <Logo className="w-8 h-8 text-yellow-500" />
+                <h2 className="text-2xl font-bold text-white">Master Controls</h2>
+            </div>
+
+            {/* Navigation Tabs */}
+            <div className="flex space-x-1 bg-gray-800/50 p-1 rounded-lg mb-6 overflow-x-auto">
+                {(['strategies', 'settings', 'data', 'manual'] as const).map((tab) => (
+                    <button
+                        key={tab}
+                        onClick={() => setActiveTab(tab)}
+                        className={`flex-1 py-2 px-4 rounded-md text-sm font-bold transition-all whitespace-nowrap ${activeTab === tab
+                            ? 'bg-yellow-500 text-gray-900 shadow-lg'
+                            : 'text-gray-400 hover:text-white hover:bg-gray-700'
+                            }`}
+                    >
+                        {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                    </button>
+                ))}
+            </div>
+
+            {/* Content Area */}
+            <div className="animate-fadeIn">
+                {activeTab === 'strategies' && renderStrategyList()}
                 {activeTab === 'settings' && renderSettings()}
                 {activeTab === 'data' && renderDataManagement()}
                 {activeTab === 'manual' && <UserManualView />}
             </div>
 
+            {/* Modals */}
             {renderStrategyEditForm()}
 
-            <ConfirmationModal
-                isOpen={!!strategyToDelete}
-                onConfirm={() => strategyToDelete && handleDeleteStrategy(strategyToDelete)}
-                onCancel={() => setStrategyToDelete(null)}
-                title="Confirm Deletion"
-                message={`Are you sure you want to delete the "${strategyToDelete ? strategyLogicData[strategyToDelete]?.name : ''}" strategy? This action cannot be undone.`}
-            />
-
-
-
-            {isFinalizeModalOpen && pendingStrategy && (
+            {isFinalizeModalOpen && (
                 <div className="fixed inset-0 bg-gray-900/80 z-50 flex items-center justify-center p-4 animate-fadeIn">
-                    <div className="bg-gray-800 p-6 rounded-lg shadow-xl w-full max-w-lg border border-gray-700">
-                        <h3 className="text-xl font-bold text-yellow-400 mb-4">Finalize New Strategy</h3>
+                    <div className="bg-gray-800 p-6 rounded-lg shadow-xl w-full max-w-md border border-gray-700">
+                        <h3 className="text-xl font-bold text-white mb-4">Finalize Strategy</h3>
                         <div className="space-y-4">
-                            <InputField
-                                label="Strategy Name"
-                                name="name"
-                                value={finalizeFormData.name}
-                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFinalizeFormData(prev => ({ ...prev, name: e.target.value }))}
-                            />
-                            <div>
-                                <label className="flex items-center gap-3 text-sm text-gray-300">
-                                    <input
-                                        type="checkbox"
-                                        name="generateCourse"
-                                        checked={finalizeFormData.generateCourse}
-                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFinalizeFormData(prev => ({ ...prev, generateCourse: e.target.checked }))}
-                                        className="h-4 w-4 rounded bg-gray-600 border-gray-500 text-yellow-500 focus:ring-yellow-500/50"
-                                    />
-                                    <span>Generate an interactive course for the Academy</span>
-                                </label>
+                            <InputField label="Strategy Name" name="name" value={finalizeFormData.name} onChange={(e: any) => setFinalizeFormData(prev => ({ ...prev, name: e.target.value }))} />
+                            <label className="flex items-center gap-2 cursor-pointer bg-gray-900 p-3 rounded border border-gray-700 hover:border-gray-500 transition-colors">
+                                <input type="checkbox" checked={finalizeFormData.generateCourse} onChange={(e) => setFinalizeFormData(prev => ({ ...prev, generateCourse: e.target.checked }))} className="w-5 h-5 text-yellow-500 rounded focus:ring-yellow-500" />
+                                <div>
+                                    <span className="block font-bold text-white">Generate Academy Course</span>
+                                    <span className="text-xs text-gray-400">Create interactive lessons & quizzes for this strategy.</span>
+                                </div>
+                            </label>
+                            <div className="flex justify-end gap-3 mt-6">
+                                <button onClick={() => setIsFinalizeModalOpen(false)} className="px-4 py-2 rounded text-gray-400 hover:text-white">Cancel</button>
+                                <button onClick={handleFinalizeAndSaveStrategy} disabled={isFinalizing} className="px-4 py-2 rounded bg-green-600 hover:bg-green-500 text-white font-bold disabled:opacity-50">
+                                    {isFinalizing ? 'Finalizing...' : 'Save Strategy'}
+                                </button>
                             </div>
-                        </div>
-                        <div className="flex justify-end gap-4 mt-6">
-                            <button onClick={() => setIsFinalizeModalOpen(false)} className="font-semibold py-2 px-4 rounded-lg bg-gray-600 hover:bg-gray-500 text-white">Cancel</button>
-                            <button onClick={handleFinalizeAndSaveStrategy} disabled={isFinalizing} className="font-semibold py-2 px-4 rounded-lg bg-yellow-500 hover:bg-yellow-400 text-gray-900 disabled:bg-gray-500 flex items-center justify-center w-40">
-                                {isFinalizing ? <><Logo className="w-5 h-5 mr-2" isLoading />Saving...</> : 'Save Strategy'}
-                            </button>
                         </div>
                     </div>
                 </div>
+            )}
+
+            {isCreatingStrategy && (
+                <div className="fixed inset-0 bg-gray-900/90 z-50 flex items-center justify-center p-4 animate-fadeIn">
+                    <div className="text-center max-w-md w-full">
+                        <div className="w-16 h-16 border-4 border-yellow-500 border-t-transparent rounded-full animate-spin mx-auto mb-6"></div>
+                        <h3 className="text-2xl font-bold text-white mb-2">Architecting Strategy...</h3>
+                        <p className="text-gray-400 mb-6">{creationProgress.message}</p>
+                        <div className="w-full bg-gray-800 rounded-full h-2.5 mb-2 overflow-hidden">
+                            <div className="bg-yellow-500 h-2.5 rounded-full transition-all duration-500" style={{ width: `${(creationProgress.step / creationProgress.total) * 100}%` }}></div>
+                        </div>
+                        <p className="text-xs text-gray-500">Step {creationProgress.step} of {creationProgress.total}</p>
+                    </div>
+                </div>
+            )}
+
+            {strategyToDelete && (
+                <ConfirmationModal
+                    isOpen={!!strategyToDelete}
+                    title="Delete Strategy?"
+                    message={`Are you sure you want to delete "${strategyLogicData[strategyToDelete]?.name}"? This cannot be undone.`}
+                    confirmText="Delete"
+                    onConfirm={() => handleDeleteStrategy(strategyToDelete)}
+                    onCancel={() => setStrategyToDelete(null)}
+                />
             )}
 
             {/* Paste Strategy Modal */}
             {isPasteModalOpen && (
                 <div className="fixed inset-0 bg-gray-900/80 z-50 flex items-center justify-center p-4 animate-fadeIn">
-                    <div className="bg-gray-800 p-6 rounded-lg shadow-xl w-full max-w-lg border border-gray-700 flex flex-col max-h-[90vh]">
-                        <h3 className="text-xl font-bold text-yellow-400 mb-4">Paste Strategy Text</h3>
+                    <div className="bg-gray-800 p-6 rounded-lg shadow-xl w-full max-w-2xl border border-gray-700 flex flex-col max-h-[90vh]">
+                        <h3 className="text-xl font-bold text-white mb-4">Paste Strategy Document</h3>
                         <div className="space-y-4 flex-grow overflow-y-auto">
-                            <InputField
-                                label="Strategy Name (Optional)"
-                                name="pasteName"
-                                value={pasteName}
-                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPasteName(e.target.value)}
-                            />
-                            <TextareaField
-                                label="Strategy Content"
-                                name="pasteText"
-                                value={pasteText}
-                                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setPasteText(e.target.value)}
-                                rows={10}
-                            />
+                            <InputField label="Strategy Name (Optional)" name="pasteName" value={pasteName} onChange={(e: any) => setPasteName(e.target.value)} />
+                            <TextareaField label="Paste Content Here" name="pasteText" value={pasteText} onChange={(e: any) => setPasteText(e.target.value)} rows={15} />
                         </div>
-                        <div className="flex justify-end gap-4 mt-6 flex-shrink-0">
-                            <button
-                                onClick={() => { setIsPasteModalOpen(false); setPasteName(''); setPasteText(''); }}
-                                className="font-semibold py-2 px-4 rounded-lg bg-gray-600 hover:bg-gray-500 text-white"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={handlePasteSubmit}
-                                disabled={!pasteText.trim()}
-                                className="font-semibold py-2 px-4 rounded-lg bg-yellow-500 hover:bg-yellow-400 text-gray-900 disabled:bg-gray-500"
-                            >
-                                Create Strategy
+                        <div className="flex justify-end gap-3 mt-6 flex-shrink-0">
+                            <button onClick={() => setIsPasteModalOpen(false)} className="px-4 py-2 rounded text-gray-400 hover:text-white">Cancel</button>
+                            <button onClick={handlePasteSubmit} disabled={!pasteText.trim()} className="px-4 py-2 rounded bg-purple-600 hover:bg-purple-500 text-white font-bold disabled:opacity-50">
+                                Analyze & Create
                             </button>
                         </div>
                     </div>
@@ -1035,53 +977,4 @@ export const MasterControlsView: React.FC<MasterControlsViewProps> = ({
     );
 };
 
-
-// --- SUB-COMPONENTS ---
-
-const TabButton: React.FC<{ name: 'strategies' | 'settings' | 'data' | 'manual'; activeTab: 'strategies' | 'settings' | 'data' | 'manual'; setActiveTab: (name: 'strategies' | 'settings' | 'data' | 'manual') => void; children: React.ReactNode }> = ({ name, activeTab, setActiveTab, children }) => (
-    <button onClick={() => setActiveTab(name)} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg ${activeTab === name ? 'border-yellow-400 text-yellow-300' : 'border-transparent text-gray-400 hover:text-gray-200'}`}>
-        {children}
-    </button>
-);
-
-const StrategyListItem: React.FC<{ strategy: StrategyLogicData; strategyKey: string; onEdit: (k: string) => void; setStrategyToDelete: (k: string) => void; onToggleEnable: (k: string) => void; isChild?: boolean }> = ({ strategy, strategyKey, onEdit, setStrategyToDelete, onToggleEnable, isChild }) => {
-    const isEnabled = strategy.isEnabled ?? true;
-    return (
-        <div className={`flex items-center gap-2 p-2 rounded-md ${isChild ? 'bg-gray-800/50' : ''} group`}>
-            <button onClick={() => onToggleEnable(strategyKey)} title={isEnabled ? "Disable Strategy" : "Enable Strategy"} className="p-1">
-                {isEnabled ? <ToggleOnIcon className="w-6 h-6 text-green-400" /> : <ToggleOffIcon className="w-6 h-6 text-gray-500" />}
-            </button>
-            <div className="flex-grow">
-                <p className={`font-semibold ${isEnabled ? 'text-white' : 'text-gray-500 line-through'}`}>{strategy.name}</p>
-                <p className={`text-xs ${isEnabled ? 'text-gray-400' : 'text-gray-600'}`}>{strategy.description.substring(0, 100)}...</p>
-            </div>
-            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button onClick={() => onEdit(strategyKey)} className="p-2 text-gray-400 hover:text-yellow-400 rounded-full hover:bg-yellow-500/10"><EditIcon className="w-5 h-5" /></button>
-                <button onClick={() => setStrategyToDelete(strategyKey)} className="p-2 text-gray-500 hover:text-red-400 rounded-full hover:bg-red-500/10"><TrashIcon className="w-5 h-5" /></button>
-            </div>
-        </div>
-    );
-};
-
-
-const InputField: React.FC<{ label: string; name: string; value: string; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; type?: string }> = ({ label, name, value, onChange, type = 'text' }) => (
-    <div>
-        <label htmlFor={name} className="block text-sm font-medium text-gray-300">{label}</label>
-        <input type={type} name={name} id={name} value={value} onChange={onChange} className="mt-1 w-full bg-gray-700 border border-gray-600 p-2 rounded-md text-sm" />
-    </div>
-);
-const TextareaField: React.FC<{ label: string; name: string; value: string; onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void; rows: number; isMono?: boolean }> = ({ label, name, value, onChange, rows, isMono }) => (
-    <div>
-        <label htmlFor={name} className="block text-sm font-medium text-gray-300">{label}</label>
-        <textarea name={name} id={name} value={value} onChange={onChange} rows={rows} className={`mt-1 w-full bg-gray-700 border border-gray-600 p-2 rounded-md text-sm ${isMono ? 'font-mono' : ''}`} />
-    </div>
-);
-const SelectField: React.FC<{ label: string; name: string; value: string; onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void; options: { value: string; label: string }[] }> = ({ label, name, value, onChange, options }) => (
-    <div>
-        <label htmlFor={name} className="block text-sm font-medium text-gray-300">{label}</label>
-        <select name={name} id={name} value={value} onChange={onChange} className="mt-1 w-full bg-gray-700 border border-gray-600 p-2 rounded-md text-sm">
-            <option value="">None</option>
-            {options.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-        </select>
-    </div>
-);
+export default MasterControlsView;

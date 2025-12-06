@@ -32,7 +32,9 @@ export const DEFAULT_USER_SETTINGS: UserSettings = {
 export const DEFAULT_API_CONFIGURATION: ApiConfiguration = {
     geminiApiKey: '',
     openaiApiKey: '',
-    groqApiKey: ''
+    groqApiKey: '',
+    freeCryptoApiKey: '',
+    twelveDataApiKey: ''
 };
 
 export const USER_TIERS = {
