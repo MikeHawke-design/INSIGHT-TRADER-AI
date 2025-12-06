@@ -124,12 +124,10 @@ const MarketScanner: React.FC<MarketScannerProps> = ({ apiConfig, userSettings, 
                 targetSymbols.push('BTC/USD');
             }
 
-            // 2. Fetch Data Batch (Quotes)
-            const quotes = await dataApi.getAssetDataBatch(targetSymbols);
-            const quotesMap = new Map(quotes.map(q => [q.symbol, q]));
+            // 2. Fetch Data (Sequential with Delay to respect API limits)
+            // We skip the separate 'Quote' call to save API credits. We will derive price/change from candles.
 
-            // 3. Fetch Candles (Sequential with Delay to respect API limits)
-            // The free plan has a limit of ~8 requests per minute. We must throttle.
+            const quotesMap = new Map<string, FreeCryptoAssetData>();
             const candlesMap = new Map<string, any[]>();
             const totalAssets = targetSymbols.length;
 
@@ -138,8 +136,48 @@ const MarketScanner: React.FC<MarketScannerProps> = ({ apiConfig, userSettings, 
                 setScanProgress(`Fetching data for ${symbol} (${i + 1}/${totalAssets})...`);
 
                 try {
+                    // Fetch candles (this is the primary data source)
                     const candles = await dataApi.getCandles(symbol, selectedTimeframe);
                     candlesMap.set(symbol, candles);
+
+                    // Derive "Quote" data from candles to save an API call
+                    if (candles && candles.length > 0) {
+                        // Candles are [time, open, high, low, close]
+                        // We reverse them in API, so index 0 is oldest? No, TwelveData returns newest first but we reversed it?
+                        // Let's check TwelveDataApi.ts: "return data.values.map(...).reverse();"
+                        // So index 0 is OLDEST, index length-1 is NEWEST.
+
+                        const newest = candles[candles.length - 1];
+                        const currentPrice = newest[4]; // Close
+
+                        // Calculate 24h change (approximate)
+                        // If timeframe is 15m, 24h = 96 candles.
+                        // If timeframe is 1h, 24h = 24 candles.
+                        // If timeframe is 4h, 24h = 6 candles.
+                        // If timeframe is 1d, 24h = 1 candle.
+
+                        let candlesBack = 1;
+                        if (selectedTimeframe === '15m') candlesBack = 96;
+                        else if (selectedTimeframe === '1h') candlesBack = 24;
+                        else if (selectedTimeframe === '4h') candlesBack = 6;
+
+                        const pastIndex = Math.max(0, candles.length - 1 - candlesBack);
+                        const pastCandle = candles[pastIndex];
+                        const pastPrice = pastCandle ? pastCandle[4] : currentPrice;
+
+                        const change24h = ((currentPrice - pastPrice) / pastPrice) * 100;
+
+                        quotesMap.set(symbol, {
+                            symbol: symbol,
+                            price: currentPrice,
+                            change_24h: change24h,
+                            market_cap: 0, // Not available from candles, but not critical for technical analysis
+                            volume: newest[5] || 0 // Volume if available (index 5?) TwelveData API returns volume, let's check if we mapped it.
+                            // We mapped [time, open, high, low, close]. We missed volume in the map!
+                            // We need to update TwelveDataApi.ts to include volume in the map.
+                        });
+                    }
+
                 } catch (e) {
                     console.warn(`Failed to fetch candles for ${symbol}`, e);
                 }

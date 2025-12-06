@@ -178,20 +178,7 @@ const UserSettingsEditor: React.FC<UserSettingsProps> = ({ userSettings, onUserS
           <p className="text-xs text-gray-500 mt-1">{STOP_LOSS_STRATEGY_DETAILS[userSettings.stopLossStrategy]}</p>
         </div>
 
-        {/* TwelveData API Key (Temporary Location until dedicated API settings) */}
-        <div className="md:col-span-2 pt-4 border-t border-[hsl(var(--color-border-700))]">
-          <label htmlFor="twelveDataApiKey" className="block text-sm font-medium text-gray-300 mb-1">TwelveData API Key (For Market Scanner)</label>
-          <input
-            type="password"
-            id="twelveDataApiKey"
-            name="twelveDataApiKey"
-            value={(userSettings as any).twelveDataApiKey || ''}
-            onChange={handleInputChange}
-            placeholder="Enter your TwelveData API Key"
-            className="w-full bg-[hsl(var(--color-bg-700))] border border-[hsl(var(--color-border-600))] text-white rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-yellow-500 py-2 px-3 text-base"
-          />
-          <p className="text-xs text-gray-500 mt-1">Required for real-time market data in Scanner. Get it from twelvedata.com.</p>
-        </div>
+
       </div>
     </div>
   );

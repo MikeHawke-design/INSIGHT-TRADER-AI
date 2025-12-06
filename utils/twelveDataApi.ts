@@ -106,7 +106,8 @@ export class TwelveDataApi {
                         parseFloat(c.open),
                         parseFloat(c.high),
                         parseFloat(c.low),
-                        parseFloat(c.close)
+                        parseFloat(c.close),
+                        parseFloat(c.volume || 0)
                     ]).reverse(); // TwelveData returns newest first, we usually want oldest first or consistent. 
                     // Actually our prompt formatter expects array. Let's keep it consistent.
                 }
