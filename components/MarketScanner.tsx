@@ -97,27 +97,40 @@ const MarketScanner: React.FC<MarketScannerProps> = ({ selectedStrategyKey, stra
             const strategy = strategies[selectedStrategyKey];
 
             let dataContext = `Market Data (Timeframe: ${selectedTimeframe}):\n\n`;
+            let hasCandleData = false;
+
             if (includeBtcConfluence && btcData) {
                 const btcCandles = candlesMap.get('BTC');
+                if (btcCandles && btcCandles.length > 0) hasCandleData = true;
                 dataContext += `--- BITCOIN (MARKET LEADER / CONFLUENCE) ---\n${formatAssetDataForPrompt(btcData, btcCandles)}\n----------------------------------\n\n`;
             }
 
             targetCoinsData.forEach(coin => {
                 const candles = candlesMap.get(coin.symbol);
+                if (candles && candles.length > 0) hasCandleData = true;
                 dataContext += `--- ASSET: ${coin.symbol} ---\n${formatAssetDataForPrompt(coin, candles)}\n\n`;
             });
 
-            const systemInstruction = `You are a high-frequency trading algorithm scanner. Your job is to analyze raw market data AND OHLC CANDLE DATA against a specific strategy and rank the assets.
+            let systemInstruction = `You are a high-frequency trading algorithm scanner. Your job is to analyze raw market data against a specific strategy and rank the assets.
 
 **STRATEGY:**
 Name: ${strategy.name}
 Logic: ${strategy.prompt}
 
 **TASK:**
-1. **Analyze Structure:** Use the provided "Recent Candle Data (OHLC)" to mentally visualize the chart. Identify Swing Highs, Swing Lows, Trends, and Break of Structure (BOS) based on the Open, High, Low, Close values.
-   - *Do not complain about missing images.* The OHLC data IS your chart.
+1. **Analyze Structure:** `;
+
+            if (hasCandleData) {
+                systemInstruction += `Use the provided "Recent Candle Data (OHLC)" to mentally visualize the chart. Identify Swing Highs, Swing Lows, Trends, and Break of Structure (BOS) based on the Open, High, Low, Close values.
+   - *Do not complain about missing images.* The OHLC data IS your chart.`;
+            } else {
+                systemInstruction += `Analyze the available Price, 24h Change, Volume, and Technical Indicators (RSI) to infer market structure and momentum.
+   - **WARNING:** OHLC Candle data is currently UNAVAILABLE. You must do your best with the scalar metrics provided.`;
+            }
+
+            systemInstruction += `
 2. **Confluence:** If Bitcoin data is provided, use it as a confluence filter.
-3. **Rank:** Rank the assets from BEST setup to WORST based on how well the price action (from candles) and indicators match the strategy.
+3. **Rank:** Rank the assets from BEST setup to WORST based on how well the data matches the strategy.
 4. **Output:** Return ONLY a valid JSON array.
 
 **OUTPUT FORMAT:**
@@ -126,7 +139,7 @@ Return ONLY a valid JSON array:
   {
     "asset": "SYMBOL",
     "score": 0-100,
-    "analysis": "Specific analysis of the OHLC structure. Mention key levels identified from the candle data.",
+    "analysis": "Specific analysis of the market structure and indicators.",
     "confluenceWithBtc": true/false
   },
   ...
@@ -142,19 +155,32 @@ Return ONLY a valid JSON array:
             onLogTokenUsage(response.usage.totalTokenCount);
 
             let jsonText = (response.text || "").trim();
+
+            // Try to extract JSON if wrapped in markdown
             const fenceMatch = jsonText.match(/^```json\s*([\s\S]*?)\s*```$/) || jsonText.match(/^```\s*([\s\S]*?)\s*```$/);
             if (fenceMatch) {
                 jsonText = fenceMatch[1];
+            } else {
+                // Fallback: find first [ and last ]
+                const firstOpen = jsonText.indexOf('[');
+                const lastClose = jsonText.lastIndexOf(']');
+                if (firstOpen !== -1 && lastClose !== -1) {
+                    jsonText = jsonText.substring(firstOpen, lastClose + 1);
+                }
             }
 
-            // Fallback: find first [ and last ]
-            const firstOpen = jsonText.indexOf('[');
-            const lastClose = jsonText.lastIndexOf(']');
-            if (firstOpen !== -1 && lastClose !== -1) {
-                jsonText = jsonText.substring(firstOpen, lastClose + 1);
+            if (!jsonText) {
+                throw new Error("AI returned empty response. This may be due to API limits or lack of data.");
             }
 
-            const results = JSON.parse(jsonText) as MarketScannerResult[];
+            let results: MarketScannerResult[];
+            try {
+                results = JSON.parse(jsonText) as MarketScannerResult[];
+            } catch (e) {
+                console.error("Failed to parse AI response:", jsonText);
+                throw new Error("AI response was not valid JSON. Please try again.");
+            }
+
             setScanResults(results.sort((a, b) => b.score - a.score));
 
         } catch (err) {
