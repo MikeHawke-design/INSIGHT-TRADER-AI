@@ -175,7 +175,15 @@ ${councilTranscript}
 
     private async generateGemini(systemInstruction: string, userPrompt: string | Part[], modelOverride?: string): Promise<StandardizedResponse> {
         const client = this.getGeminiClient();
-        const model = modelOverride || 'gemini-1.5-flash';
+        const modelName = modelOverride || 'gemini-1.5-flash';
+
+        const model = client.getGenerativeModel({
+            model: modelName,
+            systemInstruction: systemInstruction,
+            generationConfig: {
+                maxOutputTokens: 65536
+            }
+        });
 
         const contents = typeof userPrompt === 'string'
             ? [{ role: 'user', parts: [{ text: userPrompt }] }]
@@ -186,16 +194,12 @@ ${councilTranscript}
 
         while (true) {
             try {
-                const response = await client.models.generateContent({
-                    model: model,
-                    contents: contents,
-                    config: {
-                        systemInstruction: systemInstruction,
-                        maxOutputTokens: 65536,
-                    }
+                const result = await model.generateContent({
+                    contents: contents
                 });
+                const response = await result.response;
 
-                let text = response.text || "";
+                let text = response.text() || "";
                 if (!text && response.candidates && response.candidates.length > 0) {
                     const candidate = response.candidates[0];
                     if (candidate.finishReason && candidate.finishReason !== 'STOP') {
@@ -312,7 +316,15 @@ ${councilTranscript}
         modelOverride?: string
     ): Promise<StandardizedResponse> {
         const client = this.getGeminiClient();
-        const model = modelOverride || 'gemini-2.5-flash';
+        const modelName = modelOverride || 'gemini-1.5-flash';
+
+        const model = client.getGenerativeModel({
+            model: modelName,
+            systemInstruction: systemInstruction,
+            generationConfig: {
+                maxOutputTokens: 8192
+            }
+        });
 
         // Convert history to Gemini format
         const geminiHistory = history.map(msg => ({
@@ -320,18 +332,17 @@ ${councilTranscript}
             parts: typeof msg.content === 'string' ? [{ text: msg.content }] : msg.content
         }));
 
-        const newParts = typeof newMessage === 'string' ? [{ text: newMessage }] : newMessage;
-
-        const chat = client.chats.create({
-            model: model,
-            config: { systemInstruction, maxOutputTokens: 8192 },
+        const chat = model.startChat({
             history: geminiHistory
         });
 
-        const response = await chat.sendMessage({ message: newParts });
+        const newParts = typeof newMessage === 'string' ? [{ text: newMessage }] : newMessage;
+
+        const result = await chat.sendMessage(newParts);
+        const response = await result.response;
 
         return {
-            text: response.text || "",
+            text: response.text() || "",
             usage: {
                 totalTokenCount: response.usageMetadata?.totalTokenCount || 0
             }
