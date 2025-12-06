@@ -170,7 +170,16 @@ Return ONLY a valid JSON array:
             }
 
             if (!jsonText) {
-                throw new Error("AI returned empty response. This may be due to API limits or lack of data.");
+                console.warn("AI returned empty response. Falling back to basic analysis.");
+                // Fallback: Generate a basic response if AI fails
+                const fallbackResults: MarketScannerResult[] = targetCoinsData.map(coin => ({
+                    asset: coin.symbol,
+                    score: 50, // Neutral score
+                    analysis: "AI Analysis Unavailable. Market data: Price $" + coin.price + ", 24h Change " + coin.change_24h + "%.",
+                    confluenceWithBtc: false
+                }));
+                setScanResults(fallbackResults);
+                return;
             }
 
             let results: MarketScannerResult[];
@@ -178,7 +187,15 @@ Return ONLY a valid JSON array:
                 results = JSON.parse(jsonText) as MarketScannerResult[];
             } catch (e) {
                 console.error("Failed to parse AI response:", jsonText);
-                throw new Error("AI response was not valid JSON. Please try again.");
+                // Fallback for bad JSON
+                const fallbackResults: MarketScannerResult[] = targetCoinsData.map(coin => ({
+                    asset: coin.symbol,
+                    score: 50,
+                    analysis: "AI Response Error. Raw Data: Price $" + coin.price + ", Change " + coin.change_24h + "%.",
+                    confluenceWithBtc: false
+                }));
+                setScanResults(fallbackResults);
+                return;
             }
 
             setScanResults(results.sort((a, b) => b.score - a.score));

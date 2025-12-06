@@ -76,6 +76,8 @@ export class FreeCryptoApi {
     }
 
     async getTopAssets(limit: number = 50): Promise<FreeCryptoAssetData[]> {
+        let result: FreeCryptoAssetData[] = [];
+
         // 1. Try FreeCryptoAPI
         if (this.apiKey) {
             try {
@@ -84,17 +86,16 @@ export class FreeCryptoApi {
                 });
                 if (response.ok) {
                     const data = await response.json();
-                    let result = [];
-                    if (Array.isArray(data)) result = data.slice(0, limit);
-                    else if (data && Array.isArray(data.data)) result = data.data.slice(0, limit);
-
-                    // Attempt to populate coinMap for future use if possible (FreeCryptoAPI might not give IDs)
-                    return result;
+                    if (Array.isArray(data) && data.length > 0) result = data.slice(0, limit);
+                    else if (data && Array.isArray(data.data) && data.data.length > 0) result = data.data.slice(0, limit);
                 }
             } catch (error) {
                 console.warn("FreeCryptoAPI getTop failed, trying fallback...", error);
             }
         }
+
+        // If we have results, return them. Otherwise, try CoinGecko.
+        if (result.length > 0) return result;
 
         // 2. Fallback to CoinGecko
         try {
@@ -102,20 +103,21 @@ export class FreeCryptoApi {
             const response = await fetch(`https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=${limit}&page=1&sparkline=false`);
             if (response.ok) {
                 const data = await response.json();
+                if (Array.isArray(data) && data.length > 0) {
+                    // Populate cache
+                    data.forEach((item: any) => {
+                        this.coinMap.set(item.symbol.toUpperCase(), item.id);
+                    });
 
-                // Populate cache
-                data.forEach((item: any) => {
-                    this.coinMap.set(item.symbol.toUpperCase(), item.id);
-                });
-
-                return data.map((item: any) => ({
-                    symbol: item.symbol.toUpperCase(),
-                    price: item.current_price,
-                    change_24h: item.price_change_percentage_24h,
-                    market_cap: item.market_cap,
-                    volume: item.total_volume
-                    // Technicals not available in this endpoint
-                }));
+                    return data.map((item: any) => ({
+                        symbol: item.symbol.toUpperCase(),
+                        price: item.current_price,
+                        change_24h: item.price_change_percentage_24h,
+                        market_cap: item.market_cap,
+                        volume: item.total_volume
+                        // Technicals not available in this endpoint
+                    }));
+                }
             }
         } catch (error) {
             console.error("CoinGecko fallback failed:", error);
