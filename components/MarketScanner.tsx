@@ -338,7 +338,11 @@ Return ONLY a valid JSON array:
             setScanResults(results.sort((a, b) => b.score - a.score));
 
         } catch (err) {
-            console.error("Scan failed", err);
+            console.error("Scan failed detailed:", err);
+            if (err instanceof Error) {
+                console.error("Error message:", err.message);
+                console.error("Error stack:", err.stack);
+            }
             setError("An error occurred during scanning. Please check your API key and try again.");
         } finally {
             setIsScanning(false);
