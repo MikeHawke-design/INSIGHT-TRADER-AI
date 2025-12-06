@@ -190,8 +190,16 @@ ${councilTranscript}
             }
         });
 
+        let text = response.text || "";
+        if (!text && response.candidates && response.candidates.length > 0) {
+            const candidate = response.candidates[0];
+            if (candidate.finishReason && candidate.finishReason !== 'STOP') {
+                text = `AI_GENERATION_FAILED: ${candidate.finishReason}`;
+            }
+        }
+
         return {
-            text: response.text || "",
+            text: text,
             usage: {
                 totalTokenCount: response.usageMetadata?.totalTokenCount || 0
             }

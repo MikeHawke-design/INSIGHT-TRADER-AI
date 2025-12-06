@@ -169,7 +169,7 @@ const MarketScanner: React.FC<MarketScannerProps> = ({ apiConfig, userSettings, 
                 }
             });
 
-            let systemInstruction = `You are a high-frequency trading algorithm scanner. Your job is to analyze raw market data against a specific strategy and rank the assets.
+            let systemInstruction = `You are a professional market analyst and strategy evaluator. Your job is to analyze raw market data against a specific strategy and rank the assets based on technical setup quality.
 
 **STRATEGY:**
 Name: ${strategy.name}
@@ -179,16 +179,15 @@ Logic: ${strategy.prompt}
 1. **Analyze Structure:** `;
 
             if (hasCandleData) {
-                systemInstruction += `Use the provided "Recent Candle Data (OHLC)" to mentally visualize the chart. Identify Swing Highs, Swing Lows, Trends, and Break of Structure (BOS) based on the Open, High, Low, Close values.
-   - *Do not complain about missing images.* The OHLC data IS your chart.`;
+                systemInstruction += `Use the provided "Recent Candle Data (OHLC)" to visualize the price action. Identify Key Levels, Trends, and Patterns based on the Open, High, Low, Close values.`;
             } else {
-                systemInstruction += `Analyze the available Price, 24h Change, Volume, and Technical Indicators to infer market structure and momentum.
-   - **WARNING:** OHLC Candle data is currently UNAVAILABLE. You must do your best with the scalar metrics provided.`;
+                systemInstruction += `Analyze the available Price, 24h Change, and Volume to infer market momentum.
+   - **WARNING:** OHLC Candle data is currently UNAVAILABLE. Base your analysis on the scalar metrics provided.`;
             }
 
             systemInstruction += `
-2. **Confluence:** If Bitcoin data is provided (and relevant), use it as a confluence filter.
-3. **Rank:** Rank the assets from BEST setup to WORST based on how well the data matches the strategy.
+2. **Confluence:** If Bitcoin data is provided, use it to gauge general market direction.
+3. **Rank:** Rank the assets from BEST setup to WORST based on how well the data matches the strategy criteria.
 4. **Output:** Return ONLY a valid JSON array.
 
 **OUTPUT FORMAT:**
@@ -197,7 +196,7 @@ Return ONLY a valid JSON array:
   {
     "asset": "SYMBOL",
     "score": 0-100,
-    "analysis": "Specific analysis of the market structure and indicators.",
+    "analysis": "Concise technical analysis citing specific price levels or patterns found.",
     "confluenceWithBtc": true/false
   },
   ...
@@ -213,6 +212,21 @@ Return ONLY a valid JSON array:
             onLogTokenUsage(response.usage.totalTokenCount);
 
             let jsonText = (response.text || "").trim();
+
+            if (jsonText.startsWith('AI_GENERATION_FAILED:')) {
+                console.error("AI Generation Failed:", jsonText);
+                const fallbackResults: ExtendedMarketScannerResult[] = selectedCoins.map(s => ({
+                    asset: s,
+                    score: 0,
+                    analysis: `AI Analysis Failed: ${jsonText.split(':')[1]} (Safety Filter or Limit Reached)`,
+                    confluenceWithBtc: false,
+                    dataSource: dataSource,
+                    dataStatus: "AI Error"
+                }));
+                setScanResults(fallbackResults);
+                setIsScanning(false);
+                return;
+            }
 
             // Try to extract JSON if wrapped in markdown
             const fenceMatch = jsonText.match(/^```json\s*([\s\S]*?)\s*```$/) || jsonText.match(/^```\s*([\s\S]*?)\s*```$/);
@@ -295,8 +309,8 @@ Return ONLY a valid JSON array:
                                 key={ac}
                                 onClick={() => setAssetClass(ac)}
                                 className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-colors ${assetClass === ac
-                                        ? 'bg-[hsl(var(--color-bg-700))] text-white shadow-sm'
-                                        : 'text-gray-400 hover:text-white'
+                                    ? 'bg-[hsl(var(--color-bg-700))] text-white shadow-sm'
+                                    : 'text-gray-400 hover:text-white'
                                     }`}
                             >
                                 {ac}
@@ -313,8 +327,8 @@ Return ONLY a valid JSON array:
                                 key={tf}
                                 onClick={() => setSelectedTimeframe(tf)}
                                 className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-colors ${selectedTimeframe === tf
-                                        ? 'bg-[hsl(var(--color-bg-700))] text-white shadow-sm'
-                                        : 'text-gray-400 hover:text-white'
+                                    ? 'bg-[hsl(var(--color-bg-700))] text-white shadow-sm'
+                                    : 'text-gray-400 hover:text-white'
                                     }`}
                             >
                                 {tf}
@@ -369,8 +383,8 @@ Return ONLY a valid JSON array:
                                 key={coin.symbol}
                                 onClick={() => toggleCoinSelection(coin.symbol)}
                                 className={`px-2 py-1.5 text-xs font-medium rounded border transition-all ${selectedCoins.includes(coin.symbol)
-                                        ? 'bg-blue-900/30 border-blue-500 text-blue-200'
-                                        : 'bg-[hsl(var(--color-bg-800))] border-[hsl(var(--color-border-700))] text-gray-400 hover:border-gray-500'
+                                    ? 'bg-blue-900/30 border-blue-500 text-blue-200'
+                                    : 'bg-[hsl(var(--color-bg-800))] border-[hsl(var(--color-border-700))] text-gray-400 hover:border-gray-500'
                                     }`}
                             >
                                 {coin.symbol}
@@ -401,8 +415,8 @@ Return ONLY a valid JSON array:
                 onClick={handleScan}
                 disabled={isScanning || selectedCoins.length === 0}
                 className={`w-full py-3 rounded-lg font-bold text-white shadow-lg transition-all flex items-center justify-center gap-2 ${isScanning || selectedCoins.length === 0
-                        ? 'bg-gray-700 cursor-not-allowed opacity-50'
-                        : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 shadow-blue-900/20'
+                    ? 'bg-gray-700 cursor-not-allowed opacity-50'
+                    : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 shadow-blue-900/20'
                     }`}
             >
                 {isScanning ? (
@@ -445,8 +459,8 @@ Return ONLY a valid JSON array:
                                         <h4 className="text-xl font-bold text-white">{result.asset}</h4>
                                         <div className="flex items-center gap-2 mt-1">
                                             <span className={`px-2 py-0.5 rounded text-xs font-bold ${result.score >= 80 ? 'bg-green-900/50 text-green-400' :
-                                                    result.score >= 50 ? 'bg-yellow-900/50 text-yellow-400' :
-                                                        'bg-red-900/50 text-red-400'
+                                                result.score >= 50 ? 'bg-yellow-900/50 text-yellow-400' :
+                                                    'bg-red-900/50 text-red-400'
                                                 }`}>
                                                 Score: {result.score}
                                             </span>
