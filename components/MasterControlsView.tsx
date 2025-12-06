@@ -778,6 +778,18 @@ export const MasterControlsView: React.FC<MasterControlsViewProps> = ({
                             />
                         </div>
 
+                        <div>
+                            <label className="block font-medium text-sm text-gray-300 mb-1">FreeCryptoAPI Key (Optional)</label>
+                            <input
+                                type="password"
+                                value={localApiKeys.freeCryptoApiKey || ''}
+                                onChange={(e) => setLocalApiKeys(prev => ({ ...prev, freeCryptoApiKey: e.target.value }))}
+                                placeholder="Enter your FreeCryptoAPI Key"
+                                className="w-full bg-gray-800 border border-gray-600 rounded p-2 text-white focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 outline-none"
+                            />
+                            <p className="text-xs text-gray-500 mt-1">Used for fetching live market data and top coins.</p>
+                        </div>
+
                         <div className="flex items-center gap-3 mt-4">
                             <button
                                 onClick={handleSaveApiKeys}

@@ -6,6 +6,8 @@ import UserSettingsEditor from './UserSettings';
 import Logo from './Logo';
 import OracleIcon from './OracleIcon';
 
+import MarketScanner from './MarketScanner';
+
 interface DashboardProps {
     onAnalysisComplete: (results: AnalysisResults, strategies: StrategyKey[], images: UploadedImageKeys, useRealTimeContext: boolean) => void;
     userSettings: UserSettings;
@@ -56,6 +58,7 @@ const Dashboard: React.FC<DashboardProps> = ({
     const [uploaderPhase, setUploaderPhase] = useState<'idle' | 'gathering' | 'validating' | 'ready' | 'analyzing'>('idle');
     const [isComparisonMode, setIsComparisonMode] = useState<boolean>(false);
     const [isPromptVisible, setIsPromptVisible] = useState(false);
+    const [viewMode, setViewMode] = useState<'chart' | 'scanner'>('chart');
 
     useEffect(() => {
         setIsPromptVisible(false);
@@ -208,83 +211,119 @@ const Dashboard: React.FC<DashboardProps> = ({
                     <Section number={2} title="Add Context" disabled={dashboardSelectedStrategies.length === 0} fontSize={userSettings.headingFontSize}>
                         <div className="flex flex-col gap-6">
                             <div className="mb-2">
-                                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Analysis Mode</p>
-                                <div className="flex bg-gray-900 p-1 rounded-lg border border-gray-700 max-w-md">
+                                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Analysis Workflow</p>
+                                <div className="flex bg-gray-900 p-1 rounded-lg border border-gray-700 max-w-md mb-4">
                                     <button
-                                        onClick={() => setIsComparisonMode(false)}
-                                        className={`flex-1 py-2 px-4 rounded-md text-sm font-semibold transition-all ${!isComparisonMode
-                                            ? 'bg-gray-700 text-white shadow-md'
+                                        onClick={() => setViewMode('chart')}
+                                        className={`flex-1 py-2 px-4 rounded-md text-sm font-semibold transition-all ${viewMode === 'chart'
+                                            ? 'bg-yellow-600 text-white shadow-md'
                                             : 'text-gray-400 hover:text-gray-200'
                                             }`}
                                     >
-                                        Standard Analysis
+                                        Chart Analysis
                                     </button>
                                     <button
-                                        onClick={() => setIsComparisonMode(true)}
-                                        className={`flex-1 py-2 px-4 rounded-md text-sm font-semibold transition-all ${isComparisonMode
-                                            ? 'bg-blue-700 text-white shadow-md'
+                                        onClick={() => setViewMode('scanner')}
+                                        className={`flex-1 py-2 px-4 rounded-md text-sm font-semibold transition-all ${viewMode === 'scanner'
+                                            ? 'bg-blue-600 text-white shadow-md'
                                             : 'text-gray-400 hover:text-gray-200'
                                             }`}
                                     >
-                                        Asset Comparison
+                                        Market Scanner
                                     </button>
                                 </div>
-                                <p className="text-xs text-gray-500 mt-2">
-                                    {isComparisonMode
-                                        ? "Rank multiple assets against each other based on strategy criteria."
-                                        : "Deep dive analysis into a single asset or setup with multi-timeframe context."}
-                                </p>
-                            </div>
 
-                            <ImageUploader
-                                ref={uploaderRef}
-                                onAnalysisComplete={onAnalysisComplete}
-                                selectedStrategies={dashboardSelectedStrategies}
-                                userSettings={userSettings}
-                                initialImages={initialImages}
-                                strategyLogicData={strategyLogicData}
-                                isAnalyzing={isAnalyzing}
-                                setIsAnalyzing={setIsAnalyzing}
-                                onPhaseChange={setUploaderPhase}
-                                apiConfig={apiConfig}
-                                onLogTokenUsage={onLogTokenUsage}
-                                isComparisonMode={isComparisonMode}
-                            />
-                        </div>
-                    </Section>
-
-                    <Section number={3} title="Analyze" disabled={isSubmitDisabled} fontSize={userSettings.headingFontSize}>
-                        <div className="flex flex-col gap-4">
-
-
-                            <button
-                                onClick={handleTriggerAnalysis}
-                                disabled={isSubmitDisabled}
-                                title={submitButtonTooltip}
-                                className="w-full py-4 px-6 bg-gradient-to-r from-yellow-600 to-yellow-500 hover:from-yellow-500 hover:to-yellow-400 text-gray-900 font-bold text-lg rounded-lg shadow-lg transform transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-3"
-                            >
-                                {isAnalyzing ? (
+                                {viewMode === 'chart' && (
                                     <>
-                                        <Logo className="w-6 h-6 animate-spin" />
-                                        <span>Analyzing Market Structure...</span>
-                                    </>
-                                ) : (
-                                    <>
-                                        <span>{isComparisonMode ? 'COMPARE ASSETS' : 'GENERATE TRADE SETUP'}</span>
-                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
-                                            <path fillRule="evenodd" d="M3 10a.75.75 0 0 1 .75-.75h10.638L10.23 5.29a.75.75 0 1 1 1.04-1.08l5.5 5.25a.75.75 0 0 1 0 1.08l-5.5 5.25a.75.75 0 1 1-1.04-1.08l4.158-3.96H3.75A.75.75 0 0 1 3 10Z" clipRule="evenodd" />
-                                        </svg>
+                                        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Chart Mode</p>
+                                        <div className="flex bg-gray-900 p-1 rounded-lg border border-gray-700 max-w-md">
+                                            <button
+                                                onClick={() => setIsComparisonMode(false)}
+                                                className={`flex-1 py-2 px-4 rounded-md text-sm font-semibold transition-all ${!isComparisonMode
+                                                    ? 'bg-gray-700 text-white shadow-md'
+                                                    : 'text-gray-400 hover:text-gray-200'
+                                                    }`}
+                                            >
+                                                Standard Analysis
+                                            </button>
+                                            <button
+                                                onClick={() => setIsComparisonMode(true)}
+                                                className={`flex-1 py-2 px-4 rounded-md text-sm font-semibold transition-all ${isComparisonMode
+                                                    ? 'bg-blue-700 text-white shadow-md'
+                                                    : 'text-gray-400 hover:text-gray-200'
+                                                    }`}
+                                            >
+                                                Asset Comparison
+                                            </button>
+                                        </div>
+                                        <p className="text-xs text-gray-500 mt-2">
+                                            {isComparisonMode
+                                                ? "Rank multiple assets against each other based on strategy criteria."
+                                                : "Deep dive analysis into a single asset or setup with multi-timeframe context."}
+                                        </p>
                                     </>
                                 )}
-                            </button>
-                            {isSubmitDisabled && !isAnalyzing && (
-                                <p className="text-center text-sm text-red-400 flex items-center justify-center gap-2">
-                                    <WarningIcon className="w-4 h-4" />
-                                    {submitButtonTooltip}
-                                </p>
+                            </div>
+
+                            {viewMode === 'chart' ? (
+                                <ImageUploader
+                                    ref={uploaderRef}
+                                    onAnalysisComplete={onAnalysisComplete}
+                                    selectedStrategies={dashboardSelectedStrategies}
+                                    userSettings={userSettings}
+                                    initialImages={initialImages}
+                                    strategyLogicData={strategyLogicData}
+                                    isAnalyzing={isAnalyzing}
+                                    setIsAnalyzing={setIsAnalyzing}
+                                    onPhaseChange={setUploaderPhase}
+                                    apiConfig={apiConfig}
+                                    onLogTokenUsage={onLogTokenUsage}
+                                    isComparisonMode={isComparisonMode}
+                                />
+                            ) : (
+                                <MarketScanner
+                                    selectedStrategyKey={dashboardSelectedStrategies[0] || null}
+                                    strategies={strategyLogicData}
+                                    apiConfig={apiConfig}
+                                    userSettings={userSettings}
+                                    onLogTokenUsage={onLogTokenUsage}
+                                />
                             )}
                         </div>
                     </Section>
+
+                    {viewMode === 'chart' && (
+                        <Section number={3} title="Analyze" disabled={isSubmitDisabled} fontSize={userSettings.headingFontSize}>
+                            <div className="flex flex-col gap-4">
+                                <button
+                                    onClick={handleTriggerAnalysis}
+                                    disabled={isSubmitDisabled}
+                                    title={submitButtonTooltip}
+                                    className="w-full py-4 px-6 bg-gradient-to-r from-yellow-600 to-yellow-500 hover:from-yellow-500 hover:to-yellow-400 text-gray-900 font-bold text-lg rounded-lg shadow-lg transform transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-3"
+                                >
+                                    {isAnalyzing ? (
+                                        <>
+                                            <Logo className="w-6 h-6 animate-spin" />
+                                            <span>Analyzing Market Structure...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <span>{isComparisonMode ? 'COMPARE ASSETS' : 'GENERATE TRADE SETUP'}</span>
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+                                                <path fillRule="evenodd" d="M3 10a.75.75 0 0 1 .75-.75h10.638L10.23 5.29a.75.75 0 1 1 1.04-1.08l5.5 5.25a.75.75 0 0 1 0 1.08l-5.5 5.25a.75.75 0 1 1-1.04-1.08l4.158-3.96H3.75A.75.75 0 0 1 3 10Z" clipRule="evenodd" />
+                                            </svg>
+                                        </>
+                                    )}
+                                </button>
+                                {isSubmitDisabled && !isAnalyzing && (
+                                    <p className="text-center text-sm text-red-400 flex items-center justify-center gap-2">
+                                        <WarningIcon className="w-4 h-4" />
+                                        {submitButtonTooltip}
+                                    </p>
+                                )}
+                            </div>
+                        </Section>
+                    )}
                 </div>
 
                 <div className="lg:col-span-2 space-y-6">

@@ -22,6 +22,7 @@ import ClarityFeedback from './ClarityFeedback';
 import Logo from './Logo';
 import ScreenCaptureModal from './ScreenCaptureModal';
 import { AiManager } from '../utils/aiManager';
+import { FreeCryptoApi, formatAssetDataForPrompt } from '../utils/freeCryptoApi';
 
 // --- SYSTEM PROMPTS ---
 
@@ -237,6 +238,7 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
     const [conversation, setConversation] = useState<{ sender: 'ai' | 'user', text?: string, image?: string }[]>([]);
     const [uploadedImagesData, setUploadedImagesData] = useState<UploadedImageKeys>({});
     const [error, setError] = useState<string | null>(null);
+    const [assetSymbol, setAssetSymbol] = useState('');
 
     // Screen Capture State
     const [isCaptureModalOpen, setIsCaptureModalOpen] = useState(false);
@@ -568,12 +570,26 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
 
         const manager = getAiManager();
         let currentPrice: number | null = null;
+        let liveMarketDataContext = "";
+
+        if (assetSymbol.trim()) {
+            try {
+                const api = new FreeCryptoApi(apiConfig.freeCryptoApiKey);
+                const data = await api.getAssetData(assetSymbol.trim().toUpperCase());
+                if (data) {
+                    liveMarketDataContext = `\n\n**LIVE MARKET DATA (Source: FreeCryptoAPI)**\n${formatAssetDataForPrompt(data)}\nUse this data for accurate pricing and indicators.`;
+                    currentPrice = data.price;
+                }
+            } catch (err) {
+                console.warn("Failed to fetch live data:", err);
+            }
+        }
 
         try {
             const systemInstruction = generateSystemInstructionContent(
                 selectedStrategies, userSettings, uploadedImagesData, strategyLogicData,
                 currentPrice, isComparisonMode
-            );
+            ) + liveMarketDataContext;
 
             const imageParts: Part[] = [];
             const sortedImageKeys = Object.keys(uploadedImagesData).sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
@@ -668,6 +684,17 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
                 <div>
                     <h4 className="font-bold text-gray-200">Provide Market Context</h4>
                     <p className="text-sm text-gray-400 mb-4">Upload screenshots of your charts for analysis.</p>
+
+                    <div className="mb-4">
+                        <label className="block text-xs font-medium text-gray-400 mb-1">Asset Symbol (Optional - for Live Data)</label>
+                        <input
+                            type="text"
+                            value={assetSymbol}
+                            onChange={(e) => setAssetSymbol(e.target.value)}
+                            placeholder="e.g. BTC, ETH, SOL"
+                            className="w-full bg-gray-900 border border-gray-600 rounded p-2 text-white text-sm focus:border-blue-500 outline-none"
+                        />
+                    </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4">
                         <button onClick={() => fileInputRef.current?.click()} className="text-sm font-semibold p-3 rounded-md bg-blue-600 hover:bg-blue-500 text-white transition-colors">

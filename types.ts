@@ -244,6 +244,26 @@ export interface ApiConfiguration {
     geminiApiKey?: string;
     openaiApiKey?: string;
     groqApiKey?: string;
+    freeCryptoApiKey?: string;
+}
+
+export interface FreeCryptoAssetData {
+    symbol: string;
+    price: number;
+    change_24h: number;
+    market_cap: number;
+    volume: number;
+    technical?: {
+        rsi: number;
+        signal: string;
+    };
+}
+
+export interface MarketScannerResult {
+    asset: string;
+    score: number;
+    analysis: string;
+    confluenceWithBtc: boolean;
 }
 
 export interface RiskManagementSettings {
