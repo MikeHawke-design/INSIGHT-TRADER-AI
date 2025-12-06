@@ -186,7 +186,7 @@ ${councilTranscript}
             contents: contents,
             config: {
                 systemInstruction: systemInstruction,
-                maxOutputTokens: 8192,
+                maxOutputTokens: 65536,
             }
         });
 

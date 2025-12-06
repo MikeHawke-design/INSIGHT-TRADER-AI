@@ -219,8 +219,8 @@ export const formatAssetDataForPrompt = (data: FreeCryptoAssetData, candles?: an
     if (candles && candles.length > 0) {
         output += `\nRecent Candle Data (OHLC) - Use this for Structure Analysis:\n`;
         output += `Time (Approx) | Open | High | Low | Close\n`;
-        // Show last 15 candles
-        const recentCandles = candles.slice(-15);
+        // Show last 10 candles
+        const recentCandles = candles.slice(-10);
         recentCandles.forEach(c => {
             const date = new Date(c[0]).toLocaleTimeString();
             output += `${date} | ${c[1]} | ${c[2]} | ${c[3]} | ${c[4]}\n`;
