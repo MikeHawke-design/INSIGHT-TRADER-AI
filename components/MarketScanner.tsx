@@ -44,6 +44,8 @@ const MarketScanner: React.FC<MarketScannerProps> = ({ apiConfig, userSettings, 
     const [error, setError] = useState<string | null>(null);
     const [assetClass, setAssetClass] = useState<'Crypto' | 'Forex' | 'Indices' | 'Stocks'>('Crypto');
 
+    const [scanProgress, setScanProgress] = useState<string>('');
+
     // Initialize APIs
     const listApi = new FreeCryptoApi(apiConfig.freeCryptoApiKey);
     // Use the key from apiConfig, with a fallback to userSettings if it was legacy
@@ -125,14 +127,29 @@ const MarketScanner: React.FC<MarketScannerProps> = ({ apiConfig, userSettings, 
             const quotes = await dataApi.getAssetDataBatch(targetSymbols);
             const quotesMap = new Map(quotes.map(q => [q.symbol, q]));
 
-            // 3. Fetch Candles (Parallel)
-            const candlePromises = targetSymbols.map(async (symbol) => {
-                const candles = await dataApi.getCandles(symbol, selectedTimeframe);
-                return { symbol, candles };
-            });
+            // 3. Fetch Candles (Sequential with Delay to respect API limits)
+            // The free plan has a limit of ~8 requests per minute. We must throttle.
+            const candlesMap = new Map<string, any[]>();
+            const totalAssets = targetSymbols.length;
 
-            const candlesResults = await Promise.all(candlePromises);
-            const candlesMap = new Map(candlesResults.map(r => [r.symbol, r.candles]));
+            for (let i = 0; i < totalAssets; i++) {
+                const symbol = targetSymbols[i];
+                setScanProgress(`Fetching data for ${symbol} (${i + 1}/${totalAssets})...`);
+
+                try {
+                    const candles = await dataApi.getCandles(symbol, selectedTimeframe);
+                    candlesMap.set(symbol, candles);
+                } catch (e) {
+                    console.warn(`Failed to fetch candles for ${symbol}`, e);
+                }
+
+                // Add delay between requests to avoid rate limits (e.g., 2 seconds)
+                // Only delay if it's not the last item
+                if (i < totalAssets - 1) {
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                }
+            }
+            setScanProgress('Analyzing data with AI...');
 
             // Determine Data Source Status
             const dataSource = twelveDataKey ? "TwelveData (Official)" : "FreeCryptoAPI (Fallback)";
@@ -425,7 +442,7 @@ Return ONLY a valid JSON array:
                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
-                        Scanning Market...
+                        {scanProgress || 'Scanning Market...'}
                     </>
                 ) : (
                     <>
