@@ -79,30 +79,46 @@ const MarketScanner: React.FC<MarketScannerProps> = ({ selectedStrategyKey, stra
                 }
             }
 
-            // 2. Prepare AI Prompt
+            // 2. Fetch Candle Data (Parallelized)
+            // Note: We fetch candles for ALL target coins to give the AI structure data.
+            const candlePromises = targetCoinsData.map(async (coin) => {
+                const candles = await api.getCandles(coin.symbol, selectedTimeframe);
+                return { symbol: coin.symbol, candles };
+            });
+
+            if (includeBtcConfluence && btcData) {
+                candlePromises.push(api.getCandles('BTC', selectedTimeframe).then(c => ({ symbol: 'BTC', candles: c })));
+            }
+
+            const candlesResults = await Promise.all(candlePromises);
+            const candlesMap = new Map(candlesResults.map(r => [r.symbol, r.candles]));
+
+            // 3. Prepare AI Prompt
             const strategy = strategies[selectedStrategyKey];
 
             let dataContext = `Market Data (Timeframe: ${selectedTimeframe}):\n\n`;
             if (includeBtcConfluence && btcData) {
-                dataContext += `--- BITCOIN (MARKET LEADER / CONFLUENCE) ---\n${formatAssetDataForPrompt(btcData)}\n----------------------------------\n\n`;
+                const btcCandles = candlesMap.get('BTC');
+                dataContext += `--- BITCOIN (MARKET LEADER / CONFLUENCE) ---\n${formatAssetDataForPrompt(btcData, btcCandles)}\n----------------------------------\n\n`;
             }
 
             targetCoinsData.forEach(coin => {
-                dataContext += `--- ASSET: ${coin.symbol} ---\n${formatAssetDataForPrompt(coin)}\n\n`;
+                const candles = candlesMap.get(coin.symbol);
+                dataContext += `--- ASSET: ${coin.symbol} ---\n${formatAssetDataForPrompt(coin, candles)}\n\n`;
             });
 
-            const systemInstruction = `You are a high-frequency trading algorithm scanner. Your job is to analyze raw market data against a specific strategy and rank the assets.
+            const systemInstruction = `You are a high-frequency trading algorithm scanner. Your job is to analyze raw market data AND OHLC CANDLE DATA against a specific strategy and rank the assets.
 
 **STRATEGY:**
 Name: ${strategy.name}
 Logic: ${strategy.prompt}
 
 **TASK:**
-1. Analyze the provided market data for each asset.
-2. If Bitcoin data is provided, use it as a confluence filter (e.g., if BTC is bearish, long setups on alts are lower probability).
-3. Apply the strategy logic to the technical data (RSI, Price Action inferred from change/volume, etc.).
-4. Rank the assets from BEST setup to WORST.
-5. Output a JSON array of objects.
+1. **Analyze Structure:** Use the provided "Recent Candle Data (OHLC)" to mentally visualize the chart. Identify Swing Highs, Swing Lows, Trends, and Break of Structure (BOS) based on the Open, High, Low, Close values.
+   - *Do not complain about missing images.* The OHLC data IS your chart.
+2. **Confluence:** If Bitcoin data is provided, use it as a confluence filter.
+3. **Rank:** Rank the assets from BEST setup to WORST based on how well the price action (from candles) and indicators match the strategy.
+4. **Output:** Return ONLY a valid JSON array.
 
 **OUTPUT FORMAT:**
 Return ONLY a valid JSON array:
@@ -110,7 +126,7 @@ Return ONLY a valid JSON array:
   {
     "asset": "SYMBOL",
     "score": 0-100,
-    "analysis": "Brief reason why it fits or fails.",
+    "analysis": "Specific analysis of the OHLC structure. Mention key levels identified from the candle data.",
     "confluenceWithBtc": true/false
   },
   ...
