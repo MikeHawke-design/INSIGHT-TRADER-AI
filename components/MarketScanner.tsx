@@ -352,11 +352,41 @@ Return ONLY a valid JSON array:
 
         try {
             // Re-fetch data to ensure freshness or use existing if we could store it (for now refetching is safer/easier)
-            // Actually, we can just use the data we have if we stored it, but we didn't store the raw data context per asset.
-            // Let's quickly re-fetch just for this asset to be precise.
+            // We optimize by deriving quote data from candles, same as in handleScan.
             const symbol = assetClass === 'Crypto' && !result.asset.includes('/') ? `${result.asset}/USD` : result.asset;
-            const quote = (await dataApi.getAssetDataBatch([symbol]))[0];
             const candles = await dataApi.getCandles(symbol, selectedTimeframe);
+
+            let quote: FreeCryptoAssetData = {
+                symbol: symbol,
+                price: 0,
+                change_24h: 0,
+                market_cap: 0,
+                volume: 0
+            };
+
+            if (candles && candles.length > 0) {
+                const newest = candles[candles.length - 1];
+                const currentPrice = newest[4]; // Close
+
+                let candlesBack = 1;
+                if (selectedTimeframe === '15m') candlesBack = 96;
+                else if (selectedTimeframe === '1h') candlesBack = 24;
+                else if (selectedTimeframe === '4h') candlesBack = 6;
+
+                const pastIndex = Math.max(0, candles.length - 1 - candlesBack);
+                const pastCandle = candles[pastIndex];
+                const pastPrice = pastCandle ? pastCandle[4] : currentPrice;
+
+                const change24h = ((currentPrice - pastPrice) / pastPrice) * 100;
+
+                quote = {
+                    symbol: symbol,
+                    price: currentPrice,
+                    change_24h: change24h,
+                    market_cap: 0,
+                    volume: newest[5] || 0
+                };
+            }
 
             const dataContext = formatAssetDataForPrompt(quote, candles);
             const strategy = strategies[selectedStrategyKey];
