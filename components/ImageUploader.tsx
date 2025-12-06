@@ -26,19 +26,23 @@ import { AiManager } from '../utils/aiManager';
 // --- SYSTEM PROMPTS ---
 
 // System prompt for the new AI-driven guided chart acquisition
-const generateGuidedAcquisitionSystemPrompt = (strategy: StrategyLogicData): string => {
-    return `You are an AI data acquisition specialist for a trading analysis tool. Your sole purpose is to guide a user, step-by-step, to provide the necessary chart screenshots for a specific trading strategy.
+// System prompt for the new AI-driven guided chart acquisition
+const generateGuidedAcquisitionSystemPrompt = (strategies: StrategyLogicData[]): string => {
+    const strategiesText = strategies.map(s => `
+--- STRATEGY NAME: ${s.name} ---
+--- CORE STRATEGY LOGIC: ---
+${s.prompt}
+--- END STRATEGY ---`).join('\n\n');
+
+    return `You are an AI data acquisition specialist for a trading analysis tool. Your sole purpose is to guide a user, step-by-step, to provide the necessary chart screenshots for a COMBINED analysis of the following strategies.
 
 **CONTEXT:**
-- The user has selected the following strategy:
---- STRATEGY NAME: ${strategy.name} ---
---- CORE STRATEGY LOGIC (Your ONLY source of truth): ---
-${strategy.prompt}
---- END STRATEGY ---
+- The user has selected the following strategies:
+${strategiesText}
 
 **YOUR PROTOCOL (Follow PRECISELY and CONCISELY):**
 
-1.  **Your Goal:** Request charts sequentially until you have enough multi-timeframe context to satisfy the strategy's requirements. Typically, this means getting a high, medium, and low timeframe chart.
+1.  **Your Goal:** Request charts sequentially until you have enough multi-timeframe context to satisfy the requirements of ALL selected strategies. Typically, this means getting a high, medium, and low timeframe chart that serves the confluence of these strategies.
 2.  **Be Specific:** Your requests MUST be clear and direct. Specify the EXACT timeframe (e.g., "Daily Chart", "15-Minute Chart") and explicitly state ANY required indicators based on the CORE STRATEGY LOGIC (e.g., "with the ADX and DMI indicators visible").
 3.  **Analyze & Request:** When you receive a chart, briefly acknowledge it and then immediately make your next request. Your analysis is only for the purpose of deciding what to ask for next.
 4.  **Completion Signal:** When you have gathered all necessary charts (usually 3-4 distinct timeframes), your FINAL response MUST be the exact string: \`[ANALYSIS_READY]\`. Do not say anything else.
@@ -330,19 +334,13 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
 
     const handleStartGuidedUpload = async () => {
         if (selectedStrategies.length === 0) return;
-        const primaryStrategyKey = selectedStrategies[0];
-        const primaryStrategy = strategyLogicData[primaryStrategyKey];
-        if (!primaryStrategy) {
-            setError("Could not find the logic for the selected strategy.");
-            return;
-        }
-
-        resetState();
-        setIsAnalyzing(true);
-        setPhase('validating');
-
         try {
-            const systemInstruction = generateGuidedAcquisitionSystemPrompt(primaryStrategy);
+            const strategies = selectedStrategies.map(key => strategyLogicData[key]).filter(Boolean);
+            if (strategies.length === 0) {
+                setError("Could not find logic for selected strategies.");
+                return;
+            }
+            const systemInstruction = generateGuidedAcquisitionSystemPrompt(strategies);
             // Start the chat with "Start."
             const response = await callAiChat("Start.", systemInstruction);
             onLogTokenUsage(response.usage.totalTokenCount);
@@ -385,9 +383,8 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
 
         try {
             // Regenerate system instruction as we don't persist it
-            const primaryStrategyKey = selectedStrategies[0];
-            const primaryStrategy = strategyLogicData[primaryStrategyKey];
-            const systemInstruction = primaryStrategy ? generateGuidedAcquisitionSystemPrompt(primaryStrategy) : "You are a helpful assistant.";
+            const strategies = selectedStrategies.map(key => strategyLogicData[key]).filter(Boolean);
+            const systemInstruction = strategies.length > 0 ? generateGuidedAcquisitionSystemPrompt(strategies) : "You are a helpful assistant.";
 
             // We need to add the new image to uploadedImagesData BEFORE calling callAiChat
             // because callAiChat uses uploadedImagesData to resolve images in history.

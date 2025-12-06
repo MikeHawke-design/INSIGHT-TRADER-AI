@@ -652,7 +652,7 @@ export const MasterControlsView: React.FC<MasterControlsViewProps> = ({
                     <div className="mb-6 space-y-4">
                         <div>
                             <label className="block font-medium text-sm text-gray-300 mb-1">AI System Mode</label>
-                            <div className="flex gap-4">
+                            <div className="flex flex-col sm:flex-row gap-4">
                                 <label className="flex items-center gap-2 cursor-pointer">
                                     <input
                                         type="radio"
@@ -826,18 +826,18 @@ export const MasterControlsView: React.FC<MasterControlsViewProps> = ({
                         <div className="space-y-4">
                             <div>
                                 <label className="block font-medium text-sm text-gray-300 mb-1">Generate Access Key for User</label>
-                                <div className="flex gap-2">
+                                <div className="flex flex-col sm:flex-row gap-2">
                                     <input
                                         type="email"
                                         value={adminEmailInput}
                                         onChange={(e) => setAdminEmailInput(e.target.value)}
                                         placeholder="User Email Address"
-                                        className="flex-grow bg-gray-800 border border-gray-600 rounded p-2 text-white focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 outline-none"
+                                        className="w-full sm:flex-grow bg-gray-800 border border-gray-600 rounded p-2 text-white focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 outline-none"
                                     />
                                     <button
                                         onClick={() => setGeneratedKey(generateAccessKey(adminEmailInput))}
                                         disabled={!adminEmailInput}
-                                        className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white font-semibold rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                                        className="w-full sm:w-auto px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white font-semibold rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
                                         Generate Key
                                     </button>
