@@ -19,6 +19,7 @@ interface CoachingViewProps {
     onLogTokenUsage: (tokens: number) => void;
     onSaveSession: (sessionId: string | null, title: string, chatHistory: ChatMessage[], goal: 'learn_basics' | 'build_setup') => void;
     onSaveTrade: (trade: Trade, strategies: string[], chatHistory: ChatMessage[]) => void;
+    strategyLogicData: Record<StrategyKey, StrategyLogicData>;
 }
 
 // --- Helper Components & Icons ---
@@ -56,6 +57,7 @@ const CoachingView: React.FC<CoachingViewProps> = ({
     userSettings,
     onLogTokenUsage,
     onSaveSession,
+    strategyLogicData,
 }) => {
     const [chatHistory, setChatHistory] = useState<ChatMessage[]>(context.session?.chatHistory || []);
     const [input, setInput] = useState('');
@@ -163,6 +165,39 @@ const CoachingView: React.FC<CoachingViewProps> = ({
                 newMessageContent = parts;
             }
 
+            // Gather related strategies (Children, Parent, Confluence)
+            const currentKey = context.strategyKey;
+            const currentStrategy = context.strategy;
+            const relatedStrategies: { name: string, prompt: string, relation: string }[] = [];
+
+            // 1. Find Children (strategies that list this as parent)
+            Object.entries(strategyLogicData).forEach(([, strat]) => {
+                if (strat.parentId === currentKey && strat.isEnabled !== false) {
+                    relatedStrategies.push({ name: strat.name, prompt: strat.prompt, relation: 'Child Strategy (Apply in confluence)' });
+                }
+            });
+
+            // 2. Find Parent (if this is a child)
+            if (currentStrategy.parentId && strategyLogicData[currentStrategy.parentId]) {
+                const parent = strategyLogicData[currentStrategy.parentId];
+                relatedStrategies.push({ name: parent.name, prompt: parent.prompt, relation: 'Parent Strategy (Foundational Logic)' });
+            }
+
+            // 3. Find Confluence (explicitly linked)
+            if (currentStrategy.confluence) {
+                currentStrategy.confluence.forEach(confKey => {
+                    if (strategyLogicData[confKey]) {
+                        const conf = strategyLogicData[confKey];
+                        relatedStrategies.push({ name: conf.name, prompt: conf.prompt, relation: 'Confluence Strategy' });
+                    }
+                });
+            }
+
+            const relatedStrategiesText = relatedStrategies.length > 0
+                ? `\n\n**RELATED STRATEGIES (MUST BE INTEGRATED):**\nThe user has linked the following strategies. You MUST consider them as part of a unified system. Do not treat the Primary Strategy in isolation if these are present.\n` +
+                relatedStrategies.map(s => `--- ${s.relation}: ${s.name} ---\n${s.prompt}\n--- END ${s.name} ---`).join('\n\n')
+                : "";
+
             // Define Strict System Instruction for formatting
             const systemInstruction = `You are an expert trading coach specializing in the "${context.strategy.name}" strategy.
 
@@ -178,9 +213,13 @@ const CoachingView: React.FC<CoachingViewProps> = ({
     -   Bearish/Negative/Risk: <span style="color: #F87171;">Bearish/Sell</span> (Red)
     -   Important/Warning: <strong>Note</strong> (White Bold)
 4.  **DIRECTNESS:** Start answering immediately. Do not restate the user's question.
+5.  **UNIFIED SYSTEM:** If related strategies are provided below, you MUST integrate them. For example, if a Child Strategy refines entries for a Parent Strategy, teach the combined approach.
 
 **STRATEGY LOGIC SOURCE:**
-${context.strategy.prompt}`;
+--- PRIMARY STRATEGY: ${context.strategy.name} ---
+${context.strategy.prompt}
+--- END PRIMARY STRATEGY ---
+${relatedStrategiesText}`;
 
             const response = await manager.generateChat(
                 systemInstruction,

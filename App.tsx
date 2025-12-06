@@ -327,6 +327,7 @@ const App: React.FC = () => {
                 onClose={() => setCoachingContext(null)}
                 apiConfig={apiConfig}
                 userSettings={userSettings}
+                strategyLogicData={strategyLogicData}
                 onLogTokenUsage={handleLogTokenUsage}
                 onSaveSession={(sessionId, title, history, goal) => {
                     if (sessionId) {
