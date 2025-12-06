@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MarketScannerResult, StrategyLogicData, ApiConfiguration, FreeCryptoAssetData, UserSettings, StrategyKey } from '../types';
+import { MarketScannerResult, StrategyLogicData, ApiConfiguration, FreeCryptoAssetData, UserSettings, StrategyKey, AnalysisResults, UploadedImageKeys } from '../types';
 import { FreeCryptoApi, formatAssetDataForPrompt } from '../utils/freeCryptoApi';
 import { TwelveDataApi } from '../utils/twelveDataApi';
 import { AiManager } from '../utils/aiManager';
@@ -11,6 +11,7 @@ interface MarketScannerProps {
     onLogTokenUsage: (tokens: number) => void;
     strategies: Record<string, StrategyLogicData>;
     selectedStrategyKey: StrategyKey | null;
+    onAnalysisComplete: (results: AnalysisResults, strategies: StrategyKey[], images: UploadedImageKeys, useRealTimeContext: boolean) => void;
 }
 
 interface ExtendedMarketScannerResult extends MarketScannerResult {
@@ -33,7 +34,7 @@ const STOCKS = [
     "JPM", "WMT", "XOM", "MA", "PG", "COST", "JNJ", "HD", "MRK", "ABBV"
 ];
 
-const MarketScanner: React.FC<MarketScannerProps> = ({ apiConfig, userSettings, onLogTokenUsage, strategies, selectedStrategyKey: initialStrategyKey }) => {
+const MarketScanner: React.FC<MarketScannerProps> = ({ apiConfig, userSettings, onLogTokenUsage, strategies, selectedStrategyKey: initialStrategyKey, onAnalysisComplete }) => {
     const [selectedTimeframe, setSelectedTimeframe] = useState<string>('4h');
     const [selectedStrategyKey, setSelectedStrategyKey] = useState<string>(initialStrategyKey || Object.keys(strategies)[0] || 'SMC_ICT');
     const [isScanning, setIsScanning] = useState<boolean>(false);
@@ -306,6 +307,89 @@ Return ONLY a valid JSON array:
         }
     };
 
+    const handleGenerateTrade = async (result: ExtendedMarketScannerResult) => {
+        if (!result.asset) return;
+        setIsScanning(true); // Re-use scanning state for loading UI
+        setError(null);
+
+        try {
+            // Re-fetch data to ensure freshness or use existing if we could store it (for now refetching is safer/easier)
+            // Actually, we can just use the data we have if we stored it, but we didn't store the raw data context per asset.
+            // Let's quickly re-fetch just for this asset to be precise.
+            const symbol = assetClass === 'Crypto' && !result.asset.includes('/') ? `${result.asset}/USD` : result.asset;
+            const quote = (await dataApi.getAssetDataBatch([symbol]))[0];
+            const candles = await dataApi.getCandles(symbol, selectedTimeframe);
+
+            const dataContext = formatAssetDataForPrompt(quote, candles);
+            const strategy = strategies[selectedStrategyKey];
+
+            const systemInstruction = `You are an expert trading engine. Your task is to generate a precise Trade Setup based on the provided market data and strategy.
+
+**STRATEGY:**
+Name: ${strategy.name}
+Logic: ${strategy.prompt}
+
+**CONTEXT:**
+Asset: ${result.asset}
+Timeframe: ${selectedTimeframe}
+Previous Analysis: ${result.analysis}
+
+**TASK:**
+Generate a detailed Trade Setup (Long or Short) with Entry, Stop Loss, and Take Profit targets.
+The output MUST be a valid JSON object matching the 'AnalysisResults' structure with a single trade in 'Top Longs' or 'Top Shorts'.
+
+**OUTPUT FORMAT:**
+{
+  "Top Longs": [
+    {
+      "type": "Setup Name",
+      "direction": "Long",
+      "symbol": "${result.asset}",
+      "entry": "Specific Price",
+      "entryType": "Limit Order",
+      "entryExplanation": "Reason for entry level",
+      "stopLoss": "Specific Price",
+      "takeProfit1": "Specific Price",
+      "takeProfit2": "Specific Price",
+      "heat": 85,
+      "explanation": "Detailed thesis matching the previous analysis."
+    }
+  ],
+  "Top Shorts": [],
+  "strategySuggestion": {
+    "suggestedStrategies": ["${selectedStrategyKey}"],
+    "suggestedSettings": {},
+    "reasoning": "Strategy fit reasoning"
+  }
+}
+(If Short, put in Top Shorts and empty Top Longs)`;
+
+            const manager = new AiManager({
+                apiConfig,
+                preferredProvider: userSettings.aiProviderAnalysis
+            });
+
+            const response = await manager.generateContent(systemInstruction, [{ text: dataContext }]);
+            onLogTokenUsage(response.usage.totalTokenCount);
+
+            let jsonText = (response.text || "").trim();
+            const fenceMatch = jsonText.match(/^```json\s*([\s\S]*?)\s*```$/) || jsonText.match(/^```\s*([\s\S]*?)\s*```$/);
+            if (fenceMatch) jsonText = fenceMatch[1];
+
+            const analysisResults = JSON.parse(jsonText) as AnalysisResults;
+
+            // Pass results to main view
+            // We pass empty images since this is API-based
+            onAnalysisComplete(analysisResults, [selectedStrategyKey], {}, false);
+
+        } catch (e) {
+            console.error("Failed to generate trade:", e);
+            setError("Failed to generate trade setup. Please try again.");
+        } finally {
+            setIsScanning(false);
+        }
+    };
+
     return (
         <div className="space-y-6">
             <div className="flex items-center gap-2 mb-4">
@@ -488,6 +572,15 @@ Return ONLY a valid JSON array:
                                             )}
                                         </div>
                                     </div>
+                                    <button
+                                        onClick={() => handleGenerateTrade(result)}
+                                        className="bg-green-600 hover:bg-green-500 text-white px-3 py-1.5 rounded-md text-sm font-bold shadow-lg shadow-green-900/20 transition-all flex items-center gap-1"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                                            <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clipRule="evenodd" />
+                                        </svg>
+                                        Generate Trade
+                                    </button>
                                 </div>
                                 <p className="text-gray-300 text-sm leading-relaxed mb-3">{result.analysis}</p>
 
