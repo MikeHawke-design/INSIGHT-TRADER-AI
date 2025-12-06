@@ -59,16 +59,25 @@ const MarketScanner: React.FC<MarketScannerProps> = ({ selectedStrategyKey, stra
         setScanResults([]);
 
         try {
-            // 1. Fetch Data
-            const coinDataPromises = selectedCoins.map(symbol => api.getAssetData(symbol));
-            if (includeBtcConfluence && !selectedCoins.includes('BTC')) {
-                coinDataPromises.push(api.getAssetData('BTC'));
+            // 1. Prepare Data (Use cached data to avoid API rate limits)
+            let targetCoinsData: FreeCryptoAssetData[] = [];
+
+            // Filter from available coins first
+            targetCoinsData = availableCoins.filter(c => selectedCoins.includes(c.symbol));
+
+            // If any selected coins are missing (shouldn't happen often), try to fetch them individually (throttled)
+            // For now, we skip missing ones to protect API usage.
+
+            let btcData = availableCoins.find(c => c.symbol === 'BTC');
+
+            // If BTC is needed for confluence but not in available coins, fetch it
+            if (includeBtcConfluence && !btcData) {
+                try {
+                    btcData = await api.getAssetData('BTC') || undefined;
+                } catch (e) {
+                    console.warn("Failed to fetch BTC for confluence");
+                }
             }
-
-            const fetchedData = (await Promise.all(coinDataPromises)).filter(Boolean) as FreeCryptoAssetData[];
-
-            const btcData = fetchedData.find(d => d.symbol === 'BTC');
-            const targetCoinsData = fetchedData.filter(d => selectedCoins.includes(d.symbol));
 
             // 2. Prepare AI Prompt
             const strategy = strategies[selectedStrategyKey];
@@ -177,6 +186,16 @@ Return ONLY a valid JSON array:
 
                     {isLoadingCoins ? (
                         <div className="text-center py-8 text-gray-500 animate-pulse">Loading market data...</div>
+                    ) : availableCoins.length === 0 ? (
+                        <div className="text-center py-8 text-gray-500">
+                            <p className="mb-2">No assets found.</p>
+                            <button
+                                onClick={() => { setIsLoadingCoins(true); api.getTopAssets(50).then(coins => { setAvailableCoins(coins); setIsLoadingCoins(false); }); }}
+                                className="text-blue-400 hover:text-blue-300 underline"
+                            >
+                                Retry Fetching
+                            </button>
+                        </div>
                     ) : (
                         <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2 max-h-48 overflow-y-auto custom-scrollbar p-2 bg-gray-900 rounded-lg border border-gray-700">
                             {availableCoins.map(coin => (
