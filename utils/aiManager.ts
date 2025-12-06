@@ -1,4 +1,4 @@
-import { GoogleGenAI, Part } from "@google/genai";
+import { GoogleGenAI, Part } from "@google/generative-ai";
 import OpenAI from "openai";
 import { ApiConfiguration } from "../types";
 
@@ -175,7 +175,7 @@ ${councilTranscript}
 
     private async generateGemini(systemInstruction: string, userPrompt: string | Part[], modelOverride?: string): Promise<StandardizedResponse> {
         const client = this.getGeminiClient();
-        const model = modelOverride || 'gemini-1.5-flash-001';
+        const model = modelOverride || 'gemini-1.5-flash';
 
         const contents = typeof userPrompt === 'string'
             ? [{ role: 'user', parts: [{ text: userPrompt }] }]
