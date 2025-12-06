@@ -175,19 +175,32 @@ ${councilTranscript}
 
     private async generateGemini(systemInstruction: string, userPrompt: string | Part[], modelOverride?: string): Promise<StandardizedResponse> {
         const client = this.getGeminiClient();
-        const modelName = modelOverride || 'gemini-1.5-flash';
+        // Fallback to gemini-pro if flash is causing issues, or use the override
+        const modelName = modelOverride || 'gemini-pro';
 
+        // For maximum compatibility, we do NOT pass systemInstruction to getGenerativeModel
+        // because older models (like gemini-pro) or certain API versions might not support it.
+        // Instead, we prepend it to the user prompt.
         const model = client.getGenerativeModel({
             model: modelName,
-            systemInstruction: systemInstruction,
             generationConfig: {
                 maxOutputTokens: 65536
             }
         });
 
-        const contents = typeof userPrompt === 'string'
-            ? [{ role: 'user', parts: [{ text: userPrompt }] }]
-            : [{ role: 'user', parts: userPrompt }];
+        let finalPrompt: Part[] = [];
+
+        // Add system instruction as the first text part
+        finalPrompt.push({ text: `SYSTEM INSTRUCTION: ${systemInstruction}\n\nUSER REQUEST:` });
+
+        // Add user prompt parts
+        if (typeof userPrompt === 'string') {
+            finalPrompt.push({ text: userPrompt });
+        } else {
+            finalPrompt = finalPrompt.concat(userPrompt);
+        }
+
+        const contents = [{ role: 'user', parts: finalPrompt }];
 
         let retries = 0;
         const maxRetries = 3;
@@ -316,11 +329,10 @@ ${councilTranscript}
         modelOverride?: string
     ): Promise<StandardizedResponse> {
         const client = this.getGeminiClient();
-        const modelName = modelOverride || 'gemini-1.5-flash';
+        const modelName = modelOverride || 'gemini-pro';
 
         const model = client.getGenerativeModel({
             model: modelName,
-            systemInstruction: systemInstruction,
             generationConfig: {
                 maxOutputTokens: 8192
             }
@@ -331,6 +343,30 @@ ${councilTranscript}
             role: msg.role === 'assistant' ? 'model' : 'user',
             parts: typeof msg.content === 'string' ? [{ text: msg.content }] : msg.content
         }));
+
+        // Prepend system instruction as a user message at the start of history
+        // This is a workaround for models/APIs that don't support systemInstruction natively
+        geminiHistory.unshift({
+            role: 'user',
+            parts: [{ text: `SYSTEM INSTRUCTION: ${systemInstruction}` }]
+        });
+
+        // We need to ensure the next message is a model response to maintain turn-taking if we just inserted a user message?
+        // Actually, Gemini Pro is lenient, but usually it expects User -> Model -> User.
+        // If we insert a User message at the start, and the first message in history was User, we have User -> User.
+        // To fix this, we can merge it into the first user message if it exists.
+
+        if (geminiHistory.length > 1 && geminiHistory[1].role === 'user') {
+            // Merge system instruction into the first user message
+            const firstUserMsg = geminiHistory[1];
+            const sysMsg = geminiHistory.shift(); // Remove the one we just added
+            if (sysMsg && sysMsg.parts[0].text) {
+                const firstPart = firstUserMsg.parts[0];
+                if (firstPart.text) {
+                    firstPart.text = `${sysMsg.parts[0].text}\n\n${firstPart.text}`;
+                }
+            }
+        }
 
         const chat = model.startChat({
             history: geminiHistory
