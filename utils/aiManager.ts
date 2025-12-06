@@ -175,8 +175,7 @@ ${councilTranscript}
 
     private async generateGemini(systemInstruction: string, userPrompt: string | Part[], modelOverride?: string): Promise<StandardizedResponse> {
         const client = this.getGeminiClient();
-        const modelName = modelOverride || 'gemini-1.5-flash-002';
-        console.log("Using Gemini Model:", modelName);
+        const modelName = modelOverride || 'gemini-1.5-flash';
 
         const model = client.getGenerativeModel({
             model: modelName,
@@ -317,8 +316,7 @@ ${councilTranscript}
         modelOverride?: string
     ): Promise<StandardizedResponse> {
         const client = this.getGeminiClient();
-        const modelName = modelOverride || 'gemini-1.5-flash-002';
-        console.log("Using Gemini Model (Chat):", modelName);
+        const modelName = modelOverride || 'gemini-1.5-flash';
 
         const model = client.getGenerativeModel({
             model: modelName,
