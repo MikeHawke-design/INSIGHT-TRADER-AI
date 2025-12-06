@@ -175,7 +175,7 @@ ${councilTranscript}
 
     private async generateGemini(systemInstruction: string, userPrompt: string | Part[], modelOverride?: string): Promise<StandardizedResponse> {
         const client = this.getGeminiClient();
-        const model = modelOverride || 'gemini-1.5-flash';
+        const model = modelOverride || 'gemini-1.5-flash-001';
 
         const contents = typeof userPrompt === 'string'
             ? [{ role: 'user', parts: [{ text: userPrompt }] }]
