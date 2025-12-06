@@ -121,7 +121,30 @@ export class FreeCryptoApi {
             console.error("CoinGecko fallback failed:", error);
         }
 
-        return [];
+        // 3. Hardcoded Fallback (if everything else fails, e.g. rate limits)
+        console.warn("All APIs failed. Using hardcoded fallback list.");
+        const FALLBACK_ASSETS = [
+            { symbol: 'BTC', id: 'bitcoin' }, { symbol: 'ETH', id: 'ethereum' }, { symbol: 'SOL', id: 'solana' },
+            { symbol: 'BNB', id: 'binancecoin' }, { symbol: 'XRP', id: 'ripple' }, { symbol: 'ADA', id: 'cardano' },
+            { symbol: 'DOGE', id: 'dogecoin' }, { symbol: 'AVAX', id: 'avalanche-2' }, { symbol: 'DOT', id: 'polkadot' },
+            { symbol: 'TRX', id: 'tron' }, { symbol: 'MATIC', id: 'matic-network' }, { symbol: 'LINK', id: 'chainlink' },
+            { symbol: 'LTC', id: 'litecoin' }, { symbol: 'SHIB', id: 'shiba-inu' }, { symbol: 'UNI', id: 'uniswap' },
+            { symbol: 'ATOM', id: 'cosmos' }, { symbol: 'XLM', id: 'stellar' }, { symbol: 'OKB', id: 'okb' },
+            { symbol: 'ETC', id: 'ethereum-classic' }, { symbol: 'FIL', id: 'filecoin' }
+        ];
+
+        // Populate cache from fallback
+        FALLBACK_ASSETS.forEach(item => {
+            this.coinMap.set(item.symbol, item.id);
+        });
+
+        return FALLBACK_ASSETS.map(item => ({
+            symbol: item.symbol,
+            price: 0, // Unknown price
+            change_24h: 0,
+            market_cap: 0,
+            volume: 0
+        }));
     }
 
     async getTechnicalAnalysis(symbol: string): Promise<any | null> {
