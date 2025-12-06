@@ -287,7 +287,6 @@ const Dashboard: React.FC<DashboardProps> = ({
                                     apiConfig={apiConfig}
                                     userSettings={userSettings}
                                     onLogTokenUsage={onLogTokenUsage}
-                                    onAnalysisComplete={onAnalysisComplete}
                                 />
                             )}
                         </div>

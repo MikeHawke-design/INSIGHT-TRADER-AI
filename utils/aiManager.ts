@@ -1,4 +1,4 @@
-import { GoogleGenAI, Part } from "@google/generative-ai";
+import { GoogleGenAI, Part } from "@google/genai";
 import OpenAI from "openai";
 import { ApiConfiguration } from "../types";
 
@@ -175,82 +175,35 @@ ${councilTranscript}
 
     private async generateGemini(systemInstruction: string, userPrompt: string | Part[], modelOverride?: string): Promise<StandardizedResponse> {
         const client = this.getGeminiClient();
-        // Fallback to gemini-pro if flash is causing issues, or use the override
-        const modelName = modelOverride || 'gemini-pro';
+        const model = modelOverride || 'gemini-2.5-flash';
 
-        // For maximum compatibility, we do NOT pass systemInstruction to getGenerativeModel
-        // because older models (like gemini-pro) or certain API versions might not support it.
-        // Instead, we prepend it to the user prompt.
-        const model = client.getGenerativeModel({
-            model: modelName,
-            generationConfig: {
-                maxOutputTokens: 65536
+        const contents = typeof userPrompt === 'string'
+            ? [{ role: 'user', parts: [{ text: userPrompt }] }]
+            : [{ role: 'user', parts: userPrompt }];
+
+        const response = await client.models.generateContent({
+            model: model,
+            contents: contents,
+            config: {
+                systemInstruction: systemInstruction,
+                maxOutputTokens: 65536,
             }
         });
 
-        let finalPrompt: Part[] = [];
-
-        // Add system instruction as the first text part
-        finalPrompt.push({ text: `SYSTEM INSTRUCTION: ${systemInstruction}\n\nUSER REQUEST:` });
-
-        // Add user prompt parts
-        if (typeof userPrompt === 'string') {
-            finalPrompt.push({ text: userPrompt });
-        } else {
-            finalPrompt = finalPrompt.concat(userPrompt);
-        }
-
-        const contents = [{ role: 'user', parts: finalPrompt }];
-
-        let retries = 0;
-        const maxRetries = 3;
-
-        while (true) {
-            try {
-                const result = await model.generateContent({
-                    contents: contents
-                });
-                const response = await result.response;
-
-                let text = response.text() || "";
-                if (!text && response.candidates && response.candidates.length > 0) {
-                    const candidate = response.candidates[0];
-                    if (candidate.finishReason && candidate.finishReason !== 'STOP') {
-                        text = `AI_GENERATION_FAILED: ${candidate.finishReason}`;
-                    }
-                }
-
-                return {
-                    text: text,
-                    usage: {
-                        totalTokenCount: response.usageMetadata?.totalTokenCount || 0
-                    }
-                };
-            } catch (error: any) {
-                // Check for 429 Resource Exhausted
-                if (error.status === 429 || error.code === 429 || (error.message && error.message.includes('429'))) {
-                    retries++;
-                    if (retries > maxRetries) {
-                        throw error;
-                    }
-
-                    // Extract retry delay from error message or default to 2s * retries
-                    let delay = 2000 * retries;
-
-                    // Try to parse "Please retry in X.Xs"
-                    const match = error.message?.match(/retry in ([0-9.]+)s/);
-                    if (match) {
-                        delay = parseFloat(match[1]) * 1000 + 100; // Add 100ms buffer
-                    }
-
-                    console.warn(`Gemini Rate Limit Hit. Retrying in ${delay}ms... (Attempt ${retries}/${maxRetries})`);
-                    await new Promise(resolve => setTimeout(resolve, delay));
-                    continue;
-                }
-
-                throw error;
+        let text = response.text || "";
+        if (!text && response.candidates && response.candidates.length > 0) {
+            const candidate = response.candidates[0];
+            if (candidate.finishReason && candidate.finishReason !== 'STOP') {
+                text = `AI_GENERATION_FAILED: ${candidate.finishReason}`;
             }
         }
+
+        return {
+            text: text,
+            usage: {
+                totalTokenCount: response.usageMetadata?.totalTokenCount || 0
+            }
+        };
     }
 
     private async generateOpenAI(systemInstruction: string, userPrompt: string | Part[], modelOverride?: string): Promise<StandardizedResponse> {
@@ -329,14 +282,7 @@ ${councilTranscript}
         modelOverride?: string
     ): Promise<StandardizedResponse> {
         const client = this.getGeminiClient();
-        const modelName = modelOverride || 'gemini-pro';
-
-        const model = client.getGenerativeModel({
-            model: modelName,
-            generationConfig: {
-                maxOutputTokens: 8192
-            }
-        });
+        const model = modelOverride || 'gemini-2.5-flash';
 
         // Convert history to Gemini format
         const geminiHistory = history.map(msg => ({
@@ -344,41 +290,18 @@ ${councilTranscript}
             parts: typeof msg.content === 'string' ? [{ text: msg.content }] : msg.content
         }));
 
-        // Prepend system instruction as a user message at the start of history
-        // This is a workaround for models/APIs that don't support systemInstruction natively
-        geminiHistory.unshift({
-            role: 'user',
-            parts: [{ text: `SYSTEM INSTRUCTION: ${systemInstruction}` }]
-        });
+        const newParts = typeof newMessage === 'string' ? [{ text: newMessage }] : newMessage;
 
-        // We need to ensure the next message is a model response to maintain turn-taking if we just inserted a user message?
-        // Actually, Gemini Pro is lenient, but usually it expects User -> Model -> User.
-        // If we insert a User message at the start, and the first message in history was User, we have User -> User.
-        // To fix this, we can merge it into the first user message if it exists.
-
-        if (geminiHistory.length > 1 && geminiHistory[1].role === 'user') {
-            // Merge system instruction into the first user message
-            const firstUserMsg = geminiHistory[1];
-            const sysMsg = geminiHistory.shift(); // Remove the one we just added
-            if (sysMsg && sysMsg.parts[0].text) {
-                const firstPart = firstUserMsg.parts[0];
-                if (firstPart.text) {
-                    firstPart.text = `${sysMsg.parts[0].text}\n\n${firstPart.text}`;
-                }
-            }
-        }
-
-        const chat = model.startChat({
+        const chat = client.chats.create({
+            model: model,
+            config: { systemInstruction, maxOutputTokens: 8192 },
             history: geminiHistory
         });
 
-        const newParts = typeof newMessage === 'string' ? [{ text: newMessage }] : newMessage;
-
-        const result = await chat.sendMessage(newParts);
-        const response = await result.response;
+        const response = await chat.sendMessage({ message: newParts });
 
         return {
-            text: response.text() || "",
+            text: response.text || "",
             usage: {
                 totalTokenCount: response.usageMetadata?.totalTokenCount || 0
             }
