@@ -65,6 +65,7 @@ const TrashIcon = (props: { className?: string }) => <svg {...props} xmlns="http
 const ToggleOnIcon = (props: { className?: string }) => <svg {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path fillRule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25Zm4.28 10.28a.75.75 0 0 0 0-1.06l-3-3a.75.75 0 1 0-1.06 1.06l1.72 1.72H8.25a.75.75 0 0 0 0 1.5h5.69l-1.72 1.72a.75.75 0 1 0 1.06 1.06l3-3Z" clipRule="evenodd" /></svg>;
 const ToggleOffIcon = (props: { className?: string }) => <svg {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path fillRule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25Zm-1.72 6.97a.75.75 0 0 0-1.06 1.06L10.94 12l-1.72 1.72a.75.75 0 1 0 1.06 1.06L12 13.06l1.72 1.72a.75.75 0 1 0-1.06-1.06L13.06 12l1.72-1.72a.75.75 0 1 0-1.06-1.06L12 10.94l-1.72-1.72Z" clipRule="evenodd" /></svg>;
 const ClipboardIcon = (props: { className?: string }) => <svg {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M8 1a2.5 2.5 0 0 0-2.5 2.5V4h-2A2.5 2.5 0 0 0 1 6.5v11A2.5 2.5 0 0 0 3.5 20h13a2.5 2.5 0 0 0 2.5-2.5v-11A2.5 2.5 0 0 0 16.5 4h-2v-.5A2.5 2.5 0 0 0 12 1H8ZM6 3.5A1 1 0 0 1 7 2.5h6a1 1 0 0 1 1 1V4H6v-.5ZM3.5 5.5a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h13a1 1 0 0 0 1-1v-11a1 1 0 0 0-1-1h-13Z" clipRule="evenodd" /></svg>;
+const UploadIcon = (props: { className?: string }) => <svg {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M9.25 13.25a.75.75 0 0 0 1.5 0V4.636l2.955 3.129a.75.75 0 0 0 1.09-1.03l-4.25-4.5a.75.75 0 0 0-1.09 0l-4.25 4.5a.75.75 0 0 0 1.09 1.03L9.25 4.636V13.25Z" /><path d="M3.5 12.75a.75.75 0 0 0-1.5 0v2.5A2.75 2.75 0 0 0 4.75 18h10.5A2.75 2.75 0 0 0 18 15.25v-2.5a.75.75 0 0 0-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5Z" /></svg>;
 
 
 // --- COMPONENT ---
@@ -130,6 +131,42 @@ export const MasterControlsView: React.FC<MasterControlsViewProps> = ({
         setApiConfig(localApiKeys);
         setSaveSuccessMessage("Saved!");
         setTimeout(() => setSaveSuccessMessage(null), 3000);
+    };
+
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const handleStrategyFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        if (file.type === 'application/pdf') {
+            const reader = new FileReader();
+            reader.onload = async (event) => {
+                const arrayBuffer = event.target?.result as ArrayBuffer;
+                try {
+                    const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+                    let textContent = '';
+                    for (let i = 1; i <= pdf.numPages; i++) {
+                        const page = await pdf.getPage(i);
+                        const text = await page.getTextContent();
+                        textContent += text.items.map((item: any) => 'str' in item ? item.str : '').join(' ') + '\n';
+                    }
+                    await handleCreateStrategyFromText(textContent, file.name);
+                } catch (pdfError) {
+                    setError('Failed to parse PDF file.');
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        } else {
+            const reader = new FileReader();
+            reader.onload = async (event) => {
+                const textContent = event.target?.result as string;
+                await handleCreateStrategyFromText(textContent, file.name);
+            };
+            reader.readAsText(file);
+        }
+
+        if (e.target) e.target.value = '';
     };
 
 
@@ -546,6 +583,41 @@ export const MasterControlsView: React.FC<MasterControlsViewProps> = ({
                     </svg>
                     New Strategy
                 </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <div className="bg-gray-800 p-4 rounded-lg border border-gray-700 flex items-center justify-between">
+                    <div>
+                        <h5 className="font-bold text-white">Upload Strategy Document</h5>
+                        <p className="text-xs text-gray-400">PDF, TXT, MD supported.</p>
+                    </div>
+                    <button
+                        onClick={() => fileInputRef.current?.click()}
+                        className="bg-gray-700 hover:bg-gray-600 text-white p-2 rounded-lg transition-colors"
+                    >
+                        <UploadIcon className="w-6 h-6" />
+                    </button>
+                    <input
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={handleStrategyFileChange}
+                        className="hidden"
+                        accept=".pdf,.txt,.md"
+                    />
+                </div>
+
+                <div className="bg-gray-800 p-4 rounded-lg border border-gray-700 flex items-center justify-between">
+                    <div>
+                        <h5 className="font-bold text-white">Paste Strategy Text</h5>
+                        <p className="text-xs text-gray-400">Directly paste text content.</p>
+                    </div>
+                    <button
+                        onClick={() => setIsPasteModalOpen(true)}
+                        className="bg-gray-700 hover:bg-gray-600 text-white p-2 rounded-lg transition-colors"
+                    >
+                        <ClipboardIcon className="w-6 h-6" />
+                    </button>
+                </div>
             </div>
 
             {parentStrategies.map(([key, strat]) => (
