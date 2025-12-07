@@ -150,10 +150,41 @@ const CopyButton = ({ text, className }: { text: string | undefined | null, clas
     );
 };
 
-const EditIcon = (props: { className?: string }) => (
-    <svg {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-        <path d="M5.433 13.917l1.262-3.155A4 4 0 0 1 7.58 9.42l6.92-6.918a2.121 2.121 0 0 1 3 3l-6.92 6.918a4 4 0 0 1-1.343.885l-3.154 1.262a.5.5 0 0 1-.65-.65Z" />
-        <path d="M3.5 5.75c0-.69.56-1.25 1.25-1.25H10A.75.75 0 0 0 10 3H4.75A2.75 2.75 0 0 0 2 5.75v9.5A2.75 2.75 0 0 0 4.75 18h9.5A2.75 2.75 0 0 0 17 15.25V10a.75.75 0 0 0-1.5 0v5.25c0 .69-.56 1.25-1.25 1.25h-9.5c-.69 0-1.25-.56-1.25-1.25v-9.5Z" />
+
+
+const ShareIcon = (props: { className?: string }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" {...props}>
+        <path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z" />
+    </svg>
+);
+
+const ChartIcon = (props: { className?: string }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" {...props}>
+        <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zm6-4a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zm6-3a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z" />
+    </svg>
+);
+
+const TrashIcon = (props: { className?: string }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" {...props}>
+        <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+    </svg>
+);
+
+const ChatIcon = (props: { className?: string }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" {...props}>
+        <path fillRule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clipRule="evenodd" />
+    </svg>
+);
+
+const PhotoIcon = (props: { className?: string }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" {...props}>
+        <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+    </svg>
+);
+
+const BookIcon = (props: { className?: string }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" {...props}>
+        <path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z" />
     </svg>
 );
 
@@ -591,6 +622,58 @@ R:R: 1:${rr.toFixed(2)}`;
                             )}
                         </div>
                     )}
+
+                    {/* Action Buttons Row */}
+                    <div className="flex items-center justify-between pt-3 mt-2 border-t border-[hsl(var(--color-border-700)/0.5)]">
+                        <div className="flex gap-2">
+                            {/* Live Chart */}
+                            {trade.symbol && (trade as any).timeframe && (
+                                <button onClick={() => setIsChartOpen(true)} className="p-1.5 text-gray-400 hover:text-blue-400 hover:bg-blue-500/10 rounded-md transition-colors" title="Live Chart">
+                                    <ChartIcon className="w-5 h-5" />
+                                </button>
+                            )}
+
+                            {/* Share */}
+                            <button onClick={handleShareCard} disabled={isSharing} className="p-1.5 text-gray-400 hover:text-green-400 hover:bg-green-500/10 rounded-md transition-colors" title="Share Trade">
+                                {isSharing ? <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <ShareIcon className="w-5 h-5" />}
+                            </button>
+
+                            {/* Discuss */}
+                            {onViewAndDiscussTrade && (
+                                <button onClick={onViewAndDiscussTrade} className="p-1.5 text-gray-400 hover:text-purple-400 hover:bg-purple-500/10 rounded-md transition-colors" title="Discuss with AI">
+                                    <ChatIcon className="w-5 h-5" />
+                                </button>
+                            )}
+
+                            {/* Add Result Image */}
+                            {onAddResultImage && (
+                                <button onClick={onAddResultImage} className="p-1.5 text-gray-400 hover:text-yellow-400 hover:bg-yellow-500/10 rounded-md transition-colors" title="Add Result Image">
+                                    <AddResultImageIcon className="w-5 h-5" />
+                                </button>
+                            )}
+
+                            {/* View Images */}
+                            {onViewImages && (
+                                <button onClick={onViewImages} className={`p-1.5 text-gray-400 hover:text-cyan-400 hover:bg-cyan-500/10 rounded-md transition-colors ${hasResultImage ? 'text-cyan-400' : ''}`} title="View Images">
+                                    <PhotoIcon className="w-5 h-5" />
+                                </button>
+                            )}
+
+                            {/* Coaching Log */}
+                            {isCoachingTrade && onViewCoachingLog && (
+                                <button onClick={onViewCoachingLog} className="p-1.5 text-gray-400 hover:text-indigo-400 hover:bg-indigo-500/10 rounded-md transition-colors" title="Coaching Log">
+                                    <BookIcon className="w-5 h-5" />
+                                </button>
+                            )}
+                        </div>
+
+                        {/* Delete */}
+                        {onRemove && (
+                            <button onClick={onRemove} className="p-1.5 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded-md transition-colors" title="Delete Trade">
+                                <TrashIcon className="w-5 h-5" />
+                            </button>
+                        )}
+                    </div>
                 </div>
 
                 <div className="flex-grow"></div>
