@@ -3,8 +3,9 @@ import React from 'react';
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { Trade, TradeFeedback, SavedTrade, UserSettings, StrategyKey, StrategyLogicData, TradeOutcome } from '../types';
 import HeatMeter from './HeatMeter';
-import OracleIcon from './OracleIcon';
+
 import html2canvas from 'html2canvas';
+import InteractiveChartModal from './InteractiveChartModal';
 
 interface TradeCardProps {
     trade: Trade | SavedTrade;
@@ -191,6 +192,7 @@ const TradeCard: React.FC<TradeCardProps> = ({
     const cardRef = useRef<HTMLDivElement>(null);
     const shareCardRef = useRef<HTMLDivElement>(null);
     const [isSharing, setIsSharing] = useState(false);
+    const [isChartOpen, setIsChartOpen] = useState(false);
 
     const handleShareCard = async () => {
         if (!shareCardRef.current) return;
@@ -467,6 +469,7 @@ R:R: 1:${rr.toFixed(2)}`;
                                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3">
                                                         <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                                                     </svg>
+
                                                     Live Data Synergy
                                                 </div>
                                                 <div className="text-gray-300 text-xs leading-relaxed">{trade.dataSynergy}</div>
@@ -632,167 +635,82 @@ R:R: 1:${rr.toFixed(2)}`;
                                 />
                             </div>
 
-                            import InteractiveChartModal from './InteractiveChartModal';
-
-                            // ... (existing imports)
-
-                            const TradeCard: React.FC<TradeCardProps> = ({
-                                // ... (existing props)
-                            }) => {
-    // ... (existing state)
-    const [isChartOpen, setIsChartOpen] = useState(false);
-
-                                // ... (existing logic)
-
-                                return (
-                                <>
-                                    <div ref={cardRef} className="bg-[hsl(var(--color-bg-800))] border border-[hsl(var(--color-border-700))] rounded-lg p-4 flex flex-col h-full">
-                                        {/* ... (existing content) */}
-
-                                        <div className="flex justify-between items-center pt-3 mt-3 border-t border-[hsl(var(--color-border-700)/0.5)]">
-                                            {isCoachingTrade ? (
-                                                onViewCoachingLog && (
-                                                    <button onClick={onViewCoachingLog} className="flex items-center gap-2 text-sm text-purple-300 hover:text-purple-200">
-                                                        <OracleIcon className="w-5 h-5" /> View Coaching Log
-                                                    </button>
-                                                )
-                                            ) : (
-                                                <div className="flex items-center gap-2">
-                                                    {onViewAndDiscussTrade && (
-                                                        <button onClick={onViewAndDiscussTrade} className="p-2 rounded-full text-gray-400 hover:text-yellow-400 hover:bg-yellow-500/10" title="Discuss with Oracle">
-                                                            <OracleIcon className="w-5 h-5" />
-                                                        </button>
-                                                    )}
-                                                    {/* Chart Button */}
-                                                    {trade.timeframe && trade.symbol && (
-                                                        <button
-                                                            onClick={() => setIsChartOpen(true)}
-                                                            className="p-2 rounded-full text-gray-400 hover:text-green-400 hover:bg-green-500/10"
-                                                            title="View Interactive Chart"
-                                                        >
-                                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
-                                                                <path d="M15.5 2A1.5 1.5 0 0014 3.5v13c0 .895.448 1.5 1 1.5s1-.605 1-1.5v-13A1.5 1.5 0 0015.5 2zM10.5 6A1.5 1.5 0 009 7.5v9c0 .895.448 1.5 1 1.5s1-.605 1-1.5v-9A1.5 1.5 0 0010.5 6zM5.5 10A1.5 1.5 0 004 11.5v5c0 .895.448 1.5 1 1.5s1-.605 1-1.5v-5A1.5 1.5 0 005.5 10z" />
-                                                            </svg>
-                                                        </button>
-                                                    )}
-                                                    {onViewImages && (('uploadedImageKeys' in trade && Object.keys(trade.uploadedImageKeys).length > 0) || hasResultImage) && (
-                                                        <button onClick={onViewImages} className="p-2 rounded-full text-gray-400 hover:text-yellow-400 hover:bg-yellow-500/10" title="View Trade Images">
-                                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5"><path fillRule="evenodd" d="M1 5.25A2.25 2.25 0 0 1 3.25 3h13.5A2.25 2.25 0 0 1 19 5.25v9.5A2.25 2.25 0 0 1 16.75 17H3.25A2.25 2.25 0 0 1 1 14.75v-9.5Zm1.5 5.81v3.69c0 .414.336.75.75.75h13.5a.75.75 0 0 0 .75-.75v-2.69l-2.22-2.219a.75.75 0 0 0-1.06 0l-1.91 1.909-.48-1.121a.75.75 0 0 0-1.328-.142l-2.8 6.532H2.5v-3.69l.72-.72a.75.75 0 0 0 0-1.06l-.72-.72Zm15-5.81H3.25a.75.75 0 0 0-.75.75v.5c0 .414.336.75.75.75h13.5a.75.75 0 0 0 .75-.75v-.5a.75.75 0 0 0-.75-.75Z" clipRule="evenodd" /></svg>
-                                                        </button>
-                                                    )}
-                                                    {onAddResultImage && (
-                                                        <button onClick={onAddResultImage} className="p-2 rounded-full text-gray-400 hover:text-yellow-400 hover:bg-yellow-500/10" title={hasResultImage ? "Replace Result Image" : "Add Result Image"}>
-                                                            {hasResultImage ? <EditIcon className="w-5 h-5" /> : <AddResultImageIcon className="w-5 h-5" />}
-                                                        </button>
-                                                    )}
-                                                    <button
-                                                        onClick={handleShareCard}
-                                                        disabled={isSharing}
-                                                        className="p-2 rounded-full text-gray-400 hover:text-blue-400 hover:bg-blue-500/10 disabled:opacity-50"
-                                                        title="Share Trade Card"
-                                                    >
-                                                        {isSharing ? (
-                                                            <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                                            </svg>
-                                                        ) : (
-                                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-                                                            </svg>
-                                                        )}
-                                                    </button>
-                                                </div>
-                                            )}
-
-                                            {onRemove && (
-                                                <button onClick={onRemove} className="p-2 rounded-full text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-colors" aria-label="Remove from journal" title="Remove from Journal">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                                </button>
-                                            )}
+                            {/* Interactive Chart Modal */}
+                            {trade.symbol && (trade as any).timeframe && (
+                                <InteractiveChartModal
+                                    isOpen={isChartOpen}
+                                    onClose={() => setIsChartOpen(false)}
+                                    symbol={trade.symbol}
+                                    timeframe={(trade as any).timeframe}
+                                    trade={trade}
+                                />
+                            )}
+                            {/* Hidden Simplified Share Card - Only used for capturing/sharing */}
+                            <div
+                                ref={shareCardRef}
+                                className="fixed -left-[9999px] top-0 w-[600px]"
+                                style={{ position: 'fixed', left: '-9999px' }}
+                            >
+                                <div className="bg-gradient-to-br from-gray-800 to-gray-900 border-2 border-yellow-500/50 rounded-xl p-8 shadow-2xl">
+                                    {/* Header */}
+                                    <div className="flex items-center justify-between mb-6">
+                                        <div className="flex items-center gap-3">
+                                            <h2 className={`text-4xl font-bold ${isLong ? 'text-green-400' : 'text-red-400'}`}>
+                                                {trade.symbol || 'ASSET'}
+                                            </h2>
+                                            <span className={`px-4 py-2 rounded-lg font-bold text-xl ${isLong ? 'bg-green-500/20 text-green-300 border border-green-500/50' : 'bg-red-500/20 text-red-300 border border-red-500/50'}`}>
+                                                {trade.direction?.toUpperCase()}
+                                            </span>
+                                        </div>
+                                        <div className="text-right">
+                                            <div className="text-sm text-gray-400">Risk:Reward</div>
+                                            <div className="text-3xl font-bold text-yellow-400">1:{rr.toFixed(2)}</div>
                                         </div>
                                     </div>
+
+                                    {/* Heat Meter */}
+                                    <div className="mb-6">
+                                        <HeatMeter level={trade.heat} />
+                                    </div>
+
+                                    {/* Trade Details Grid */}
+                                    <div className="space-y-4">
+                                        {/* Entry */}
+                                        <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-700">
+                                            <div className="text-sm text-gray-400 mb-1">Entry Price</div>
+                                            <div className="text-2xl font-bold text-white">{trade.entry}</div>
+                                            <div className="text-xs text-gray-500 mt-1">{trade.entryType}</div>
+                                        </div>
+
+                                        {/* Stop Loss */}
+                                        <div className="bg-red-900/20 rounded-lg p-4 border border-red-500/30">
+                                            <div className="text-sm text-red-300 mb-1">Stop Loss</div>
+                                            <div className="text-2xl font-bold text-red-400">{trade.stopLoss}</div>
+                                        </div>
+
+                                        {/* Take Profits */}
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="bg-green-900/20 rounded-lg p-4 border border-green-500/30">
+                                                <div className="text-sm text-green-300 mb-1">Take Profit 1</div>
+                                                <div className="text-2xl font-bold text-green-400">{trade.takeProfit1}</div>
+                                            </div>
+                                            <div className="bg-green-900/20 rounded-lg p-4 border border-green-500/30">
+                                                <div className="text-sm text-green-300 mb-1">Take Profit 2</div>
+                                                <div className="text-2xl font-bold text-green-400">{trade.takeProfit2 || 'N/A'}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Footer */}
+                                    <div className="mt-6 pt-4 border-t border-gray-700 text-center">
+                                        <div className="text-xs text-gray-500">Generated by Insight Trader AI</div>
+                                    </div>
                                 </div>
+                            </div>
+
+                        </div>
+                    </div>
                 )}
-                        </div>
-
-                        {/* Interactive Chart Modal */}
-                        {trade.symbol && trade.timeframe && (
-                            <InteractiveChartModal
-                                isOpen={isChartOpen}
-                                onClose={() => setIsChartOpen(false)}
-                                symbol={trade.symbol}
-                                timeframe={trade.timeframe}
-                                trade={trade}
-                            />
-                        )}
-
-                        {/* Hidden Simplified Share Card - Only used for capturing/sharing */}
-                        <div
-                            ref={shareCardRef}
-                            className="fixed -left-[9999px] top-0 w-[600px]"
-                            style={{ position: 'fixed', left: '-9999px' }}
-                        >
-                            {/* ... (existing share card content) */}
-                        </div>
-                    </>
-                );
-};
-                <div className="bg-gradient-to-br from-gray-800 to-gray-900 border-2 border-yellow-500/50 rounded-xl p-8 shadow-2xl">
-                    {/* Header */}
-                    <div className="flex items-center justify-between mb-6">
-                        <div className="flex items-center gap-3">
-                            <h2 className={`text-4xl font-bold ${isLong ? 'text-green-400' : 'text-red-400'}`}>
-                                {trade.symbol || 'ASSET'}
-                            </h2>
-                            <span className={`px-4 py-2 rounded-lg font-bold text-xl ${isLong ? 'bg-green-500/20 text-green-300 border border-green-500/50' : 'bg-red-500/20 text-red-300 border border-red-500/50'}`}>
-                                {trade.direction?.toUpperCase()}
-                            </span>
-                        </div>
-                        <div className="text-right">
-                            <div className="text-sm text-gray-400">Risk:Reward</div>
-                            <div className="text-3xl font-bold text-yellow-400">1:{rr.toFixed(2)}</div>
-                        </div>
-                    </div>
-
-                    {/* Heat Meter */}
-                    <div className="mb-6">
-                        <HeatMeter level={trade.heat} />
-                    </div>
-
-                    {/* Trade Details Grid */}
-                    <div className="space-y-4">
-                        {/* Entry */}
-                        <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-700">
-                            <div className="text-sm text-gray-400 mb-1">Entry Price</div>
-                            <div className="text-2xl font-bold text-white">{trade.entry}</div>
-                            <div className="text-xs text-gray-500 mt-1">{trade.entryType}</div>
-                        </div>
-
-                        {/* Stop Loss */}
-                        <div className="bg-red-900/20 rounded-lg p-4 border border-red-500/30">
-                            <div className="text-sm text-red-300 mb-1">Stop Loss</div>
-                            <div className="text-2xl font-bold text-red-400">{trade.stopLoss}</div>
-                        </div>
-
-                        {/* Take Profits */}
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="bg-green-900/20 rounded-lg p-4 border border-green-500/30">
-                                <div className="text-sm text-green-300 mb-1">Take Profit 1</div>
-                                <div className="text-2xl font-bold text-green-400">{trade.takeProfit1}</div>
-                            </div>
-                            <div className="bg-green-900/20 rounded-lg p-4 border border-green-500/30">
-                                <div className="text-sm text-green-300 mb-1">Take Profit 2</div>
-                                <div className="text-2xl font-bold text-green-400">{trade.takeProfit2 || 'N/A'}</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Footer */}
-                    <div className="mt-6 pt-4 border-t border-gray-700 text-center">
-                        <div className="text-xs text-gray-500">Generated by Insight Trader AI</div>
-                    </div>
-                </div>
             </div>
         </>
     );

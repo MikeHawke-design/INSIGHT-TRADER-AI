@@ -32,6 +32,7 @@ export interface Trade {
     dataSynergy?: string;
     isModified?: boolean; // Added for tracking modified trades
     tradeManagement?: TradeManagement;
+    timeframe?: string;
 }
 
 export type TradeOutcome = 'TP1 & TP2' | 'TP1 -> B/E' | 'TP1' | 'B/E' | 'SL' | null;

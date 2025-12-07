@@ -246,7 +246,7 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
     const [conversation, setConversation] = useState<{ sender: 'ai' | 'user', text?: string, image?: string }[]>([]);
     const [uploadedImagesData, setUploadedImagesData] = useState<UploadedImageKeys>({});
     const [error, setError] = useState<string | null>(null);
-    const [assetSymbol, setAssetSymbol] = useState('');
+
     const [useLiveData, setUseLiveData] = useState<boolean>(true);
     const [progressMessage, setProgressMessage] = useState<string>('');
 
@@ -760,20 +760,10 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
                     direction: direction,
                     entry: (trade.entry && String(trade.entry).trim()) ? String(trade.entry) : 'N/A',
                     // Inject timeframe if we identified it during hybrid analysis
-                    timeframe: useLiveData && assetSymbol ? undefined : (results.chartMetadata ? undefined : undefined) // Logic below is cleaner
+                    timeframe: undefined
                 }));
 
-            // Helper to inject timeframe if available
-            const injectTimeframe = (trades: Trade[]) => {
-                // If we have a global identified timeframe from the hybrid step (stored in a variable? No, we need to pass it)
-                // Actually, we have `idResult.timeframe` inside the `if (useLiveData)` block.
-                // We need to capture that timeframe variable in the outer scope or use what we have.
-                // Let's use a variable `identifiedTimeframe` in the outer scope.
-                return trades.map(t => ({
-                    ...t,
-                    timeframe: identifiedTimeframe || undefined
-                }));
-            };
+
 
             results['Top Longs'] = fillMissingEntry(results['Top Longs'] ?? [], 'Long');
             results['Top Shorts'] = fillMissingEntry(results['Top Shorts'] ?? [], 'Short');
@@ -886,7 +876,7 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
                             <div className="flex items-start gap-2">
                                 <Logo className="w-8 h-8 flex-shrink-0" isLoading={true} />
                                 <div className="p-3 rounded-lg bg-gray-700 animate-pulse">
-                                    <p className="text-sm">Oracle is thinking...</p>
+                                    <p className="text-sm">{progressMessage || "Oracle is thinking..."}</p>
                                 </div>
                             </div>
                         )}

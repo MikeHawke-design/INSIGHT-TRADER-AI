@@ -68,6 +68,77 @@ const ClipboardIcon = (props: { className?: string }) => <svg {...props} xmlns="
 const UploadIcon = (props: { className?: string }) => <svg {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M9.25 13.25a.75.75 0 0 0 1.5 0V4.636l2.955 3.129a.75.75 0 0 0 1.09-1.03l-4.25-4.5a.75.75 0 0 0-1.09 0l-4.25 4.5a.75.75 0 0 0 1.09 1.03L9.25 4.636V13.25Z" /><path d="M3.5 12.75a.75.75 0 0 0-1.5 0v2.5A2.75 2.75 0 0 0 4.75 18h10.5A2.75 2.75 0 0 0 18 15.25v-2.5a.75.75 0 0 0-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5Z" /></svg>;
 
 
+// --- HELPER COMPONENTS ---
+
+const InputField = ({ label, name, value, onChange, type = "text", placeholder }: any) => (
+    <div className="flex flex-col gap-1">
+        <label className="text-sm font-medium text-gray-400">{label}</label>
+        <input
+            type={type}
+            name={name}
+            value={value}
+            onChange={onChange}
+            placeholder={placeholder}
+            className="bg-gray-700 border border-gray-600 rounded-lg p-2 text-white focus:ring-2 focus:ring-yellow-500 outline-none"
+        />
+    </div>
+);
+
+const TextareaField = ({ label, name, value, onChange, rows = 3, isMono = false }: any) => (
+    <div className="flex flex-col gap-1">
+        <label className="text-sm font-medium text-gray-400">{label}</label>
+        <textarea
+            name={name}
+            value={value}
+            onChange={onChange}
+            rows={rows}
+            className={`bg-gray-700 border border-gray-600 rounded-lg p-2 text-white focus:ring-2 focus:ring-yellow-500 outline-none ${isMono ? 'font-mono text-xs' : ''}`}
+        />
+    </div>
+);
+
+const SelectField = ({ label, name, value, onChange, options }: any) => (
+    <div className="flex flex-col gap-1">
+        <label className="text-sm font-medium text-gray-400">{label}</label>
+        <select
+            name={name}
+            value={value}
+            onChange={onChange}
+            className="bg-gray-700 border border-gray-600 rounded-lg p-2 text-white focus:ring-2 focus:ring-yellow-500 outline-none"
+        >
+            <option value="">None</option>
+            {options.map((opt: any) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+        </select>
+    </div>
+);
+
+const StrategyListItem = ({ strategy, strategyKey, onEdit, setStrategyToDelete, onToggleEnable, isChild }: any) => (
+    <div className={`flex items-center justify-between p-3 ${isChild ? 'bg-gray-800/50 border-l-2 border-gray-600' : 'bg-gray-800 border border-gray-700 rounded-lg'}`}>
+        <div className="flex items-center gap-3">
+            <div className={`w-2 h-2 rounded-full ${strategy.isEnabled ? 'bg-green-500' : 'bg-red-500'}`} />
+            <div>
+                <h5 className="font-bold text-white text-sm">{strategy.name}</h5>
+                <p className="text-xs text-gray-400 line-clamp-1">{strategy.description}</p>
+            </div>
+        </div>
+        <div className="flex items-center gap-2">
+            <button onClick={() => onToggleEnable(strategyKey)} className="p-1 text-gray-400 hover:text-white">
+                {strategy.isEnabled ? <ToggleOnIcon className="w-5 h-5 text-green-500" /> : <ToggleOffIcon className="w-5 h-5 text-gray-500" />}
+            </button>
+            <button onClick={() => onEdit(strategyKey)} className="p-1 text-gray-400 hover:text-yellow-400">
+                <EditIcon className="w-4 h-4" />
+            </button>
+            <button onClick={() => setStrategyToDelete(strategyKey)} className="p-1 text-gray-400 hover:text-red-400">
+                <TrashIcon className="w-4 h-4" />
+            </button>
+        </div>
+    </div>
+);
+
+const CheckIcon = (props: { className?: string }) => <svg {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>;
+
 // --- COMPONENT ---
 
 export const MasterControlsView: React.FC<MasterControlsViewProps> = ({
@@ -80,7 +151,7 @@ export const MasterControlsView: React.FC<MasterControlsViewProps> = ({
     currentUser: _currentUser,
     tokenUsageHistory: _tokenUsageHistory,
     onLogTokenUsage,
-    onOpenLegal,
+    onOpenLegal: _onOpenLegal,
     onRestoreData,
     onNavClick: _onNavClick,
 }) => {
@@ -650,7 +721,7 @@ export const MasterControlsView: React.FC<MasterControlsViewProps> = ({
                         <TextareaField label="Core Logic Prompt" name="prompt" value={editFormData.prompt || ''} onChange={handleFormChange} rows={10} isMono />
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <SelectField label="Parent Strategy (for grouping)" name="parentId" value={editFormData.parentId || ''} onChange={handleFormChange} options={parentCandidateKeys.map(key => ({ value: key, label: strategyLogicData[key].name }))} />
-                            <InputField label="Tags (comma-separated)" name="tags" value={(editFormData.tags || []).join(', ')} onChange={e => setEditFormData(prev => ({ ...prev, tags: e.target.value.split(',').map(t => t.trim()) }))} />
+                            <InputField label="Tags (comma-separated)" name="tags" value={(editFormData.tags || []).join(', ')} onChange={(e: any) => setEditFormData(prev => ({ ...prev, tags: e.target.value.split(',').map((t: string) => t.trim()) }))} />
                         </div>
                     </div>
                     <div className="flex justify-end gap-4 mt-6 flex-shrink-0">
@@ -891,110 +962,110 @@ export const MasterControlsView: React.FC<MasterControlsViewProps> = ({
         );
     };
 
-    // --- Sub-components for Strategy List ---
 
-    const StrategyListItem = ({ strategy, strategyKey, onEdit, setStrategyToDelete, onToggleEnable, isChild = false }: { strategy: StrategyLogicData, strategyKey: StrategyKey, onEdit: (key: StrategyKey) => void, setStrategyToDelete: (key: StrategyKey) => void, onToggleEnable: (key: StrategyKey) => void, isChild?: boolean }) => (
-        <div className={`flex items-center justify-between p-3 ${isChild ? 'bg-gray-800/50 rounded-md border border-gray-700/50' : ''}`}>
-            <div className="flex items-center gap-3 overflow-hidden">
-                <div className={`w-2 h-2 rounded-full flex-shrink-0 ${strategy.isEnabled ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' : 'bg-gray-600'}`} />
-                <div className="min-w-0">
-                    <h5 className={`font-bold truncate ${isChild ? 'text-sm text-gray-300' : 'text-white'}`}>{strategy.name}</h5>
-                    {!isChild && <p className="text-xs text-gray-500 truncate">{strategy.description}</p>}
-                </div>
-            </div>
-            <div className="flex items-center gap-2 flex-shrink-0 ml-2">
-                <button onClick={() => onToggleEnable(strategyKey)} className={`p-1.5 rounded hover:bg-gray-600 transition-colors ${strategy.isEnabled ? 'text-green-400' : 'text-gray-500'}`} title={strategy.isEnabled ? "Disable" : "Enable"}>
-                    {strategy.isEnabled ? <ToggleOnIcon className="w-5 h-5" /> : <ToggleOffIcon className="w-5 h-5" />}
-                </button>
-                <button onClick={() => onEdit(strategyKey)} className="p-1.5 rounded hover:bg-gray-600 text-blue-400 transition-colors" title="Edit">
-                    <EditIcon className="w-4 h-4" />
-                </button>
-                <button onClick={() => setStrategyToDelete(strategyKey)} className="p-1.5 rounded hover:bg-gray-600 text-red-400 transition-colors" title="Delete">
-                    <TrashIcon className="w-4 h-4" />
-                </button>
-            </div>
-        </div>
-    );
-
-    // --- Form Field Components ---
-
-    const InputField = ({ label, name, value, onChange, type = "text" }: any) => (
-        <div>
-            <label className="block text-sm font-medium text-gray-400 mb-1">{label}</label>
-            <input type={type} name={name} value={value} onChange={onChange} className="w-full bg-gray-900 border border-gray-600 rounded p-2 text-white focus:border-yellow-500 outline-none transition-colors" />
-        </div>
-    );
-
-    const TextareaField = ({ label, name, value, onChange, rows = 3, isMono = false }: any) => (
-        <div>
-            <label className="block text-sm font-medium text-gray-400 mb-1">{label}</label>
-            <textarea name={name} value={value} onChange={onChange} rows={rows} className={`w-full bg-gray-900 border border-gray-600 rounded p-2 text-white focus:border-yellow-500 outline-none transition-colors ${isMono ? 'font-mono text-sm' : ''}`} />
-        </div>
-    );
-
-    const SelectField = ({ label, name, value, onChange, options }: any) => (
-        <div>
-            <label className="block text-sm font-medium text-gray-400 mb-1">{label}</label>
-            <select name={name} value={value} onChange={onChange} className="w-full bg-gray-900 border border-gray-600 rounded p-2 text-white focus:border-yellow-500 outline-none transition-colors">
-                <option value="">None</option>
-                {options.map((opt: any) => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-            </select>
-        </div>
-    );
 
     return (
-        <div className="p-4 md:p-6 max-w-6xl mx-auto">
-            <div className="flex items-center gap-3 mb-6">
-                <Logo className="w-8 h-8 text-yellow-500" />
-                <h2 className="text-2xl font-bold text-white">Master Controls</h2>
+        <div className="p-6 max-w-7xl mx-auto space-y-8 pb-24">
+            {/* Header */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-gray-700 pb-6">
+                <div className="flex items-center gap-3">
+                    <div className="bg-gradient-to-br from-yellow-500 to-orange-600 p-3 rounded-xl shadow-lg shadow-orange-900/20">
+                        <Logo className="w-8 h-8 text-white" />
+                    </div>
+                    <div>
+                        <h2 className="text-3xl font-bold text-white tracking-tight">Master Controls</h2>
+                        <p className="text-gray-400 text-sm">System Configuration & Strategy Architecture</p>
+                    </div>
+                </div>
+
+                {/* Navigation Tabs */}
+                <div className="flex bg-gray-800/50 p-1 rounded-lg border border-gray-700">
+                    {(['strategies', 'settings', 'data', 'manual'] as const).map(tab => (
+                        <button
+                            key={tab}
+                            onClick={() => setActiveTab(tab)}
+                            className={`px-4 py-2 rounded-md text-sm font-semibold transition-all ${activeTab === tab
+                                ? 'bg-gray-700 text-white shadow-sm'
+                                : 'text-gray-400 hover:text-white hover:bg-gray-700/50'
+                                }`}
+                        >
+                            {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                        </button>
+                    ))}
+                </div>
             </div>
 
-            {/* Navigation Tabs */}
-            <div className="flex space-x-1 bg-gray-800/50 p-1 rounded-lg mb-6 overflow-x-auto">
-                {(['strategies', 'settings', 'data', 'manual'] as const).map((tab) => (
-                    <button
-                        key={tab}
-                        onClick={() => setActiveTab(tab)}
-                        className={`flex-1 py-2 px-4 rounded-md text-sm font-bold transition-all whitespace-nowrap ${activeTab === tab
-                            ? 'bg-yellow-500 text-gray-900 shadow-lg'
-                            : 'text-gray-400 hover:text-white hover:bg-gray-700'
-                            }`}
-                    >
-                        {tab.charAt(0).toUpperCase() + tab.slice(1)}
-                    </button>
-                ))}
-            </div>
+            {/* Error Display */}
+            {error && (
+                <div className="bg-red-900/20 border border-red-500/50 text-red-200 p-4 rounded-lg flex items-center gap-3 animate-fadeIn">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <p>{error}</p>
+                </div>
+            )}
 
-            {/* Content Area */}
+            {/* Success Message */}
+            {saveSuccessMessage && (
+                <div className="fixed bottom-8 right-8 bg-green-600 text-white px-6 py-3 rounded-lg shadow-xl animate-fadeIn z-50 flex items-center gap-2">
+                    <CheckIcon className="w-5 h-5" />
+                    {saveSuccessMessage}
+                </div>
+            )}
+
+            {/* Main Content Area */}
             <div className="animate-fadeIn">
-                {activeTab === 'strategies' && renderStrategyList()}
+                {activeTab === 'strategies' && (
+                    <>
+                        {renderStrategyList()}
+                        {renderStrategyEditForm()}
+                    </>
+                )}
                 {activeTab === 'settings' && renderSettings()}
                 {activeTab === 'data' && renderDataManagement()}
                 {activeTab === 'manual' && <UserManualView />}
             </div>
 
             {/* Modals */}
-            {renderStrategyEditForm()}
+            <ConfirmationModal
+                isOpen={!!strategyToDelete}
+                title="Delete Strategy?"
+                message={`Are you sure you want to delete "${strategyToDelete ? strategyLogicData[strategyToDelete]?.name : ''}"? This action cannot be undone.`}
+                confirmText="Delete"
+                onConfirm={() => strategyToDelete && handleDeleteStrategy(strategyToDelete)}
+                onCancel={() => setStrategyToDelete(null)}
+                confirmButtonClass="bg-red-600 hover:bg-red-500 text-white"
+            />
 
-            {isFinalizeModalOpen && (
-                <div className="fixed inset-0 bg-gray-900/80 z-50 flex items-center justify-center p-4 animate-fadeIn">
-                    <div className="bg-gray-800 p-6 rounded-lg shadow-xl w-full max-w-md border border-gray-700">
-                        <h3 className="text-xl font-bold text-white mb-4">Finalize Strategy</h3>
+            {/* Paste Strategy Modal */}
+            {isPasteModalOpen && (
+                <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+                    <div className="bg-gray-800 rounded-xl max-w-2xl w-full p-6 border border-gray-700 shadow-2xl">
+                        <h3 className="text-xl font-bold text-white mb-4">Paste Strategy Text</h3>
                         <div className="space-y-4">
-                            <InputField label="Strategy Name" name="name" value={finalizeFormData.name} onChange={(e: any) => setFinalizeFormData(prev => ({ ...prev, name: e.target.value }))} />
-                            <label className="flex items-center gap-2 cursor-pointer bg-gray-900 p-3 rounded border border-gray-700 hover:border-gray-500 transition-colors">
-                                <input type="checkbox" checked={finalizeFormData.generateCourse} onChange={(e) => setFinalizeFormData(prev => ({ ...prev, generateCourse: e.target.checked }))} className="w-5 h-5 text-yellow-500 rounded focus:ring-yellow-500" />
-                                <div>
-                                    <span className="block font-bold text-white">Generate Academy Course</span>
-                                    <span className="text-xs text-gray-400">Create interactive lessons & quizzes for this strategy.</span>
-                                </div>
-                            </label>
-                            <div className="flex justify-end gap-3 mt-6">
-                                <button onClick={() => setIsFinalizeModalOpen(false)} className="px-4 py-2 rounded text-gray-400 hover:text-white">Cancel</button>
-                                <button onClick={handleFinalizeAndSaveStrategy} disabled={isFinalizing} className="px-4 py-2 rounded bg-green-600 hover:bg-green-500 text-white font-bold disabled:opacity-50">
-                                    {isFinalizing ? 'Finalizing...' : 'Save Strategy'}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-400 mb-1">Strategy Name (Optional)</label>
+                                <input
+                                    type="text"
+                                    value={pasteName}
+                                    onChange={(e) => setPasteName(e.target.value)}
+                                    className="w-full bg-gray-700 border border-gray-600 rounded-lg p-2 text-white outline-none focus:border-yellow-500"
+                                    placeholder="e.g., My New Strategy"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-400 mb-1">Strategy Content</label>
+                                <textarea
+                                    value={pasteText}
+                                    onChange={(e) => setPasteText(e.target.value)}
+                                    className="w-full h-64 bg-gray-700 border border-gray-600 rounded-lg p-2 text-white font-mono text-sm outline-none focus:border-yellow-500"
+                                    placeholder="Paste your strategy document text here..."
+                                />
+                            </div>
+                            <div className="flex justify-end gap-3">
+                                <button onClick={() => setIsPasteModalOpen(false)} className="px-4 py-2 text-gray-400 hover:text-white">Cancel</button>
+                                <button onClick={handlePasteSubmit} disabled={!pasteText.trim()} className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed">
+                                    Analyze & Create
                                 </button>
                             </div>
                         </div>
@@ -1002,45 +1073,74 @@ export const MasterControlsView: React.FC<MasterControlsViewProps> = ({
                 </div>
             )}
 
+            {/* Creation Progress Modal */}
             {isCreatingStrategy && (
-                <div className="fixed inset-0 bg-gray-900/90 z-50 flex items-center justify-center p-4 animate-fadeIn">
-                    <div className="text-center max-w-md w-full">
-                        <div className="w-16 h-16 border-4 border-yellow-500 border-t-transparent rounded-full animate-spin mx-auto mb-6"></div>
-                        <h3 className="text-2xl font-bold text-white mb-2">Architecting Strategy...</h3>
-                        <p className="text-gray-400 mb-6">{creationProgress.message}</p>
-                        <div className="w-full bg-gray-800 rounded-full h-2.5 mb-2 overflow-hidden">
-                            <div className="bg-yellow-500 h-2.5 rounded-full transition-all duration-500" style={{ width: `${(creationProgress.step / creationProgress.total) * 100}%` }}></div>
+                <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4">
+                    <div className="text-center space-y-4 max-w-md w-full">
+                        <div className="w-16 h-16 border-4 border-yellow-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+                        <h3 className="text-2xl font-bold text-white">AI Architect Working...</h3>
+                        <p className="text-gray-400">{creationProgress.message}</p>
+                        <div className="w-full bg-gray-800 rounded-full h-2 overflow-hidden">
+                            <div
+                                className="bg-yellow-500 h-full transition-all duration-500 ease-out"
+                                style={{ width: `${(creationProgress.step / creationProgress.total) * 100}%` }}
+                            ></div>
                         </div>
-                        <p className="text-xs text-gray-500">Step {creationProgress.step} of {creationProgress.total}</p>
                     </div>
                 </div>
             )}
 
-            {strategyToDelete && (
-                <ConfirmationModal
-                    isOpen={!!strategyToDelete}
-                    title="Delete Strategy?"
-                    message={`Are you sure you want to delete "${strategyLogicData[strategyToDelete]?.name}"? This cannot be undone.`}
-                    confirmText="Delete"
-                    onConfirm={() => handleDeleteStrategy(strategyToDelete)}
-                    onCancel={() => setStrategyToDelete(null)}
-                />
-            )}
+            {/* Finalize Strategy Modal */}
+            {isFinalizeModalOpen && pendingStrategy && (
+                <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+                    <div className="bg-gray-800 rounded-xl max-w-lg w-full p-6 border border-gray-700 shadow-2xl">
+                        <h3 className="text-xl font-bold text-green-400 mb-2">Strategy Ready!</h3>
+                        <p className="text-gray-300 mb-6">The AI has successfully analyzed and structured your strategy.</p>
 
-            {/* Paste Strategy Modal */}
-            {isPasteModalOpen && (
-                <div className="fixed inset-0 bg-gray-900/80 z-50 flex items-center justify-center p-4 animate-fadeIn">
-                    <div className="bg-gray-800 p-6 rounded-lg shadow-xl w-full max-w-2xl border border-gray-700 flex flex-col max-h-[90vh]">
-                        <h3 className="text-xl font-bold text-white mb-4">Paste Strategy Document</h3>
-                        <div className="space-y-4 flex-grow overflow-y-auto">
-                            <InputField label="Strategy Name (Optional)" name="pasteName" value={pasteName} onChange={(e: any) => setPasteName(e.target.value)} />
-                            <TextareaField label="Paste Content Here" name="pasteText" value={pasteText} onChange={(e: any) => setPasteText(e.target.value)} rows={15} />
-                        </div>
-                        <div className="flex justify-end gap-3 mt-6 flex-shrink-0">
-                            <button onClick={() => setIsPasteModalOpen(false)} className="px-4 py-2 rounded text-gray-400 hover:text-white">Cancel</button>
-                            <button onClick={handlePasteSubmit} disabled={!pasteText.trim()} className="px-4 py-2 rounded bg-purple-600 hover:bg-purple-500 text-white font-bold disabled:opacity-50">
-                                Analyze & Create
-                            </button>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-400 mb-1">Final Strategy Name</label>
+                                <input
+                                    type="text"
+                                    value={finalizeFormData.name}
+                                    onChange={(e) => setFinalizeFormData(prev => ({ ...prev, name: e.target.value }))}
+                                    className="w-full bg-gray-700 border border-gray-600 rounded-lg p-2 text-white outline-none focus:border-green-500"
+                                />
+                            </div>
+
+                            <label className="flex items-center gap-3 p-3 bg-gray-700/50 rounded-lg cursor-pointer border border-gray-600 hover:border-gray-500 transition-colors">
+                                <input
+                                    type="checkbox"
+                                    checked={finalizeFormData.generateCourse}
+                                    onChange={(e) => setFinalizeFormData(prev => ({ ...prev, generateCourse: e.target.checked }))}
+                                    className="w-5 h-5 rounded border-gray-500 text-green-500 focus:ring-green-500 bg-gray-700"
+                                />
+                                <div>
+                                    <span className="block text-white font-semibold">Generate Learning Course</span>
+                                    <span className="text-xs text-gray-400">Create interactive lessons and quizzes for this strategy.</span>
+                                </div>
+                            </label>
+
+                            <div className="flex justify-end gap-3 mt-6">
+                                <button onClick={() => setIsFinalizeModalOpen(false)} className="px-4 py-2 text-gray-400 hover:text-white">Discard</button>
+                                <button
+                                    onClick={handleFinalizeAndSaveStrategy}
+                                    disabled={isFinalizing || !finalizeFormData.name.trim()}
+                                    className="px-4 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg font-semibold disabled:opacity-50 flex items-center gap-2"
+                                >
+                                    {isFinalizing ? (
+                                        <>
+                                            <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                            </svg>
+                                            Saving...
+                                        </>
+                                    ) : (
+                                        'Save Strategy'
+                                    )}
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1050,3 +1150,4 @@ export const MasterControlsView: React.FC<MasterControlsViewProps> = ({
 };
 
 export default MasterControlsView;
+
