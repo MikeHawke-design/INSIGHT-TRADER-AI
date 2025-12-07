@@ -23,6 +23,8 @@ import Logo from './Logo';
 import ScreenCaptureModal from './ScreenCaptureModal';
 import { AiManager } from '../utils/aiManager';
 import { FreeCryptoApi, formatAssetDataForPrompt } from '../utils/freeCryptoApi';
+import { TwelveDataApi } from '../utils/twelveDataApi';
+import { getMarketData, setMarketData } from '../idb';
 
 // --- SYSTEM PROMPTS ---
 
@@ -239,6 +241,8 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
     const [uploadedImagesData, setUploadedImagesData] = useState<UploadedImageKeys>({});
     const [error, setError] = useState<string | null>(null);
     const [assetSymbol, setAssetSymbol] = useState('');
+    const [useLiveData, setUseLiveData] = useState<boolean>(true);
+    const [progressMessage, setProgressMessage] = useState<string>('');
 
     // Screen Capture State
     const [isCaptureModalOpen, setIsCaptureModalOpen] = useState(false);
@@ -319,7 +323,9 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
         setPhase('idle');
         setConversation([]);
         setUploadedImagesData({});
+        setUploadedImagesData({});
         setError(null);
+        setProgressMessage('');
     }, []);
 
     useEffect(() => {
@@ -561,6 +567,7 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
     const triggerAnalysis = async (useRealTimeContext: boolean) => {
         setIsAnalyzing(true);
         setError(null);
+        setProgressMessage("Initializing analysis...");
 
         if (Object.keys(uploadedImagesData).length === 0) {
             setError("No context provided. Please complete the guided chart upload to run an analysis.");
@@ -572,18 +579,105 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
         let currentPrice: number | null = null;
         let liveMarketDataContext = "";
 
-        if (assetSymbol.trim()) {
+        // --- HYBRID ANALYSIS FLOW ---
+        if (useLiveData) {
             try {
-                const api = new FreeCryptoApi(apiConfig.freeCryptoApiKey);
-                const data = await api.getAssetData(assetSymbol.trim().toUpperCase());
-                if (data) {
-                    liveMarketDataContext = `\n\n**LIVE MARKET DATA (Source: FreeCryptoAPI)**\n${formatAssetDataForPrompt(data)}\nUse this data for accurate pricing and indicators.`;
-                    currentPrice = data.price;
+                setProgressMessage("Identifying asset from charts...");
+                // Step 1: Identify Asset from Images
+                const identificationPrompt = `
+                    Identify the trading asset symbol (e.g., BTC/USD, EUR/USD, NVDA) and the primary timeframe (e.g., 15m, 4h, 1d) shown in these charts.
+                    Return ONLY a JSON object: { "symbol": "STRING", "timeframe": "STRING" }.
+                    If uncertain, return { "symbol": null, "timeframe": null }.
+                `;
+
+                const imageParts: Part[] = [];
+                for (const key of Object.keys(uploadedImagesData)) {
+                    const dataUrl = uploadedImagesData[key as any];
+                    if (dataUrl) {
+                        const prefixMatch = dataUrl.match(/^data:(image\/(?:png|jpeg|webp));base64,/);
+                        if (prefixMatch) {
+                            imageParts.push({ inlineData: { mimeType: prefixMatch[1], data: dataUrl.substring(prefixMatch[0].length) } });
+                        }
+                    }
+                }
+
+                const idResponse = await manager.generateContent(identificationPrompt, imageParts);
+                onLogTokenUsage(idResponse.usage.totalTokenCount);
+
+                let idJson = (idResponse.text || "").trim();
+                const fenceMatch = idJson.match(/^```json\s*([\s\S]*?)\s*```$/) || idJson.match(/^```\s*([\s\S]*?)\s*```$/);
+                if (fenceMatch) idJson = fenceMatch[1];
+
+                const idResult = JSON.parse(idJson);
+
+                if (idResult.symbol && idResult.timeframe) {
+                    const symbol = idResult.symbol.toUpperCase();
+                    const timeframe = idResult.timeframe;
+                    setProgressMessage(`Identified ${symbol} (${timeframe}). Fetching data...`);
+
+                    // Step 2: Fetch/Stitch Data
+                    // Check IDB
+                    const storedCandles = await getMarketData(symbol, timeframe) || [];
+                    let startDate: string | undefined;
+
+                    if (storedCandles.length > 0) {
+                        // Get last candle time. TwelveData uses YYYY-MM-DD HH:MM:SS or timestamp.
+                        // Our stored candles are [time, open, high, low, close, volume]
+                        // Time is usually a string or timestamp.
+                        const lastCandle = storedCandles[storedCandles.length - 1];
+                        // If it's a string date, we can pass it as start_date
+                        startDate = lastCandle[0];
+                    }
+
+                    // Fetch new data
+                    // Use TwelveData API
+                    const twelveDataKey = apiConfig.twelveDataApiKey || (userSettings as any).twelveDataApiKey;
+                    if (twelveDataKey) {
+                        const api = new TwelveDataApi(twelveDataKey);
+                        // If we have data, fetch from last date. If not, fetch default (last 30-100).
+                        const newCandles = await api.getCandles(symbol, timeframe, startDate);
+
+                        if (newCandles.length > 0) {
+                            // Merge: Filter out duplicates based on timestamp
+                            const existingTimes = new Set(storedCandles.map(c => c[0]));
+                            const uniqueNewCandles = newCandles.filter(c => !existingTimes.has(c[0]));
+                            const mergedCandles = [...storedCandles, ...uniqueNewCandles];
+
+                            // Sort by time just in case
+                            mergedCandles.sort((a, b) => new Date(a[0]).getTime() - new Date(b[0]).getTime());
+
+                            // Save back to IDB
+                            await setMarketData(symbol, timeframe, mergedCandles);
+
+                            // Prepare context for AI
+                            // Send last 50 candles for context
+                            const contextCandles = mergedCandles.slice(-50);
+                            liveMarketDataContext = `\n\n**PRECISE MARKET DATA (Source: TwelveData)**\nAsset: ${symbol}\nTimeframe: ${timeframe}\nLast 50 Candles (Time | Open | High | Low | Close | Volume):\n`;
+                            contextCandles.forEach(c => {
+                                liveMarketDataContext += `${c[0]} | ${c[1]} | ${c[2]} | ${c[3]} | ${c[4]} | ${c[5]}\n`;
+                            });
+                            liveMarketDataContext += `\nUse this data to determine EXACT entry, stop loss, and take profit levels.`;
+
+                            // Update current price
+                            currentPrice = mergedCandles[mergedCandles.length - 1][4];
+                        } else if (storedCandles.length > 0) {
+                            // Use stored data if no new data
+                            const contextCandles = storedCandles.slice(-50);
+                            liveMarketDataContext = `\n\n**PRECISE MARKET DATA (Source: Cached)**\nAsset: ${symbol}\nTimeframe: ${timeframe}\nLast 50 Candles:\n`;
+                            contextCandles.forEach(c => {
+                                liveMarketDataContext += `${c[0]} | ${c[1]} | ${c[2]} | ${c[3]} | ${c[4]} | ${c[5]}\n`;
+                            });
+                            currentPrice = storedCandles[storedCandles.length - 1][4];
+                        }
+                    }
                 }
             } catch (err) {
-                console.warn("Failed to fetch live data:", err);
+                console.warn("Hybrid data fetch failed:", err);
+                // Fallback to visual only
             }
         }
+
+        setProgressMessage("Analyzing charts & data...");
 
         try {
             const systemInstruction = generateSystemInstructionContent(
@@ -669,6 +763,7 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
             setError(`AI Analysis Failed: ${errorMessage}`);
         } finally {
             setIsAnalyzing(false);
+            setProgressMessage('');
         }
     };
 
@@ -685,15 +780,17 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
                     <h4 className="font-bold text-gray-200">Provide Market Context</h4>
                     <p className="text-sm text-gray-400 mb-4">Upload screenshots of your charts for analysis.</p>
 
-                    <div className="mb-4">
-                        <label className="block text-xs font-medium text-gray-400 mb-1">Asset Symbol (Optional - for Live Data)</label>
+                    <div className="mb-4 flex items-center gap-2">
                         <input
-                            type="text"
-                            value={assetSymbol}
-                            onChange={(e) => setAssetSymbol(e.target.value)}
-                            placeholder="e.g. BTC, ETH, SOL"
-                            className="w-full bg-gray-900 border border-gray-600 rounded p-2 text-white text-sm focus:border-blue-500 outline-none"
+                            type="checkbox"
+                            id="useLiveData"
+                            checked={useLiveData}
+                            onChange={(e) => setUseLiveData(e.target.checked)}
+                            className="h-4 w-4 text-blue-600 rounded border-gray-600 bg-gray-700"
                         />
+                        <label htmlFor="useLiveData" className="text-sm text-gray-300">
+                            Enhance with Live Data (Auto-Detect Symbol)
+                        </label>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4">

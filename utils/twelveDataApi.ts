@@ -82,7 +82,7 @@ export class TwelveDataApi {
         return allData;
     }
 
-    async getCandles(symbol: string, interval: string): Promise<any[]> {
+    async getCandles(symbol: string, interval: string, startDate?: string, endDate?: string): Promise<any[]> {
         if (!this.apiKey) return [];
 
         // Map interval
@@ -94,8 +94,22 @@ export class TwelveDataApi {
         if (interval === '15m') apiInterval = '15min';
         if (interval === '1d') apiInterval = '1day';
 
+        let url = `${BASE_URL}/time_series?symbol=${symbol}&interval=${apiInterval}&apikey=${this.apiKey}&format=JSON`;
+
+        if (startDate) {
+            url += `&start_date=${startDate}`;
+        }
+        if (endDate) {
+            url += `&end_date=${endDate}`;
+        }
+
+        // If no dates provided, default to last 30 candles to save data
+        if (!startDate && !endDate) {
+            url += `&outputsize=30`;
+        }
+
         try {
-            const response = await fetch(`${BASE_URL}/time_series?symbol=${symbol}&interval=${apiInterval}&apikey=${this.apiKey}&outputsize=30&format=JSON`);
+            const response = await fetch(url);
             if (response.ok) {
                 const data = await response.json();
                 if (data.values && Array.isArray(data.values)) {
