@@ -22,7 +22,7 @@ import ClarityFeedback from './ClarityFeedback';
 import Logo from './Logo';
 import ScreenCaptureModal from './ScreenCaptureModal';
 import { AiManager } from '../utils/aiManager';
-import { FreeCryptoApi, formatAssetDataForPrompt } from '../utils/freeCryptoApi';
+
 import { TwelveDataApi } from '../utils/twelveDataApi';
 import { getMarketData, setMarketData } from '../idb';
 

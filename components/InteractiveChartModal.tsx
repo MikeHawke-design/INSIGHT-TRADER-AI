@@ -8,7 +8,7 @@ interface InteractiveChartModalProps {
   onClose: () => void;
   symbol: string;
   timeframe: string;
-  trade: Trade;
+  trade?: Trade; // Made optional for pure data visualization
 }
 
 const InteractiveChartModal: React.FC<InteractiveChartModalProps> = ({ isOpen, onClose, symbol, timeframe, trade }) => {
@@ -24,6 +24,36 @@ const InteractiveChartModal: React.FC<InteractiveChartModalProps> = ({ isOpen, o
     const clean = String(priceStr).replace(/,/g, '').replace(/[^0-9.]/g, '');
     const val = parseFloat(clean);
     return isNaN(val) ? null : val;
+  };
+
+  // Helper to fetch from Binance for more history (Visualization only)
+  const fetchBinanceData = async (symbol: string, interval: string): Promise<CandlestickData[]> => {
+    try {
+      // Map symbol (e.g., BTC/USD -> BTCUSDT)
+      const cleanSymbol = symbol.replace('/', '').replace('-', '').toUpperCase();
+      // If it ends with USD, append T (USDT) if not present, or just try as is.
+      // Binance usually uses USDT.
+      let binanceSymbol = cleanSymbol;
+      if (binanceSymbol.endsWith('USD') && !binanceSymbol.endsWith('USDT')) {
+        binanceSymbol = binanceSymbol.replace('USD', 'USDT');
+      }
+
+      const response = await fetch(`https://api.binance.com/api/v3/klines?symbol=${binanceSymbol}&interval=${interval}&limit=500`);
+      if (!response.ok) return [];
+
+      const data = await response.json();
+      // Binance format: [ [open_time, open, high, low, close, volume, ...], ... ]
+      return data.map((d: any) => ({
+        time: d[0] / 1000, // Unix timestamp in seconds
+        open: parseFloat(d[1]),
+        high: parseFloat(d[2]),
+        low: parseFloat(d[3]),
+        close: parseFloat(d[4]),
+      }));
+    } catch (e) {
+      console.warn("Failed to fetch Binance data:", e);
+      return [];
+    }
   };
 
   useEffect(() => {
@@ -71,102 +101,106 @@ const InteractiveChartModal: React.FC<InteractiveChartModalProps> = ({ isOpen, o
       setIsLoading(true);
       setError(null);
       try {
+        let chartData: CandlestickData[] = [];
+
+        // 1. Try to get cached data first
         const rawData = await getMarketData(symbol, timeframe);
-        if (!rawData || rawData.length === 0) {
-          setError(`No cached data found for ${symbol} (${timeframe}).`);
+
+        if (rawData && rawData.length > 0) {
+          chartData = rawData.map((d: any) => {
+            let time = d[0];
+            if (typeof time === 'string' && time.includes(' ')) {
+              time = new Date(time).getTime() / 1000;
+            }
+            return {
+              time: time as any,
+              open: parseFloat(d[1]),
+              high: parseFloat(d[2]),
+              low: parseFloat(d[3]),
+              close: parseFloat(d[4]),
+            };
+          });
+        }
+
+        // 2. If data is sparse or missing, try fetching from Binance (for crypto)
+        // This adds "more history" as requested
+        if (chartData.length < 100) {
+          const binanceData = await fetchBinanceData(symbol, timeframe);
+          if (binanceData.length > 0) {
+            // Merge strategies: 
+            // If we have no local data, just use Binance.
+            // If we have local data, we prefer local for the "latest" but fill history with Binance.
+            // For simplicity in this "visualization only" mode, if Binance returns good data, we can use it, 
+            // but we must ensure we don't overwrite the specific candles the user might be analyzing if they differ.
+            // However, since this is "purely for visualization", showing the longer history from Binance is likely preferred.
+
+            // Let's merge: use Binance data, but overwrite with local data if timestamps match (local is truth).
+            const dataMap = new Map();
+            binanceData.forEach(d => dataMap.set(d.time, d));
+            chartData.forEach(d => dataMap.set(d.time, d)); // Local overwrites Binance
+
+            chartData = Array.from(dataMap.values()).sort((a, b) => (a.time as number) - (b.time as number));
+          }
+        }
+
+        if (chartData.length === 0) {
+          setError(`No data found for ${symbol} (${timeframe}).`);
           setIsLoading(false);
           return;
         }
 
-        // Format data for lightweight-charts
-        // Expected format: { time: '2018-12-22', open: 75.16, high: 82.84, low: 36.16, close: 45.72 }
-        // Stored format: [time, open, high, low, close, volume]
-        // Time from TwelveData is "YYYY-MM-DD HH:mm:ss" or timestamp.
-        // Lightweight charts handles string dates well if formatted correctly, or unix timestamp.
+        candlestickSeries.setData(chartData);
 
-        const chartData: CandlestickData[] = rawData.map((d: any) => {
-          // Check if time is timestamp or string
-          let time = d[0];
-          if (typeof time === 'string' && time.includes(' ')) {
-            // Convert "YYYY-MM-DD HH:mm:ss" to unix timestamp
-            time = new Date(time).getTime() / 1000;
-          } else if (typeof time === 'string') {
-            // "YYYY-MM-DD"
-            // keep as string
+        // Add Price Lines (only if trade exists)
+        if (trade) {
+          const entryPrice = parsePrice(trade.entry);
+          const slPrice = parsePrice(trade.stopLoss);
+          const tp1Price = parsePrice(trade.takeProfit1);
+          const tp2Price = parsePrice(trade.takeProfit2);
+
+          if (entryPrice) {
+            candlestickSeries.createPriceLine({
+              price: entryPrice,
+              color: '#3b82f6', // blue-500
+              lineWidth: 2,
+              lineStyle: 0, // Solid
+              axisLabelVisible: true,
+              title: 'ENTRY',
+            });
           }
 
-          return {
-            time: time as any,
-            open: parseFloat(d[1]),
-            high: parseFloat(d[2]),
-            low: parseFloat(d[3]),
-            close: parseFloat(d[4]),
-          };
-        });
-
-        // Sort by time
-        chartData.sort((a, b) => (a.time as number) - (b.time as number));
-
-        // Remove duplicates
-        const uniqueData: CandlestickData[] = [];
-        const seenTimes = new Set();
-        for (const item of chartData) {
-          if (!seenTimes.has(item.time)) {
-            seenTimes.add(item.time);
-            uniqueData.push(item);
+          if (slPrice) {
+            candlestickSeries.createPriceLine({
+              price: slPrice,
+              color: '#ef4444', // red-500
+              lineWidth: 2,
+              lineStyle: 0,
+              axisLabelVisible: true,
+              title: 'SL',
+            });
           }
-        }
 
-        candlestickSeries.setData(uniqueData);
+          if (tp1Price) {
+            candlestickSeries.createPriceLine({
+              price: tp1Price,
+              color: '#22c55e', // green-500
+              lineWidth: 2,
+              lineStyle: 1, // Dotted
+              axisLabelVisible: true,
+              title: 'TP1',
+            });
+          }
 
-        // Add Price Lines
-        const entryPrice = parsePrice(trade.entry);
-        const slPrice = parsePrice(trade.stopLoss);
-        const tp1Price = parsePrice(trade.takeProfit1);
-        const tp2Price = parsePrice(trade.takeProfit2);
-
-        if (entryPrice) {
-          candlestickSeries.createPriceLine({
-            price: entryPrice,
-            color: '#3b82f6', // blue-500
-            lineWidth: 2,
-            lineStyle: 0, // Solid
-            axisLabelVisible: true,
-            title: 'ENTRY',
-          });
-        }
-
-        if (slPrice) {
-          candlestickSeries.createPriceLine({
-            price: slPrice,
-            color: '#ef4444', // red-500
-            lineWidth: 2,
-            lineStyle: 0,
-            axisLabelVisible: true,
-            title: 'SL',
-          });
-        }
-
-        if (tp1Price) {
-          candlestickSeries.createPriceLine({
-            price: tp1Price,
-            color: '#22c55e', // green-500
-            lineWidth: 2,
-            lineStyle: 1, // Dotted
-            axisLabelVisible: true,
-            title: 'TP1',
-          });
-        }
-
-        if (tp2Price) {
-          candlestickSeries.createPriceLine({
-            price: tp2Price,
-            color: '#22c55e', // green-500
-            lineWidth: 2,
-            lineStyle: 2, // Dashed
-            axisLabelVisible: true,
-            title: 'TP2',
-          });
+          if (tp2Price) {
+            candlestickSeries.createPriceLine({
+              price: tp2Price,
+              color: '#22c55e', // green-500
+              lineWidth: 2,
+              lineStyle: 2, // Dashed
+              axisLabelVisible: true,
+              title: 'TP2',
+            });
+          }
         }
 
         // Fit content

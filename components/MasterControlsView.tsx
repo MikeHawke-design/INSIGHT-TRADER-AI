@@ -11,6 +11,7 @@ import { ALL_PERSISTENT_STORAGE_KEYS } from '../constants';
 import { getAllEntries, getAllMarketData } from '../idb';
 import UserManualView from './UserManualView';
 import { generateAccessKey } from '../authUtils';
+import InteractiveChartModal from './InteractiveChartModal';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://aistudiocdn.com/pdfjs-dist@5.4.149/build/pdf.worker.mjs`;
 
@@ -189,6 +190,8 @@ export const MasterControlsView: React.FC<MasterControlsViewProps> = ({
     const [generatedKey, setGeneratedKey] = useState<string | null>(null);
     const [isAdmin, setIsAdmin] = useState(false);
     const [marketDataEntries, setMarketDataEntries] = useState<[string, any[]][]>([]);
+    const [selectedChartData, setSelectedChartData] = useState<{ symbol: string, timeframe: string } | null>(null);
+    const [isChartModalOpen, setIsChartModalOpen] = useState(false);
 
     useEffect(() => {
         if (activeTab === 'data') {
@@ -786,7 +789,16 @@ export const MasterControlsView: React.FC<MasterControlsViewProps> = ({
                                     }
 
                                     return (
-                                        <tr key={key} className="hover:bg-gray-800/50 transition-colors">
+                                        <tr
+                                            key={key}
+                                            className="hover:bg-gray-800/50 transition-colors cursor-pointer"
+                                            onClick={() => {
+                                                const [symbol, timeframe] = key.split('_');
+                                                setSelectedChartData({ symbol, timeframe });
+                                                setIsChartModalOpen(true);
+                                            }}
+                                            title="Click to view chart"
+                                        >
                                             <td className="p-3 font-mono text-yellow-400 font-semibold">{key.replace('_', ' ')}</td>
                                             <td className="p-3">{data.length} candles</td>
                                             <td className="p-3">{dateStr}</td>
@@ -1145,65 +1157,72 @@ export const MasterControlsView: React.FC<MasterControlsViewProps> = ({
             }
 
             {/* Finalize Strategy Modal */}
-            {
-                isFinalizeModalOpen && pendingStrategy && (
-                    <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
-                        <div className="bg-gray-800 rounded-xl max-w-lg w-full p-6 border border-gray-700 shadow-2xl">
-                            <h3 className="text-xl font-bold text-green-400 mb-2">Strategy Ready!</h3>
-                            <p className="text-gray-300 mb-6">The AI has successfully analyzed and structured your strategy.</p>
+            {isFinalizeModalOpen && pendingStrategy && (
+                <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+                    <div className="bg-gray-800 rounded-xl max-w-lg w-full p-6 border border-gray-700 shadow-2xl">
+                        <h3 className="text-xl font-bold text-green-400 mb-2">Strategy Ready!</h3>
+                        <p className="text-gray-300 mb-6">The AI has successfully analyzed and structured your strategy.</p>
 
-                            <div className="space-y-4">
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-400 mb-1">Final Strategy Name</label>
+                                <input
+                                    type="text"
+                                    value={finalizeFormData.name}
+                                    onChange={(e) => setFinalizeFormData(prev => ({ ...prev, name: e.target.value }))}
+                                    className="w-full bg-gray-700 border border-gray-600 rounded-lg p-2 text-white outline-none focus:border-green-500"
+                                />
+                            </div>
+
+                            <label className="flex items-center gap-3 p-3 bg-gray-700/50 rounded-lg cursor-pointer border border-gray-600 hover:border-gray-500 transition-colors">
+                                <input
+                                    type="checkbox"
+                                    checked={finalizeFormData.generateCourse}
+                                    onChange={(e) => setFinalizeFormData(prev => ({ ...prev, generateCourse: e.target.checked }))}
+                                    className="w-5 h-5 rounded border-gray-500 text-green-500 focus:ring-green-500 bg-gray-700"
+                                />
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-400 mb-1">Final Strategy Name</label>
-                                    <input
-                                        type="text"
-                                        value={finalizeFormData.name}
-                                        onChange={(e) => setFinalizeFormData(prev => ({ ...prev, name: e.target.value }))}
-                                        className="w-full bg-gray-700 border border-gray-600 rounded-lg p-2 text-white outline-none focus:border-green-500"
-                                    />
+                                    <span className="block text-white font-semibold">Generate Learning Course</span>
+                                    <span className="text-xs text-gray-400">Create interactive lessons and quizzes for this strategy.</span>
                                 </div>
+                            </label>
 
-                                <label className="flex items-center gap-3 p-3 bg-gray-700/50 rounded-lg cursor-pointer border border-gray-600 hover:border-gray-500 transition-colors">
-                                    <input
-                                        type="checkbox"
-                                        checked={finalizeFormData.generateCourse}
-                                        onChange={(e) => setFinalizeFormData(prev => ({ ...prev, generateCourse: e.target.checked }))}
-                                        className="w-5 h-5 rounded border-gray-500 text-green-500 focus:ring-green-500 bg-gray-700"
-                                    />
-                                    <div>
-                                        <span className="block text-white font-semibold">Generate Learning Course</span>
-                                        <span className="text-xs text-gray-400">Create interactive lessons and quizzes for this strategy.</span>
-                                    </div>
-                                </label>
-
-                                <div className="flex justify-end gap-3 mt-6">
-                                    <button onClick={() => setIsFinalizeModalOpen(false)} className="px-4 py-2 text-gray-400 hover:text-white">Discard</button>
-                                    <button
-                                        onClick={handleFinalizeAndSaveStrategy}
-                                        disabled={isFinalizing || !finalizeFormData.name.trim()}
-                                        className="px-4 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg font-semibold disabled:opacity-50 flex items-center gap-2"
-                                    >
-                                        {isFinalizing ? (
-                                            <>
-                                                <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                                </svg>
-                                                Saving...
-                                            </>
-                                        ) : (
-                                            'Save Strategy'
-                                        )}
-                                    </button>
-                                </div>
+                            <div className="flex justify-end gap-3 mt-6">
+                                <button onClick={() => setIsFinalizeModalOpen(false)} className="px-4 py-2 text-gray-400 hover:text-white">Discard</button>
+                                <button
+                                    onClick={handleFinalizeAndSaveStrategy}
+                                    disabled={isFinalizing || !finalizeFormData.name.trim()}
+                                    className="px-4 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg font-semibold disabled:opacity-50 flex items-center gap-2"
+                                >
+                                    {isFinalizing ? (
+                                        <>
+                                            <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                            </svg>
+                                            Saving...
+                                        </>
+                                    ) : (
+                                        'Save Strategy'
+                                    )}
+                                </button>
                             </div>
                         </div>
                     </div>
-                )
-            }
+                </div>
+            )}
+
+            {/* Interactive Chart Modal for Data View */}
+            {selectedChartData && (
+                <InteractiveChartModal
+                    isOpen={isChartModalOpen}
+                    onClose={() => setIsChartModalOpen(false)}
+                    symbol={selectedChartData.symbol}
+                    timeframe={selectedChartData.timeframe}
+                />
+            )}
         </div >
     );
 };
 
 export default MasterControlsView;
-

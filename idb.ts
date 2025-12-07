@@ -11,7 +11,7 @@ function getDB(): Promise<IDBDatabase> {
     const request = indexedDB.open(DB_NAME, 2); // Increment version
     request.onerror = () => reject(request.error);
     request.onsuccess = () => resolve(request.result);
-    request.onupgradeneeded = (event) => {
+    request.onupgradeneeded = () => {
       const db = request.result;
       if (!db.objectStoreNames.contains(STORE_NAME)) {
         db.createObjectStore(STORE_NAME);
