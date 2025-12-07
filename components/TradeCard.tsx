@@ -632,67 +632,112 @@ R:R: 1:${rr.toFixed(2)}`;
                                 />
                             </div>
 
-                            <div className="flex justify-between items-center pt-3 mt-3 border-t border-[hsl(var(--color-border-700)/0.5)]">
-                                {isCoachingTrade ? (
-                                    onViewCoachingLog && (
-                                        <button onClick={onViewCoachingLog} className="flex items-center gap-2 text-sm text-purple-300 hover:text-purple-200">
-                                            <OracleIcon className="w-5 h-5" /> View Coaching Log
-                                        </button>
-                                    )
-                                ) : (
-                                    <div className="flex items-center gap-2">
-                                        {onViewAndDiscussTrade && (
-                                            <button onClick={onViewAndDiscussTrade} className="p-2 rounded-full text-gray-400 hover:text-yellow-400 hover:bg-yellow-500/10" title="Discuss with Oracle">
-                                                <OracleIcon className="w-5 h-5" />
-                                            </button>
-                                        )}
-                                        {onViewImages && (('uploadedImageKeys' in trade && Object.keys(trade.uploadedImageKeys).length > 0) || hasResultImage) && (
-                                            <button onClick={onViewImages} className="p-2 rounded-full text-gray-400 hover:text-yellow-400 hover:bg-yellow-500/10" title="View Trade Images">
-                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5"><path fillRule="evenodd" d="M1 5.25A2.25 2.25 0 0 1 3.25 3h13.5A2.25 2.25 0 0 1 19 5.25v9.5A2.25 2.25 0 0 1 16.75 17H3.25A2.25 2.25 0 0 1 1 14.75v-9.5Zm1.5 5.81v3.69c0 .414.336.75.75.75h13.5a.75.75 0 0 0 .75-.75v-2.69l-2.22-2.219a.75.75 0 0 0-1.06 0l-1.91 1.909-.48-1.121a.75.75 0 0 0-1.328-.142l-2.8 6.532H2.5v-3.69l.72-.72a.75.75 0 0 0 0-1.06l-.72-.72Zm15-5.81H3.25a.75.75 0 0 0-.75.75v.5c0 .414.336.75.75.75h13.5a.75.75 0 0 0 .75-.75v-.5a.75.75 0 0 0-.75-.75Z" clipRule="evenodd" /></svg>
-                                            </button>
-                                        )}
-                                        {onAddResultImage && (
-                                            <button onClick={onAddResultImage} className="p-2 rounded-full text-gray-400 hover:text-yellow-400 hover:bg-yellow-500/10" title={hasResultImage ? "Replace Result Image" : "Add Result Image"}>
-                                                {hasResultImage ? <EditIcon className="w-5 h-5" /> : <AddResultImageIcon className="w-5 h-5" />}
-                                            </button>
-                                        )}
-                                        <button
-                                            onClick={handleShareCard}
-                                            disabled={isSharing}
-                                            className="p-2 rounded-full text-gray-400 hover:text-blue-400 hover:bg-blue-500/10 disabled:opacity-50"
-                                            title="Share Trade Card"
-                                        >
-                                            {isSharing ? (
-                                                <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                                </svg>
+                            import InteractiveChartModal from './InteractiveChartModal';
+
+                            // ... (existing imports)
+
+                            const TradeCard: React.FC<TradeCardProps> = ({
+                                // ... (existing props)
+                            }) => {
+    // ... (existing state)
+    const [isChartOpen, setIsChartOpen] = useState(false);
+
+                                // ... (existing logic)
+
+                                return (
+                                <>
+                                    <div ref={cardRef} className="bg-[hsl(var(--color-bg-800))] border border-[hsl(var(--color-border-700))] rounded-lg p-4 flex flex-col h-full">
+                                        {/* ... (existing content) */}
+
+                                        <div className="flex justify-between items-center pt-3 mt-3 border-t border-[hsl(var(--color-border-700)/0.5)]">
+                                            {isCoachingTrade ? (
+                                                onViewCoachingLog && (
+                                                    <button onClick={onViewCoachingLog} className="flex items-center gap-2 text-sm text-purple-300 hover:text-purple-200">
+                                                        <OracleIcon className="w-5 h-5" /> View Coaching Log
+                                                    </button>
+                                                )
                                             ) : (
-                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-                                                </svg>
+                                                <div className="flex items-center gap-2">
+                                                    {onViewAndDiscussTrade && (
+                                                        <button onClick={onViewAndDiscussTrade} className="p-2 rounded-full text-gray-400 hover:text-yellow-400 hover:bg-yellow-500/10" title="Discuss with Oracle">
+                                                            <OracleIcon className="w-5 h-5" />
+                                                        </button>
+                                                    )}
+                                                    {/* Chart Button */}
+                                                    {trade.timeframe && trade.symbol && (
+                                                        <button
+                                                            onClick={() => setIsChartOpen(true)}
+                                                            className="p-2 rounded-full text-gray-400 hover:text-green-400 hover:bg-green-500/10"
+                                                            title="View Interactive Chart"
+                                                        >
+                                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+                                                                <path d="M15.5 2A1.5 1.5 0 0014 3.5v13c0 .895.448 1.5 1 1.5s1-.605 1-1.5v-13A1.5 1.5 0 0015.5 2zM10.5 6A1.5 1.5 0 009 7.5v9c0 .895.448 1.5 1 1.5s1-.605 1-1.5v-9A1.5 1.5 0 0010.5 6zM5.5 10A1.5 1.5 0 004 11.5v5c0 .895.448 1.5 1 1.5s1-.605 1-1.5v-5A1.5 1.5 0 005.5 10z" />
+                                                            </svg>
+                                                        </button>
+                                                    )}
+                                                    {onViewImages && (('uploadedImageKeys' in trade && Object.keys(trade.uploadedImageKeys).length > 0) || hasResultImage) && (
+                                                        <button onClick={onViewImages} className="p-2 rounded-full text-gray-400 hover:text-yellow-400 hover:bg-yellow-500/10" title="View Trade Images">
+                                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5"><path fillRule="evenodd" d="M1 5.25A2.25 2.25 0 0 1 3.25 3h13.5A2.25 2.25 0 0 1 19 5.25v9.5A2.25 2.25 0 0 1 16.75 17H3.25A2.25 2.25 0 0 1 1 14.75v-9.5Zm1.5 5.81v3.69c0 .414.336.75.75.75h13.5a.75.75 0 0 0 .75-.75v-2.69l-2.22-2.219a.75.75 0 0 0-1.06 0l-1.91 1.909-.48-1.121a.75.75 0 0 0-1.328-.142l-2.8 6.532H2.5v-3.69l.72-.72a.75.75 0 0 0 0-1.06l-.72-.72Zm15-5.81H3.25a.75.75 0 0 0-.75.75v.5c0 .414.336.75.75.75h13.5a.75.75 0 0 0 .75-.75v-.5a.75.75 0 0 0-.75-.75Z" clipRule="evenodd" /></svg>
+                                                        </button>
+                                                    )}
+                                                    {onAddResultImage && (
+                                                        <button onClick={onAddResultImage} className="p-2 rounded-full text-gray-400 hover:text-yellow-400 hover:bg-yellow-500/10" title={hasResultImage ? "Replace Result Image" : "Add Result Image"}>
+                                                            {hasResultImage ? <EditIcon className="w-5 h-5" /> : <AddResultImageIcon className="w-5 h-5" />}
+                                                        </button>
+                                                    )}
+                                                    <button
+                                                        onClick={handleShareCard}
+                                                        disabled={isSharing}
+                                                        className="p-2 rounded-full text-gray-400 hover:text-blue-400 hover:bg-blue-500/10 disabled:opacity-50"
+                                                        title="Share Trade Card"
+                                                    >
+                                                        {isSharing ? (
+                                                            <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                            </svg>
+                                                        ) : (
+                                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                                                            </svg>
+                                                        )}
+                                                    </button>
+                                                </div>
                                             )}
-                                        </button>
+
+                                            {onRemove && (
+                                                <button onClick={onRemove} className="p-2 rounded-full text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-colors" aria-label="Remove from journal" title="Remove from Journal">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
-                                )}
-
-                                {onRemove && (
-                                    <button onClick={onRemove} className="p-2 rounded-full text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-colors" aria-label="Remove from journal" title="Remove from Journal">
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-                    </div>
+                                </div>
                 )}
-            </div>
+                        </div>
 
-            {/* Hidden Simplified Share Card - Only used for capturing/sharing */}
-            <div
-                ref={shareCardRef}
-                className="fixed -left-[9999px] top-0 w-[600px]"
-                style={{ position: 'fixed', left: '-9999px' }}
-            >
+                        {/* Interactive Chart Modal */}
+                        {trade.symbol && trade.timeframe && (
+                            <InteractiveChartModal
+                                isOpen={isChartOpen}
+                                onClose={() => setIsChartOpen(false)}
+                                symbol={trade.symbol}
+                                timeframe={trade.timeframe}
+                                trade={trade}
+                            />
+                        )}
+
+                        {/* Hidden Simplified Share Card - Only used for capturing/sharing */}
+                        <div
+                            ref={shareCardRef}
+                            className="fixed -left-[9999px] top-0 w-[600px]"
+                            style={{ position: 'fixed', left: '-9999px' }}
+                        >
+                            {/* ... (existing share card content) */}
+                        </div>
+                    </>
+                );
+};
                 <div className="bg-gradient-to-br from-gray-800 to-gray-900 border-2 border-yellow-500/50 rounded-xl p-8 shadow-2xl">
                     {/* Header */}
                     <div className="flex items-center justify-between mb-6">

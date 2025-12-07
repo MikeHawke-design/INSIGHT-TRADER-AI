@@ -584,6 +584,7 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
         const manager = getAiManager();
         let currentPrice: number | null = null;
         let liveMarketDataContext = "";
+        let identifiedTimeframe: string | null = null;
 
         // --- HYBRID ANALYSIS FLOW ---
         if (useLiveData) {
@@ -619,6 +620,7 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
                 if (idResult.symbol && idResult.timeframe) {
                     const symbol = idResult.symbol.toUpperCase();
                     const timeframe = idResult.timeframe;
+                    identifiedTimeframe = timeframe;
                     setProgressMessage(`Identified ${symbol} (${timeframe}). Fetching data...`);
 
                     // Step 2: Fetch/Stitch Data
@@ -756,11 +758,30 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
                 trades.map(trade => ({
                     ...trade,
                     direction: direction,
-                    entry: (trade.entry && String(trade.entry).trim()) ? String(trade.entry) : 'N/A'
+                    entry: (trade.entry && String(trade.entry).trim()) ? String(trade.entry) : 'N/A',
+                    // Inject timeframe if we identified it during hybrid analysis
+                    timeframe: useLiveData && assetSymbol ? undefined : (results.chartMetadata ? undefined : undefined) // Logic below is cleaner
                 }));
+
+            // Helper to inject timeframe if available
+            const injectTimeframe = (trades: Trade[]) => {
+                // If we have a global identified timeframe from the hybrid step (stored in a variable? No, we need to pass it)
+                // Actually, we have `idResult.timeframe` inside the `if (useLiveData)` block.
+                // We need to capture that timeframe variable in the outer scope or use what we have.
+                // Let's use a variable `identifiedTimeframe` in the outer scope.
+                return trades.map(t => ({
+                    ...t,
+                    timeframe: identifiedTimeframe || undefined
+                }));
+            };
 
             results['Top Longs'] = fillMissingEntry(results['Top Longs'] ?? [], 'Long');
             results['Top Shorts'] = fillMissingEntry(results['Top Shorts'] ?? [], 'Short');
+
+            if (identifiedTimeframe) {
+                results['Top Longs'] = results['Top Longs'].map(t => ({ ...t, timeframe: identifiedTimeframe }));
+                results['Top Shorts'] = results['Top Shorts'].map(t => ({ ...t, timeframe: identifiedTimeframe }));
+            }
 
             onAnalysisComplete(results, selectedStrategies, uploadedImagesData, useRealTimeContext, totalTokenCount);
 
