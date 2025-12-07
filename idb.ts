@@ -95,6 +95,26 @@ export async function setMarketData(symbol: string, timeframe: string, candles: 
   });
 }
 
+export async function getAllMarketData(): Promise<[string, any[]][]> {
+  return getDB().then(db => new Promise<[string, any[]][]>((resolve, reject) => {
+    const transaction = db.transaction(MARKET_DATA_STORE_NAME, 'readonly');
+    const store = transaction.objectStore(MARKET_DATA_STORE_NAME);
+    const request = store.openCursor();
+    const entries: [string, any[]][] = [];
+
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => {
+      const cursor = request.result;
+      if (cursor) {
+        entries.push([cursor.key as string, cursor.value]);
+        cursor.continue();
+      } else {
+        resolve(entries);
+      }
+    };
+  }));
+}
+
 // --- App-specific helpers ---
 
 /**

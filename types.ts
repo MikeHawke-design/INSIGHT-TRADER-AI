@@ -29,6 +29,7 @@ export interface Trade {
     takeProfit2: string;
     heat: number;
     explanation: string;
+    dataSynergy?: string;
     isModified?: boolean; // Added for tracking modified trades
     tradeManagement?: TradeManagement;
 }

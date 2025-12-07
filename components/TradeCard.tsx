@@ -459,6 +459,19 @@ R:R: 1:${rr.toFixed(2)}`;
                                                 <div className="text-gray-300 text-xs leading-relaxed">{explanationSegments[2].replace(/Execution & Risk:?/i, '').trim()}</div>
                                             </div>
                                         )}
+
+                                        {/* 4. Data Synergy Box (New) */}
+                                        {trade.dataSynergy && (
+                                            <div className="bg-purple-900/10 border border-purple-500/30 rounded-md p-2">
+                                                <div className="text-purple-400 text-[10px] font-bold uppercase tracking-wider mb-0.5 flex items-center gap-1">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3">
+                                                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                                    </svg>
+                                                    Live Data Synergy
+                                                </div>
+                                                <div className="text-gray-300 text-xs leading-relaxed">{trade.dataSynergy}</div>
+                                            </div>
+                                        )}
                                     </>
                                 ) : (
                                     // Legacy Fallback for older trades without segmentation
