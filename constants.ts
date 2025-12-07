@@ -27,6 +27,7 @@ export const DEFAULT_USER_SETTINGS: UserSettings = {
     aiProvider: 'gemini',
     aiProviderAnalysis: 'gemini',
     aiProviderChat: 'gemini',
+    timezone: 'UTC',
 };
 
 export const DEFAULT_API_CONFIGURATION: ApiConfiguration = {

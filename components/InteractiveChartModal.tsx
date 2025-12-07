@@ -9,9 +9,10 @@ interface InteractiveChartModalProps {
   symbol: string;
   timeframe: string;
   trade?: Trade; // Made optional for pure data visualization
+  timezone?: string;
 }
 
-const InteractiveChartModal: React.FC<InteractiveChartModalProps> = ({ isOpen, onClose, symbol, timeframe, trade }) => {
+const InteractiveChartModal: React.FC<InteractiveChartModalProps> = ({ isOpen, onClose, symbol, timeframe, trade, timezone = 'UTC' }) => {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
@@ -74,7 +75,41 @@ const InteractiveChartModal: React.FC<InteractiveChartModalProps> = ({ isOpen, o
       timeScale: {
         timeVisible: true,
         secondsVisible: false,
+        tickMarkFormatter: (time: number, tickMarkType: any, _locale: string) => {
+          const date = new Date(time * 1000);
+          // Use Intl.DateTimeFormat for timezone support
+          const options: Intl.DateTimeFormatOptions = {
+            timeZone: timezone,
+          };
+
+          // Customize format based on tick type (simplified logic)
+          if (tickMarkType === 2 || tickMarkType === 3) { // Day or Month
+            options.month = 'short';
+            options.day = 'numeric';
+          } else {
+            options.hour = 'numeric';
+            options.minute = 'numeric';
+            options.hour12 = false;
+          }
+
+          return new Intl.DateTimeFormat('en-US', options).format(date);
+        }
       },
+      localization: {
+        timeFormatter: (time: number) => {
+          const date = new Date(time * 1000);
+          return new Intl.DateTimeFormat('en-US', {
+            timeZone: timezone,
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: 'numeric',
+            minute: 'numeric',
+            second: 'numeric',
+            hour12: false
+          }).format(date);
+        }
+      }
     });
 
     const candlestickSeries = chart.addCandlestickSeries({
@@ -109,7 +144,11 @@ const InteractiveChartModal: React.FC<InteractiveChartModalProps> = ({ isOpen, o
         if (rawData && rawData.length > 0) {
           chartData = rawData.map((d: any) => {
             let time = d[0];
-            if (typeof time === 'string' && time.includes(' ')) {
+            // Ensure we treat string dates as UTC if they don't have timezone info
+            if (typeof time === 'string') {
+              if (time.includes(' ') && !time.endsWith('Z') && !time.includes('+')) {
+                time = time.replace(' ', 'T') + 'Z';
+              }
               time = new Date(time).getTime() / 1000;
             }
             return {
@@ -220,7 +259,7 @@ const InteractiveChartModal: React.FC<InteractiveChartModalProps> = ({ isOpen, o
       window.removeEventListener('resize', handleResize);
       chart.remove();
     };
-  }, [isOpen, symbol, timeframe, trade]);
+  }, [isOpen, symbol, timeframe, trade, timezone]);
 
   if (!isOpen) return null;
 
@@ -233,7 +272,7 @@ const InteractiveChartModal: React.FC<InteractiveChartModalProps> = ({ isOpen, o
             <h3 className="text-xl font-bold text-white flex items-center gap-2">
               {symbol} <span className="text-sm text-gray-400 font-normal">({timeframe})</span>
             </h3>
-            <p className="text-xs text-gray-500">Interactive Chart • Scroll to Zoom • Drag to Pan</p>
+            <p className="text-xs text-gray-500">Interactive Chart • Scroll to Zoom • Drag to Pan • Timezone: {timezone}</p>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-white p-2 rounded-full hover:bg-gray-700 transition-colors">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">

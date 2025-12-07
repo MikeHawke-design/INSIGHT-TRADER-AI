@@ -910,6 +910,26 @@ export const MasterControlsView: React.FC<MasterControlsViewProps> = ({
                                 </div>
                             </div>
                         )}
+
+                        <div>
+                            <label className="block font-medium text-sm text-gray-300 mb-1">Chart Timezone</label>
+                            <select
+                                value={userSettings.timezone || 'UTC'}
+                                onChange={(e) => onUserSettingsChange('timezone', e.target.value)}
+                                className="w-full bg-gray-800 border border-gray-600 rounded p-2 text-white focus:border-yellow-500 outline-none"
+                            >
+                                <option value="UTC">UTC (Coordinated Universal Time)</option>
+                                <option value="America/New_York">New York (EST/EDT)</option>
+                                <option value="America/Chicago">Chicago (CST/CDT)</option>
+                                <option value="America/Los_Angeles">Los Angeles (PST/PDT)</option>
+                                <option value="Europe/London">London (GMT/BST)</option>
+                                <option value="Europe/Paris">Paris (CET/CEST)</option>
+                                <option value="Europe/Berlin">Berlin (CET/CEST)</option>
+                                <option value="Asia/Tokyo">Tokyo (JST)</option>
+                                <option value="Australia/Sydney">Sydney (AEST/AEDT)</option>
+                            </select>
+                            <p className="text-xs text-gray-500 mt-1">Aligns the interactive chart time with your screenshots.</p>
+                        </div>
                     </div>
 
                     <div className="space-y-4 border-t border-gray-700 pt-4">
@@ -1219,6 +1239,7 @@ export const MasterControlsView: React.FC<MasterControlsViewProps> = ({
                     onClose={() => setIsChartModalOpen(false)}
                     symbol={selectedChartData.symbol}
                     timeframe={selectedChartData.timeframe}
+                    timezone={userSettings.timezone || 'UTC'}
                 />
             )}
         </div >

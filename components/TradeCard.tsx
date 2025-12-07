@@ -726,6 +726,7 @@ R:R: 1:${rr.toFixed(2)}`;
                                     symbol={trade.symbol}
                                     timeframe={(trade as any).timeframe || '4h'}
                                     trade={trade}
+                                    timezone={userSettings.timezone || 'UTC'}
                                 />
                             )}
                             {/* Hidden Simplified Share Card - Only used for capturing/sharing */}
