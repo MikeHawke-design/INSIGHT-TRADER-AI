@@ -6,9 +6,9 @@ import { ActiveView, StrategyKey, StrategyLogicData, User, UserSettings, TokenUs
 import * as pdfjsLib from 'pdfjs-dist/build/pdf.mjs';
 import JSZip from 'jszip';
 import ConfirmationModal from './ConfirmationModal';
-import Logo from './Logo';
+
 import { ALL_PERSISTENT_STORAGE_KEYS } from '../constants';
-import { getAllEntries } from '../idb';
+import { getAllEntries, getAllMarketData } from '../idb';
 import UserManualView from './UserManualView';
 import { generateAccessKey } from '../authUtils';
 
@@ -188,6 +188,13 @@ export const MasterControlsView: React.FC<MasterControlsViewProps> = ({
     const [adminEmailInput, setAdminEmailInput] = useState('');
     const [generatedKey, setGeneratedKey] = useState<string | null>(null);
     const [isAdmin, setIsAdmin] = useState(false);
+    const [marketDataEntries, setMarketDataEntries] = useState<[string, any[]][]>([]);
+
+    useEffect(() => {
+        if (activeTab === 'data') {
+            getAllMarketData().then(setMarketDataEntries).catch(console.error);
+        }
+    }, [activeTab]);
 
     useEffect(() => {
         const adminFlag = localStorage.getItem('chartOracle_isAdmin');
@@ -748,7 +755,50 @@ export const MasterControlsView: React.FC<MasterControlsViewProps> = ({
                     <input type="file" ref={backupFileInputRef} onChange={handleBackupFileChange} className="hidden" accept=".json,.zip" />
                 </div>
             </div>
-        </div>
+
+            <div className="bg-gray-900/50 p-4 rounded-lg border border-gray-700">
+                <h4 className="font-semibold text-white mb-3">Stored Market Data (Live API Calls)</h4>
+                <p className="text-sm text-gray-400 mb-4">View the raw market data currently cached in your local database for offline use and analysis.</p>
+
+                {marketDataEntries.length === 0 ? (
+                    <div className="text-gray-500 italic text-sm">No market data stored yet.</div>
+                ) : (
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left text-sm text-gray-400">
+                            <thead className="bg-gray-800 text-gray-200 uppercase font-bold">
+                                <tr>
+                                    <th className="p-3 rounded-tl-lg">Symbol & Timeframe</th>
+                                    <th className="p-3">Data Points</th>
+                                    <th className="p-3 rounded-tr-lg">Last Updated</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-700">
+                                {marketDataEntries.map(([key, data]) => {
+                                    const lastCandle = data[data.length - 1];
+                                    // Try to infer date from last candle
+                                    let dateStr = 'N/A';
+                                    if (lastCandle) {
+                                        // Check for various date formats (array index 0, or object property)
+                                        const rawDate = Array.isArray(lastCandle) ? lastCandle[0] : lastCandle.time || lastCandle.date;
+                                        if (rawDate) {
+                                            dateStr = new Date(rawDate).toLocaleString();
+                                        }
+                                    }
+
+                                    return (
+                                        <tr key={key} className="hover:bg-gray-800/50 transition-colors">
+                                            <td className="p-3 font-mono text-yellow-400 font-semibold">{key.replace('_', ' ')}</td>
+                                            <td className="p-3">{data.length} candles</td>
+                                            <td className="p-3">{dateStr}</td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+            </div>
+        </div >
     );
 
     const renderSettings = () => {
@@ -969,12 +1019,8 @@ export const MasterControlsView: React.FC<MasterControlsViewProps> = ({
             {/* Header */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-gray-700 pb-6">
                 <div className="flex items-center gap-3">
-                    <div className="bg-gradient-to-br from-yellow-500 to-orange-600 p-3 rounded-xl shadow-lg shadow-orange-900/20">
-                        <Logo className="w-8 h-8 text-white" />
-                    </div>
                     <div>
-                        <h2 className="text-3xl font-bold text-white tracking-tight">Master Controls</h2>
-                        <p className="text-gray-400 text-sm">System Configuration & Strategy Architecture</p>
+                        <h2 className="text-3xl font-bold text-white tracking-tight">MASTER CONTROLS</h2>
                     </div>
                 </div>
 
@@ -996,22 +1042,26 @@ export const MasterControlsView: React.FC<MasterControlsViewProps> = ({
             </div>
 
             {/* Error Display */}
-            {error && (
-                <div className="bg-red-900/20 border border-red-500/50 text-red-200 p-4 rounded-lg flex items-center gap-3 animate-fadeIn">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <p>{error}</p>
-                </div>
-            )}
+            {
+                error && (
+                    <div className="bg-red-900/20 border border-red-500/50 text-red-200 p-4 rounded-lg flex items-center gap-3 animate-fadeIn">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <p>{error}</p>
+                    </div>
+                )
+            }
 
             {/* Success Message */}
-            {saveSuccessMessage && (
-                <div className="fixed bottom-8 right-8 bg-green-600 text-white px-6 py-3 rounded-lg shadow-xl animate-fadeIn z-50 flex items-center gap-2">
-                    <CheckIcon className="w-5 h-5" />
-                    {saveSuccessMessage}
-                </div>
-            )}
+            {
+                saveSuccessMessage && (
+                    <div className="fixed bottom-8 right-8 bg-green-600 text-white px-6 py-3 rounded-lg shadow-xl animate-fadeIn z-50 flex items-center gap-2">
+                        <CheckIcon className="w-5 h-5" />
+                        {saveSuccessMessage}
+                    </div>
+                )
+            }
 
             {/* Main Content Area */}
             <div className="animate-fadeIn">
@@ -1038,114 +1088,120 @@ export const MasterControlsView: React.FC<MasterControlsViewProps> = ({
             />
 
             {/* Paste Strategy Modal */}
-            {isPasteModalOpen && (
-                <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
-                    <div className="bg-gray-800 rounded-xl max-w-2xl w-full p-6 border border-gray-700 shadow-2xl">
-                        <h3 className="text-xl font-bold text-white mb-4">Paste Strategy Text</h3>
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-400 mb-1">Strategy Name (Optional)</label>
-                                <input
-                                    type="text"
-                                    value={pasteName}
-                                    onChange={(e) => setPasteName(e.target.value)}
-                                    className="w-full bg-gray-700 border border-gray-600 rounded-lg p-2 text-white outline-none focus:border-yellow-500"
-                                    placeholder="e.g., My New Strategy"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-400 mb-1">Strategy Content</label>
-                                <textarea
-                                    value={pasteText}
-                                    onChange={(e) => setPasteText(e.target.value)}
-                                    className="w-full h-64 bg-gray-700 border border-gray-600 rounded-lg p-2 text-white font-mono text-sm outline-none focus:border-yellow-500"
-                                    placeholder="Paste your strategy document text here..."
-                                />
-                            </div>
-                            <div className="flex justify-end gap-3">
-                                <button onClick={() => setIsPasteModalOpen(false)} className="px-4 py-2 text-gray-400 hover:text-white">Cancel</button>
-                                <button onClick={handlePasteSubmit} disabled={!pasteText.trim()} className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed">
-                                    Analyze & Create
-                                </button>
+            {
+                isPasteModalOpen && (
+                    <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+                        <div className="bg-gray-800 rounded-xl max-w-2xl w-full p-6 border border-gray-700 shadow-2xl">
+                            <h3 className="text-xl font-bold text-white mb-4">Paste Strategy Text</h3>
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-400 mb-1">Strategy Name (Optional)</label>
+                                    <input
+                                        type="text"
+                                        value={pasteName}
+                                        onChange={(e) => setPasteName(e.target.value)}
+                                        className="w-full bg-gray-700 border border-gray-600 rounded-lg p-2 text-white outline-none focus:border-yellow-500"
+                                        placeholder="e.g., My New Strategy"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-400 mb-1">Strategy Content</label>
+                                    <textarea
+                                        value={pasteText}
+                                        onChange={(e) => setPasteText(e.target.value)}
+                                        className="w-full h-64 bg-gray-700 border border-gray-600 rounded-lg p-2 text-white font-mono text-sm outline-none focus:border-yellow-500"
+                                        placeholder="Paste your strategy document text here..."
+                                    />
+                                </div>
+                                <div className="flex justify-end gap-3">
+                                    <button onClick={() => setIsPasteModalOpen(false)} className="px-4 py-2 text-gray-400 hover:text-white">Cancel</button>
+                                    <button onClick={handlePasteSubmit} disabled={!pasteText.trim()} className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed">
+                                        Analyze & Create
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             {/* Creation Progress Modal */}
-            {isCreatingStrategy && (
-                <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4">
-                    <div className="text-center space-y-4 max-w-md w-full">
-                        <div className="w-16 h-16 border-4 border-yellow-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
-                        <h3 className="text-2xl font-bold text-white">AI Architect Working...</h3>
-                        <p className="text-gray-400">{creationProgress.message}</p>
-                        <div className="w-full bg-gray-800 rounded-full h-2 overflow-hidden">
-                            <div
-                                className="bg-yellow-500 h-full transition-all duration-500 ease-out"
-                                style={{ width: `${(creationProgress.step / creationProgress.total) * 100}%` }}
-                            ></div>
+            {
+                isCreatingStrategy && (
+                    <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4">
+                        <div className="text-center space-y-4 max-w-md w-full">
+                            <div className="w-16 h-16 border-4 border-yellow-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+                            <h3 className="text-2xl font-bold text-white">AI Architect Working...</h3>
+                            <p className="text-gray-400">{creationProgress.message}</p>
+                            <div className="w-full bg-gray-800 rounded-full h-2 overflow-hidden">
+                                <div
+                                    className="bg-yellow-500 h-full transition-all duration-500 ease-out"
+                                    style={{ width: `${(creationProgress.step / creationProgress.total) * 100}%` }}
+                                ></div>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             {/* Finalize Strategy Modal */}
-            {isFinalizeModalOpen && pendingStrategy && (
-                <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
-                    <div className="bg-gray-800 rounded-xl max-w-lg w-full p-6 border border-gray-700 shadow-2xl">
-                        <h3 className="text-xl font-bold text-green-400 mb-2">Strategy Ready!</h3>
-                        <p className="text-gray-300 mb-6">The AI has successfully analyzed and structured your strategy.</p>
+            {
+                isFinalizeModalOpen && pendingStrategy && (
+                    <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+                        <div className="bg-gray-800 rounded-xl max-w-lg w-full p-6 border border-gray-700 shadow-2xl">
+                            <h3 className="text-xl font-bold text-green-400 mb-2">Strategy Ready!</h3>
+                            <p className="text-gray-300 mb-6">The AI has successfully analyzed and structured your strategy.</p>
 
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-400 mb-1">Final Strategy Name</label>
-                                <input
-                                    type="text"
-                                    value={finalizeFormData.name}
-                                    onChange={(e) => setFinalizeFormData(prev => ({ ...prev, name: e.target.value }))}
-                                    className="w-full bg-gray-700 border border-gray-600 rounded-lg p-2 text-white outline-none focus:border-green-500"
-                                />
-                            </div>
-
-                            <label className="flex items-center gap-3 p-3 bg-gray-700/50 rounded-lg cursor-pointer border border-gray-600 hover:border-gray-500 transition-colors">
-                                <input
-                                    type="checkbox"
-                                    checked={finalizeFormData.generateCourse}
-                                    onChange={(e) => setFinalizeFormData(prev => ({ ...prev, generateCourse: e.target.checked }))}
-                                    className="w-5 h-5 rounded border-gray-500 text-green-500 focus:ring-green-500 bg-gray-700"
-                                />
+                            <div className="space-y-4">
                                 <div>
-                                    <span className="block text-white font-semibold">Generate Learning Course</span>
-                                    <span className="text-xs text-gray-400">Create interactive lessons and quizzes for this strategy.</span>
+                                    <label className="block text-sm font-medium text-gray-400 mb-1">Final Strategy Name</label>
+                                    <input
+                                        type="text"
+                                        value={finalizeFormData.name}
+                                        onChange={(e) => setFinalizeFormData(prev => ({ ...prev, name: e.target.value }))}
+                                        className="w-full bg-gray-700 border border-gray-600 rounded-lg p-2 text-white outline-none focus:border-green-500"
+                                    />
                                 </div>
-                            </label>
 
-                            <div className="flex justify-end gap-3 mt-6">
-                                <button onClick={() => setIsFinalizeModalOpen(false)} className="px-4 py-2 text-gray-400 hover:text-white">Discard</button>
-                                <button
-                                    onClick={handleFinalizeAndSaveStrategy}
-                                    disabled={isFinalizing || !finalizeFormData.name.trim()}
-                                    className="px-4 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg font-semibold disabled:opacity-50 flex items-center gap-2"
-                                >
-                                    {isFinalizing ? (
-                                        <>
-                                            <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                            </svg>
-                                            Saving...
-                                        </>
-                                    ) : (
-                                        'Save Strategy'
-                                    )}
-                                </button>
+                                <label className="flex items-center gap-3 p-3 bg-gray-700/50 rounded-lg cursor-pointer border border-gray-600 hover:border-gray-500 transition-colors">
+                                    <input
+                                        type="checkbox"
+                                        checked={finalizeFormData.generateCourse}
+                                        onChange={(e) => setFinalizeFormData(prev => ({ ...prev, generateCourse: e.target.checked }))}
+                                        className="w-5 h-5 rounded border-gray-500 text-green-500 focus:ring-green-500 bg-gray-700"
+                                    />
+                                    <div>
+                                        <span className="block text-white font-semibold">Generate Learning Course</span>
+                                        <span className="text-xs text-gray-400">Create interactive lessons and quizzes for this strategy.</span>
+                                    </div>
+                                </label>
+
+                                <div className="flex justify-end gap-3 mt-6">
+                                    <button onClick={() => setIsFinalizeModalOpen(false)} className="px-4 py-2 text-gray-400 hover:text-white">Discard</button>
+                                    <button
+                                        onClick={handleFinalizeAndSaveStrategy}
+                                        disabled={isFinalizing || !finalizeFormData.name.trim()}
+                                        className="px-4 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg font-semibold disabled:opacity-50 flex items-center gap-2"
+                                    >
+                                        {isFinalizing ? (
+                                            <>
+                                                <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                </svg>
+                                                Saving...
+                                            </>
+                                        ) : (
+                                            'Save Strategy'
+                                        )}
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 };
 
