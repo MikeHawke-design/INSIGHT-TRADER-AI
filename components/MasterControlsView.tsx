@@ -772,20 +772,20 @@ export const MasterControlsView: React.FC<MasterControlsViewProps> = ({
                                 <tr>
                                     <th className="p-3 rounded-tl-lg">Symbol & Timeframe</th>
                                     <th className="p-3">Data Points</th>
-                                    <th className="p-3 rounded-tr-lg">Last Updated</th>
+                                    <th className="p-3 rounded-tr-lg">Date Range</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-700">
                                 {marketDataEntries.map(([key, data]) => {
+                                    const firstCandle = data[0];
                                     const lastCandle = data[data.length - 1];
-                                    // Try to infer date from last candle
-                                    let dateStr = 'N/A';
-                                    if (lastCandle) {
-                                        // Check for various date formats (array index 0, or object property)
-                                        const rawDate = Array.isArray(lastCandle) ? lastCandle[0] : lastCandle.time || lastCandle.date;
-                                        if (rawDate) {
-                                            dateStr = new Date(rawDate).toLocaleString();
-                                        }
+
+                                    let rangeStr = 'N/A';
+                                    if (firstCandle && lastCandle) {
+                                        const getVal = (c: any) => Array.isArray(c) ? c[0] : (c.time || c.date);
+                                        const start = new Date(getVal(firstCandle)).toLocaleDateString();
+                                        const end = new Date(getVal(lastCandle)).toLocaleDateString();
+                                        rangeStr = `${start} - ${end}`;
                                     }
 
                                     return (
@@ -800,8 +800,8 @@ export const MasterControlsView: React.FC<MasterControlsViewProps> = ({
                                             title="Click to view chart"
                                         >
                                             <td className="p-3 font-mono text-yellow-400 font-semibold">{key.replace('_', ' ')}</td>
-                                            <td className="p-3">{data.length} candles</td>
-                                            <td className="p-3">{dateStr}</td>
+                                            <td className="p-3 font-mono text-xs">{data.length}</td>
+                                            <td className="p-3 text-xs">{rangeStr}</td>
                                         </tr>
                                     );
                                 })}
@@ -929,6 +929,19 @@ export const MasterControlsView: React.FC<MasterControlsViewProps> = ({
                                 <option value="Australia/Sydney">Sydney (AEST/AEDT)</option>
                             </select>
                             <p className="text-xs text-gray-500 mt-1">Aligns the interactive chart time with your screenshots.</p>
+                        </div>
+
+                        <div>
+                            <label className="block font-medium text-sm text-gray-300 mb-1">Default Market Data Provider</label>
+                            <select
+                                value={userSettings.defaultDataProvider || 'twelvedata'}
+                                onChange={(e) => onUserSettingsChange('defaultDataProvider', e.target.value)}
+                                className="w-full bg-gray-800 border border-gray-600 rounded p-2 text-white focus:border-yellow-500 outline-none"
+                            >
+                                <option value="twelvedata">TwelveData (Recommended - High Quality)</option>
+                                <option value="freecrypto">FreeCryptoAPI / CoinGecko (Fallback)</option>
+                            </select>
+                            <p className="text-xs text-gray-500 mt-1">Select the primary source for real-time market data.</p>
                         </div>
                     </div>
 

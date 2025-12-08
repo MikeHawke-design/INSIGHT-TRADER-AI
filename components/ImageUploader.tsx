@@ -24,6 +24,7 @@ import ScreenCaptureModal from './ScreenCaptureModal';
 import { AiManager } from '../utils/aiManager';
 
 import { TwelveDataApi } from '../utils/twelveDataApi';
+import { FreeCryptoApi } from '../utils/freeCryptoApi';
 import { getMarketData, setMarketData } from '../idb';
 
 // --- SYSTEM PROMPTS ---
@@ -248,6 +249,8 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
     const [error, setError] = useState<string | null>(null);
 
     const [useLiveData, setUseLiveData] = useState<boolean>(true);
+    const [selectedTimeframe, setSelectedTimeframe] = useState<string>('4h');
+    const [selectedProvider, setSelectedProvider] = useState<'twelvedata' | 'freecrypto'>('twelvedata');
     const [progressMessage, setProgressMessage] = useState<string>('');
 
     // Screen Capture State
@@ -343,7 +346,11 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
             setUploadedImagesData({});
             setConversation([]);
         }
-    }, [initialImages, phase]);
+        // Initialize provider from settings
+        if (userSettings.defaultDataProvider) {
+            setSelectedProvider(userSettings.defaultDataProvider);
+        }
+    }, [initialImages, phase, userSettings.defaultDataProvider]);
 
 
     const handleStartGuidedUpload = async () => {
@@ -587,6 +594,7 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
         let identifiedTimeframe: string | null = null;
 
         // --- HYBRID ANALYSIS FLOW ---
+        // --- HYBRID ANALYSIS FLOW ---
         if (useLiveData) {
             try {
                 setProgressMessage("Identifying asset from charts...");
@@ -617,72 +625,109 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
 
                 const idResult = JSON.parse(idJson);
 
-                if (idResult.symbol && idResult.timeframe) {
+                if (idResult.symbol) {
                     const symbol = idResult.symbol.toUpperCase();
-                    const timeframe = idResult.timeframe;
+                    // Use user selected timeframe if available, otherwise fallback to detected
+                    const timeframe = selectedTimeframe || idResult.timeframe || '4h';
                     identifiedTimeframe = timeframe;
-                    setProgressMessage(`Identified ${symbol} (${timeframe}). Fetching data...`);
+                    setProgressMessage(`Identified ${symbol}. Fetching ${timeframe} data via ${selectedProvider}...`);
 
-                    // Step 2: Fetch/Stitch Data
+                    // Step 2: Smart Data Fetching (Glueing)
                     // Check IDB
                     const storedCandles = await getMarketData(symbol, timeframe) || [];
                     let startDate: string | undefined;
 
                     if (storedCandles.length > 0) {
-                        // Get last candle time. TwelveData uses YYYY-MM-DD HH:MM:SS or timestamp.
-                        // Our stored candles are [time, open, high, low, close, volume]
-                        // Time is usually a string or timestamp.
+                        // Get last candle time.
                         const lastCandle = storedCandles[storedCandles.length - 1];
                         // If it's a string date, we can pass it as start_date
-                        startDate = lastCandle[0];
+                        // TwelveData expects YYYY-MM-DD HH:MM:SS
+                        const lastTime = Array.isArray(lastCandle) ? lastCandle[0] : (lastCandle.time || lastCandle.date);
+                        if (lastTime) {
+                            // Add 1 second/minute to avoid duplicate if possible, or just overlap and filter
+                            startDate = lastTime;
+                        }
                     }
 
                     // Fetch new data
-                    // Use TwelveData API
-                    const twelveDataKey = apiConfig.twelveDataApiKey || (userSettings as any).twelveDataApiKey;
-                    if (twelveDataKey) {
-                        const api = new TwelveDataApi(twelveDataKey);
-                        // If we have data, fetch from last date. If not, fetch default (last 30-100).
-                        const newCandles = await api.getCandles(symbol, timeframe, startDate);
+                    let newCandles: any[] = [];
 
-                        if (newCandles.length > 0) {
-                            // Merge: Filter out duplicates based on timestamp
-                            const existingTimes = new Set(storedCandles.map(c => c[0]));
-                            const uniqueNewCandles = newCandles.filter(c => !existingTimes.has(c[0]));
-                            const mergedCandles = [...storedCandles, ...uniqueNewCandles];
-
-                            // Sort by time just in case
-                            mergedCandles.sort((a, b) => new Date(a[0]).getTime() - new Date(b[0]).getTime());
-
-                            // Save back to IDB
-                            await setMarketData(symbol, timeframe, mergedCandles);
-
-                            // Prepare context for AI
-                            // Send last 50 candles for context
-                            const contextCandles = mergedCandles.slice(-50);
-                            liveMarketDataContext = `\n\n**PRECISE MARKET DATA (Source: TwelveData)**\nAsset: ${symbol}\nTimeframe: ${timeframe}\nLast 50 Candles (Time | Open | High | Low | Close | Volume):\n`;
-                            contextCandles.forEach(c => {
-                                liveMarketDataContext += `${c[0]} | ${c[1]} | ${c[2]} | ${c[3]} | ${c[4]} | ${c[5]}\n`;
-                            });
-                            liveMarketDataContext += `\nUse this data to determine EXACT entry, stop loss, and take profit levels.`;
-
-                            // Update current price
-                            currentPrice = mergedCandles[mergedCandles.length - 1][4];
-                        } else if (storedCandles.length > 0) {
-                            // Use stored data if no new data
-                            const contextCandles = storedCandles.slice(-50);
-                            liveMarketDataContext = `\n\n**PRECISE MARKET DATA (Source: Cached)**\nAsset: ${symbol}\nTimeframe: ${timeframe}\nLast 50 Candles:\n`;
-                            contextCandles.forEach(c => {
-                                liveMarketDataContext += `${c[0]} | ${c[1]} | ${c[2]} | ${c[3]} | ${c[4]} | ${c[5]}\n`;
-                            });
-                            currentPrice = storedCandles[storedCandles.length - 1][4];
+                    if (selectedProvider === 'twelvedata') {
+                        const twelveDataKey = apiConfig.twelveDataApiKey || (userSettings as any).twelveDataApiKey;
+                        if (twelveDataKey) {
+                            const api = new TwelveDataApi(twelveDataKey);
+                            // Limit to ~50 candles (approx 4 credits worth of data usually, or just small batch)
+                            // TwelveData 'outputsize' defaults to 30 if no dates.
+                            // If startDate is present, it fetches from there.
+                            newCandles = await api.getCandles(symbol, timeframe, startDate);
                         }
+                    } else {
+                        // FreeCryptoAPI / CoinGecko Fallback
+                        // Note: CoinGecko doesn't support 'startDate' easily for OHLC, it uses 'days'.
+                        // So we might re-fetch full set (limited by days) and merge.
+                        // This is less efficient but necessary for this provider.
+                        const api = new FreeCryptoApi(apiConfig.freeCryptoApiKey);
+                        newCandles = await api.getCandles(symbol, timeframe);
+                    }
+
+                    if (newCandles.length > 0) {
+                        // Merge: Filter out duplicates based on timestamp
+                        // Normalize times to string or timestamp for comparison
+                        const getTime = (c: any) => new Date(Array.isArray(c) ? c[0] : (c.time || c.date)).getTime();
+
+                        const existingTimes = new Set(storedCandles.map(c => getTime(c)));
+                        const uniqueNewCandles = newCandles.filter(c => !existingTimes.has(getTime(c)));
+
+                        const mergedCandles = [...storedCandles, ...uniqueNewCandles];
+
+                        // Sort by time
+                        mergedCandles.sort((a, b) => getTime(a) - getTime(b));
+
+                        // Save back to IDB
+                        await setMarketData(symbol, timeframe, mergedCandles);
+
+                        // Prepare context for AI
+                        // Send last 50 candles for context
+                        const contextCandles = mergedCandles.slice(-50);
+                        liveMarketDataContext = `\n\n**PRECISE MARKET DATA (Source: ${selectedProvider})**\nAsset: ${symbol}\nTimeframe: ${timeframe}\nLast 50 Candles (Time | Open | High | Low | Close | Volume):\n`;
+                        contextCandles.forEach(c => {
+                            const t = Array.isArray(c) ? c[0] : (c.time || c.date);
+                            const o = Array.isArray(c) ? c[1] : c.open;
+                            const h = Array.isArray(c) ? c[2] : c.high;
+                            const l = Array.isArray(c) ? c[3] : c.low;
+                            const cl = Array.isArray(c) ? c[4] : c.close;
+                            const v = Array.isArray(c) ? c[5] : c.volume;
+                            liveMarketDataContext += `${t} | ${o} | ${h} | ${l} | ${cl} | ${v}\n`;
+                        });
+                        liveMarketDataContext += `\nUse this data to determine EXACT entry, stop loss, and take profit levels.`;
+
+                        // Update current price
+                        const last = mergedCandles[mergedCandles.length - 1];
+                        currentPrice = Array.isArray(last) ? last[4] : last.close;
+                    } else if (storedCandles.length > 0) {
+                        // Use stored data if no new data
+                        const contextCandles = storedCandles.slice(-50);
+                        liveMarketDataContext = `\n\n**PRECISE MARKET DATA (Source: Cached)**\nAsset: ${symbol}\nTimeframe: ${timeframe}\nLast 50 Candles:\n`;
+                        contextCandles.forEach(c => {
+                            const t = Array.isArray(c) ? c[0] : (c.time || c.date);
+                            const o = Array.isArray(c) ? c[1] : c.open;
+                            const h = Array.isArray(c) ? c[2] : c.high;
+                            const l = Array.isArray(c) ? c[3] : c.low;
+                            const cl = Array.isArray(c) ? c[4] : c.close;
+                            const v = Array.isArray(c) ? c[5] : c.volume;
+                            liveMarketDataContext += `${t} | ${o} | ${h} | ${l} | ${cl} | ${v}\n`;
+                        });
+                        const last = storedCandles[storedCandles.length - 1];
+                        currentPrice = Array.isArray(last) ? last[4] : last.close;
                     }
                 }
             } catch (err) {
                 console.warn("Hybrid data fetch failed:", err);
                 // Fallback to visual only
             }
+        } else {
+            // STRICT HALLUCINATION PREVENTION
+            liveMarketDataContext = `\n\n**IMPORTANT: NO EXTERNAL MARKET DATA AVAILABLE.**\n- You must rely SOLELY on the visual information in the provided chart screenshots.\n- Do NOT hallucinate or invent prices, indicators, or dates.\n- If a value is not visible, estimate it from the chart axis or state that it is unknown.\n- Your analysis must be purely visual.`;
         }
 
         setProgressMessage("Analyzing charts & data...");
@@ -797,17 +842,42 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
                     <h4 className="font-bold text-gray-200">Provide Market Context</h4>
                     <p className="text-sm text-gray-400 mb-4">Upload screenshots of your charts for analysis.</p>
 
-                    <div className="mb-4 flex items-center gap-2">
-                        <input
-                            type="checkbox"
-                            id="useLiveData"
-                            checked={useLiveData}
-                            onChange={(e) => setUseLiveData(e.target.checked)}
-                            className="h-4 w-4 text-blue-600 rounded border-gray-600 bg-gray-700"
-                        />
-                        <label htmlFor="useLiveData" className="text-sm text-gray-300">
-                            Enhance with Live Data (Auto-Detect Symbol)
-                        </label>
+                    <div className="mb-4 flex flex-col gap-2">
+                        <div className="flex items-center gap-2">
+                            <input
+                                type="checkbox"
+                                id="useLiveData"
+                                checked={useLiveData}
+                                onChange={(e) => setUseLiveData(e.target.checked)}
+                                className="h-4 w-4 text-blue-600 rounded border-gray-600 bg-gray-700"
+                            />
+                            <label htmlFor="useLiveData" className="text-sm text-gray-300">
+                                Enhance with Live Data (Smart Fetch)
+                            </label>
+                        </div>
+
+                        {useLiveData && (
+                            <div className="flex gap-2 ml-6 animate-fadeIn">
+                                <select
+                                    value={selectedTimeframe}
+                                    onChange={(e) => setSelectedTimeframe(e.target.value)}
+                                    className="bg-gray-700 border border-gray-600 rounded text-xs text-white p-1 outline-none focus:border-yellow-500"
+                                >
+                                    <option value="15m">15m</option>
+                                    <option value="1h">1h</option>
+                                    <option value="4h">4h</option>
+                                    <option value="1d">Daily</option>
+                                </select>
+                                <select
+                                    value={selectedProvider}
+                                    onChange={(e) => setSelectedProvider(e.target.value as any)}
+                                    className="bg-gray-700 border border-gray-600 rounded text-xs text-white p-1 outline-none focus:border-yellow-500"
+                                >
+                                    <option value="twelvedata">TwelveData</option>
+                                    <option value="freecrypto">FreeCryptoAPI</option>
+                                </select>
+                            </div>
+                        )}
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4">

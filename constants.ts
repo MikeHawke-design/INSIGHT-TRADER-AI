@@ -28,6 +28,7 @@ export const DEFAULT_USER_SETTINGS: UserSettings = {
     aiProviderAnalysis: 'gemini',
     aiProviderChat: 'gemini',
     timezone: 'UTC',
+    defaultDataProvider: 'twelvedata',
 };
 
 export const DEFAULT_API_CONFIGURATION: ApiConfiguration = {

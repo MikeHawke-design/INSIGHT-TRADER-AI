@@ -131,7 +131,8 @@ export interface UserSettings {
     aiProvider: 'gemini' | 'openai' | 'groq';
     aiProviderAnalysis: 'gemini' | 'openai' | 'groq';
     aiProviderChat: 'gemini' | 'openai' | 'groq';
-    timezone: string;
+    timezone: 'UTC';
+    defaultDataProvider: 'twelvedata' | 'freecrypto';
 }
 
 export interface StrategyLogicData {
