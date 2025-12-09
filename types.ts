@@ -33,6 +33,9 @@ export interface Trade {
     isModified?: boolean; // Added for tracking modified trades
     tradeManagement?: TradeManagement;
     timeframe?: string;
+    analysisContext?: {
+        realTimeContextWasUsed: boolean;
+    };
 }
 
 export type TradeOutcome = 'TP1 & TP2' | 'TP1 -> B/E' | 'TP1' | 'B/E' | 'SL' | null;

@@ -168,6 +168,7 @@ You are a disciplined Risk Manager. Your job is to strictly audit potential trad
         - **DO NOT RETURN "ASSET" or "UNKNOWN":** Make your best educated guess based on the visual evidence.
     - **Timeframe Extraction:** You MUST identify the chart timeframe (e.g., "15m", "4H", "Daily"). Look next to the symbol.
     - **Entry/Exit Prices:** MUST be valid numeric strings. Do not use ranges (e.g., "1.05-1.06"). Pick a specific level.
+    - **Take Profit 2 (TP2):** MANDATORY. You MUST provide a second take profit level. If the strategy doesn't specify one, calculate it as a logical extension (e.g., 2R or next resistance).
     - **Consistency:** Ensure the values in the JSON match the values mentioned in your explanation text.
 
 3.  **APPLY LOGIC & JUSTIFY:**
@@ -816,6 +817,21 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
             if (identifiedTimeframe) {
                 results['Top Longs'] = results['Top Longs'].map(t => ({ ...t, timeframe: identifiedTimeframe }));
                 results['Top Shorts'] = results['Top Shorts'].map(t => ({ ...t, timeframe: identifiedTimeframe }));
+                // Inject analysis context and timeframe into trades
+                const enrichTrade = (t: any) => ({
+                    ...t,
+                    timeframe: identifiedTimeframe || '4h',
+                    analysisContext: {
+                        realTimeContextWasUsed: useLiveData
+                    }
+                });
+
+                if (results['Top Longs']) {
+                    results['Top Longs'] = results['Top Longs'].map(enrichTrade);
+                }
+                if (results['Top Shorts']) {
+                    results['Top Shorts'] = results['Top Shorts'].map(enrichTrade);
+                }
             }
 
             onAnalysisComplete(results, selectedStrategies, uploadedImagesData, useRealTimeContext, totalTokenCount);

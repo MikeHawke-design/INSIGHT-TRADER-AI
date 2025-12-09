@@ -627,7 +627,7 @@ R:R: 1:${rr.toFixed(2)}`;
                     <div className="flex items-center justify-between pt-3 mt-2 border-t border-[hsl(var(--color-border-700)/0.5)]">
                         <div className="flex gap-2">
                             {/* Live Chart */}
-                            {trade.symbol && (
+                            {trade.symbol && trade.analysisContext?.realTimeContextWasUsed && (
                                 <button onClick={() => setIsChartOpen(true)} className="p-1.5 text-gray-400 hover:text-blue-400 hover:bg-blue-500/10 rounded-md transition-colors" title="Live Chart">
                                     <ChartIcon className="w-5 h-5" />
                                 </button>

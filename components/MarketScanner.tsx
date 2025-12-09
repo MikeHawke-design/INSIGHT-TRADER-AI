@@ -3,6 +3,7 @@ import { MarketScannerResult, StrategyLogicData, ApiConfiguration, FreeCryptoAss
 import { FreeCryptoApi, formatAssetDataForPrompt } from '../utils/freeCryptoApi';
 import { TwelveDataApi } from '../utils/twelveDataApi';
 import { AiManager } from '../utils/aiManager';
+import { getMarketData, setMarketData } from '../idb';
 import Logo from './Logo';
 
 interface MarketScannerProps {
@@ -136,33 +137,56 @@ const MarketScanner: React.FC<MarketScannerProps> = ({ apiConfig, userSettings, 
                 setScanProgress(`Fetching data for ${symbol} (${i + 1}/${totalAssets})...`);
 
                 try {
-                    // Fetch candles (this is the primary data source)
-                    const candles = await dataApi.getCandles(symbol, selectedTimeframe);
-                    candlesMap.set(symbol, candles);
+                    // --- SMART FETCH LOGIC ---
+                    // 1. Check IDB for existing data
+                    const storedCandles = await getMarketData(symbol, selectedTimeframe) || [];
+                    let startDate: string | undefined;
+
+                    if (storedCandles.length > 0) {
+                        const lastCandle = storedCandles[storedCandles.length - 1];
+                        // TwelveData/Candle format: [time, open, high, low, close, volume]
+                        const lastTime = Array.isArray(lastCandle) ? lastCandle[0] : (lastCandle.time || lastCandle.date);
+                        if (lastTime) startDate = lastTime;
+                    }
+
+                    // 2. Fetch New Data
+                    let newCandles: any[] = [];
+                    if (twelveDataKey) {
+                        // TwelveData supports start_date
+                        newCandles = await dataApi.getCandles(symbol, selectedTimeframe, startDate);
+                    } else {
+                        // FreeCryptoAPI fallback (fetch all/limit and merge)
+                        newCandles = await dataApi.getCandles(symbol, selectedTimeframe);
+                    }
+
+                    // 3. Merge & Save
+                    let mergedCandles = [...storedCandles];
+                    if (newCandles.length > 0) {
+                        const getTime = (c: any) => new Date(Array.isArray(c) ? c[0] : (c.time || c.date)).getTime();
+                        const existingTimes = new Set(storedCandles.map(c => getTime(c)));
+                        const uniqueNew = newCandles.filter(c => !existingTimes.has(getTime(c)));
+                        mergedCandles = [...storedCandles, ...uniqueNew];
+                        mergedCandles.sort((a, b) => getTime(a) - getTime(b));
+
+                        // Save to IDB
+                        await setMarketData(symbol, selectedTimeframe, mergedCandles);
+                    }
+
+                    // Use merged candles for analysis
+                    candlesMap.set(symbol, mergedCandles);
 
                     // Derive "Quote" data from candles to save an API call
-                    if (candles && candles.length > 0) {
-                        // Candles are [time, open, high, low, close]
-                        // We reverse them in API, so index 0 is oldest? No, TwelveData returns newest first but we reversed it?
-                        // Let's check TwelveDataApi.ts: "return data.values.map(...).reverse();"
-                        // So index 0 is OLDEST, index length-1 is NEWEST.
-
-                        const newest = candles[candles.length - 1];
+                    if (mergedCandles.length > 0) {
+                        const newest = mergedCandles[mergedCandles.length - 1];
                         const currentPrice = newest[4]; // Close
-
-                        // Calculate 24h change (approximate)
-                        // If timeframe is 15m, 24h = 96 candles.
-                        // If timeframe is 1h, 24h = 24 candles.
-                        // If timeframe is 4h, 24h = 6 candles.
-                        // If timeframe is 1d, 24h = 1 candle.
 
                         let candlesBack = 1;
                         if (selectedTimeframe === '15m') candlesBack = 96;
                         else if (selectedTimeframe === '1h') candlesBack = 24;
                         else if (selectedTimeframe === '4h') candlesBack = 6;
 
-                        const pastIndex = Math.max(0, candles.length - 1 - candlesBack);
-                        const pastCandle = candles[pastIndex];
+                        const pastIndex = Math.max(0, mergedCandles.length - 1 - candlesBack);
+                        const pastCandle = mergedCandles[pastIndex];
                         const pastPrice = pastCandle ? pastCandle[4] : currentPrice;
 
                         const change24h = ((currentPrice - pastPrice) / pastPrice) * 100;
@@ -171,21 +195,20 @@ const MarketScanner: React.FC<MarketScannerProps> = ({ apiConfig, userSettings, 
                             symbol: symbol,
                             price: currentPrice,
                             change_24h: change24h,
-                            market_cap: 0, // Not available from candles, but not critical for technical analysis
-                            volume: newest[5] || 0 // Volume if available (index 5?) TwelveData API returns volume, let's check if we mapped it.
-                            // We mapped [time, open, high, low, close]. We missed volume in the map!
-                            // We need to update TwelveDataApi.ts to include volume in the map.
+                            market_cap: 0,
+                            volume: newest[5] || 0
                         });
                     }
 
                 } catch (e) {
-                    console.warn(`Failed to fetch candles for ${symbol}`, e);
+                    console.warn(`Failed to fetch/process candles for ${symbol}`, e);
                 }
 
-                // Add delay between requests to avoid rate limits (e.g., 2 seconds)
-                // Only delay if it's not the last item
+                // Add delay between requests to avoid rate limits (only if we actually hit the API)
+                // If we have a lot of stored data and only fetch small updates, we might still hit limits if we blast requests.
+                // Safer to keep the delay.
                 if (i < totalAssets - 1) {
-                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    await new Promise(resolve => setTimeout(resolve, 1500));
                 }
             }
             setScanProgress('Analyzing data with AI...');
@@ -351,12 +374,19 @@ Return ONLY a valid JSON array:
         setError(null);
 
         try {
-            // Re-fetch data to ensure freshness or use existing if we could store it (for now refetching is safer/easier)
-            // Actually, we can just use the data we have if we stored it, but we didn't store the raw data context per asset.
-            // Let's quickly re-fetch just for this asset to be precise.
+            // Use stored data directly since we just updated it in handleScan
             const symbol = assetClass === 'Crypto' && !result.asset.includes('/') ? `${result.asset}/USD` : result.asset;
-            const quote = (await dataApi.getAssetDataBatch([symbol]))[0];
-            const candles = await dataApi.getCandles(symbol, selectedTimeframe);
+
+            // Retrieve from IDB to be sure we have the full context
+            const candles = await getMarketData(symbol, selectedTimeframe) || [];
+
+            // Construct a quote object from the last candle
+            let quote: FreeCryptoAssetData = { symbol, price: 0, change_24h: 0, market_cap: 0, volume: 0 };
+            if (candles.length > 0) {
+                const last = candles[candles.length - 1];
+                quote.price = last[4];
+                quote.volume = last[5];
+            }
 
             const dataContext = formatAssetDataForPrompt(quote, candles);
             const strategy = strategies[selectedStrategyKey];
@@ -388,7 +418,7 @@ The output MUST be a valid JSON object matching the 'AnalysisResults' structure 
       "entryExplanation": "Reason for entry level",
       "stopLoss": "Specific Price",
       "takeProfit1": "Specific Price",
-      "takeProfit2": "Specific Price",
+      "takeProfit2": "Specific Price (MANDATORY: Must be higher than TP1 for Long, lower for Short)",
       "heat": 85,
       "explanation": "Detailed thesis matching the previous analysis."
     }
@@ -417,8 +447,23 @@ The output MUST be a valid JSON object matching the 'AnalysisResults' structure 
             const analysisResults = JSON.parse(jsonText) as AnalysisResults;
 
             // Pass results to main view
-            // We pass empty images since this is API-based
-            onAnalysisComplete(analysisResults, [selectedStrategyKey], {}, false);
+            // Inject timeframe and analysisContext into the trade
+            if (analysisResults['Top Longs']) {
+                analysisResults['Top Longs'] = analysisResults['Top Longs'].map(t => ({
+                    ...t,
+                    timeframe: selectedTimeframe,
+                    analysisContext: { realTimeContextWasUsed: true }
+                }));
+            }
+            if (analysisResults['Top Shorts']) {
+                analysisResults['Top Shorts'] = analysisResults['Top Shorts'].map(t => ({
+                    ...t,
+                    timeframe: selectedTimeframe,
+                    analysisContext: { realTimeContextWasUsed: true }
+                }));
+            }
+
+            onAnalysisComplete(analysisResults, [selectedStrategyKey], {}, true);
 
         } catch (e) {
             console.error("Failed to generate trade:", e);
