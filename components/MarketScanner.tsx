@@ -5,6 +5,7 @@ import { TwelveDataApi } from '../utils/twelveDataApi';
 import { AiManager } from '../utils/aiManager';
 import { getMarketData, setMarketData } from '../idb';
 import Logo from './Logo';
+import { generateConstitutionalPrompt } from '../utils/aiConstitution';
 
 interface MarketScannerProps {
     apiConfig: ApiConfiguration;
@@ -404,46 +405,15 @@ Return ONLY a valid JSON array:
             const dataContext = formatAssetDataForPrompt(quote, candles);
             const strategy = strategies[selectedStrategyKey];
 
-            const systemInstruction = `You are an expert trading engine. Your task is to generate a precise Trade Setup based on the provided market data and strategy.
-
-**STRATEGY:**
-Name: ${strategy.name}
-Logic: ${strategy.prompt}
-
-**CONTEXT:**
-Asset: ${result.asset}
-Timeframe: ${selectedTimeframe}
-Previous Analysis: ${result.analysis}
-
-**TASK:**
-Generate a detailed Trade Setup (Long or Short) with Entry, Stop Loss, and Take Profit targets.
-The output MUST be a valid JSON object matching the 'AnalysisResults' structure with a single trade in 'Top Longs' or 'Top Shorts'.
-
-**OUTPUT FORMAT:**
-{
-  "Top Longs": [
-    {
-      "type": "Setup Name",
-      "direction": "Long",
-      "symbol": "${result.asset}",
-      "entry": "Specific Price",
-      "entryType": "Limit Order",
-      "entryExplanation": "Reason for entry level",
-      "stopLoss": "Specific Price",
-      "takeProfit1": "Specific Price",
-      "takeProfit2": "Specific Price (MANDATORY: Must be higher than TP1 for Long, lower for Short)",
-      "heat": 85,
-      "explanation": "Detailed thesis matching the previous analysis."
-    }
-  ],
-  "Top Shorts": [],
-  "strategySuggestion": {
-    "suggestedStrategies": ["${selectedStrategyKey}"],
-    "suggestedSettings": {},
-    "reasoning": "Strategy fit reasoning"
-  }
-}
-(If Short, put in Top Shorts and empty Top Longs)`;
+            const systemInstruction = generateConstitutionalPrompt(
+                userSettings,
+                strategy,
+                {
+                    asset: result.asset,
+                    timeframe: selectedTimeframe,
+                    currentPrice: quote.price
+                }
+            );
 
             const manager = new AiManager({
                 apiConfig,
