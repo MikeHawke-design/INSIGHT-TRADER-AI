@@ -72,38 +72,69 @@ export class AiManager {
         const promises: Promise<{ provider: string, response: StandardizedResponse | null, error?: any }>[] = [];
 
         // 1. Launch Parallel Requests
+        // We use a helper to catch errors individually so Promise.all doesn't fail immediately
+        const safeGenerate = async (provider: string, generator: () => Promise<StandardizedResponse>) => {
+            try {
+                const res = await generator();
+                return { provider, response: res };
+            } catch (err: any) {
+                console.warn(`Council Member ${provider} failed:`, err);
+                return { provider, response: null, error: err };
+            }
+        };
+
         if (this.apiConfig.geminiApiKey || import.meta.env.VITE_API_KEY) {
-            promises.push(this.generateGemini(systemInstruction, userPrompt).then(res => ({ provider: 'Gemini', response: res })).catch(err => ({ provider: 'Gemini', response: null, error: err })));
+            promises.push(safeGenerate('Gemini', () => this.generateGemini(systemInstruction, userPrompt)));
         }
         if (this.apiConfig.openaiApiKey) {
-            promises.push(this.generateOpenAI(systemInstruction, userPrompt).then(res => ({ provider: 'OpenAI', response: res })).catch(err => ({ provider: 'OpenAI', response: null, error: err })));
+            promises.push(safeGenerate('OpenAI', () => this.generateOpenAI(systemInstruction, userPrompt)));
         }
         if (this.apiConfig.groqApiKey) {
-            promises.push(this.generateGroq(systemInstruction, userPrompt).then(res => ({ provider: 'Groq', response: res })).catch(err => ({ provider: 'Groq', response: null, error: err })));
+            promises.push(safeGenerate('Groq', () => this.generateGroq(systemInstruction, userPrompt)));
         }
 
         const results = await Promise.all(promises);
         const successfulResponses = results.filter(r => r.response !== null);
 
         if (successfulResponses.length === 0) {
-            throw new Error("Council Mode Failed: All providers failed to generate a response.");
+            // Log the specific errors for debugging
+            const errors = results.map(r => `${r.provider}: ${r.error?.message || 'Unknown Error'}`).join(', ');
+            throw new Error(`Council Mode Failed: All providers failed. Details: ${errors}`);
         }
 
         // 2. Synthesize Results
         // We need a "Judge" to synthesize. We prefer Gemini or OpenAI for this reasoning task.
-        let judgeProvider: 'gemini' | 'openai' = 'gemini';
+        // ROBUSTNESS IMPROVEMENT: Try primary judge, then fallback to secondary.
 
-        if (this.apiConfig.openaiApiKey) {
-            judgeProvider = 'openai';
-        } else {
-            judgeProvider = 'gemini'; // Default to Gemini (usually free/available)
-        }
+        const tryJudge = async (provider: 'gemini' | 'openai'): Promise<StandardizedResponse> => {
+            try {
+                if (provider === 'openai') {
+                    if (!this.apiConfig.openaiApiKey) throw new Error("OpenAI key missing for Judge");
+                    return await this.generateOpenAI(systemInstruction, synthesisPrompt);
+                } else {
+                    return await this.generateGemini(systemInstruction, synthesisPrompt);
+                }
+            } catch (err) {
+                console.warn(`Judge ${provider} failed:`, err);
+                throw err;
+            }
+        };
 
-        const councilTranscript = successfulResponses.map(r => `
+        const councilTranscript = results.map(r => {
+            if (r.response) {
+                return `
 --- OPINION FROM ${r.provider.toUpperCase()} ---
-${r.response?.text}
+${r.response.text}
 ------------------------------------------------
-`).join('\n\n');
+`;
+            } else {
+                return `
+--- OPINION FROM ${r.provider.toUpperCase()} ---
+[FAILED TO GENERATE OPINION: ${r.error?.message || 'Unknown Error'}]
+------------------------------------------------
+`;
+            }
+        }).join('\n\n');
 
         const synthesisPrompt = `
 You are the High Council Judge.
@@ -119,6 +150,7 @@ Your job is to SYNTHESIZE these opinions into a SINGLE, FINAL VERDICT.
 2.  **SYNERGY & CONSENSUS:**
     - **Combine Strengths:** If Model A identifies the correct Asset/Timeframe but misses the Setup, and Model B finds a valid Setup but misses the Asset, **COMBINE THEM**. Use Model B's Setup with Model A's Asset.
     - **Filter Hallucinations:** If one model sees a pattern that others explicitly contradict or miss, be skeptical. However, if the reasoning is sound and evidence is cited (e.g., specific candle times), give it weight.
+    - **Handle Failures:** Some council members may have failed to report. Ignore their missing input and focus solely on the successful opinions.
 
 3.  **STRICT STRATEGY ADHERENCE:**
     - The user's strategy is law. If a model proposes a trade that violates the strategy rules, REJECT IT.
@@ -133,12 +165,31 @@ Your job is to SYNTHESIZE these opinions into a SINGLE, FINAL VERDICT.
 ${councilTranscript}
 `;
 
-        // Call the Judge
-        let finalResponse: StandardizedResponse;
-        if (judgeProvider === 'openai') {
-            finalResponse = await this.generateOpenAI(systemInstruction, synthesisPrompt); // Pass system instruction again to keep context
-        } else {
-            finalResponse = await this.generateGemini(systemInstruction, synthesisPrompt);
+        // Attempt Judgment with Fallback
+        let finalResponse: StandardizedResponse | null = null;
+        let judgeError: any = null;
+
+        // Priority 1: OpenAI (if available)
+        if (this.apiConfig.openaiApiKey) {
+            try {
+                finalResponse = await tryJudge('openai');
+            } catch (e) {
+                judgeError = e;
+                console.warn("Primary Judge (OpenAI) failed, attempting fallback to Gemini...");
+            }
+        }
+
+        // Priority 2: Gemini (Fallback or Primary if OpenAI missing)
+        if (!finalResponse) {
+            try {
+                finalResponse = await tryJudge('gemini');
+            } catch (e) {
+                judgeError = e; // Overwrite or set error
+            }
+        }
+
+        if (!finalResponse) {
+            throw new Error(`Council Judgment Failed: All Judge providers failed. Last error: ${judgeError?.message}`);
         }
 
         // Sum up tokens for billing/tracking
