@@ -8,7 +8,7 @@ import JSZip from 'jszip';
 import ConfirmationModal from './ConfirmationModal';
 
 import { ALL_PERSISTENT_STORAGE_KEYS } from '../constants';
-import { getAllEntries, getAllMarketData } from '../idb';
+import { getAllEntries, getAllMarketData, deleteMarketData } from '../idb';
 import UserManualView from './UserManualView';
 import { generateAccessKey } from '../authUtils';
 import InteractiveChartModal from './InteractiveChartModal';
@@ -204,6 +204,19 @@ export const MasterControlsView: React.FC<MasterControlsViewProps> = ({
             getAllMarketData().then(setMarketDataEntries).catch(console.error);
         }
     }, [activeTab]);
+
+    const handleDeleteMarketData = async (key: string) => {
+        if (window.confirm('Are you sure you want to delete this market data?')) {
+            const [symbol, timeframe] = key.split('_');
+            try {
+                await deleteMarketData(symbol, timeframe);
+                setMarketDataEntries(prev => prev.filter(([k]) => k !== key));
+            } catch (e) {
+                console.error("Failed to delete market data:", e);
+                alert("Failed to delete data.");
+            }
+        }
+    };
 
     useEffect(() => {
         const adminFlag = localStorage.getItem('chartOracle_isAdmin');
@@ -809,7 +822,7 @@ export const MasterControlsView: React.FC<MasterControlsViewProps> = ({
                                             <td className="p-3 font-mono text-yellow-400 font-semibold">{key.replace('_', ' ')}</td>
                                             <td className="p-3 font-mono text-xs">{data.length}</td>
                                             <td className="p-3 text-xs">{rangeStr}</td>
-                                            <td className="p-3 text-right">
+                                            <td className="p-3 text-right flex justify-end gap-2">
                                                 <button
                                                     onClick={(e) => {
                                                         e.stopPropagation();
@@ -821,6 +834,16 @@ export const MasterControlsView: React.FC<MasterControlsViewProps> = ({
                                                     title="View Chart"
                                                 >
                                                     <ChartIcon className="w-5 h-5" />
+                                                </button>
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleDeleteMarketData(key);
+                                                    }}
+                                                    className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-md transition-colors"
+                                                    title="Delete Data"
+                                                >
+                                                    <TrashIcon className="w-5 h-5" />
                                                 </button>
                                             </td>
                                         </tr>

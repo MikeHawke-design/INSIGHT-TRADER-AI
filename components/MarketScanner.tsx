@@ -42,7 +42,7 @@ const MarketScanner: React.FC<MarketScannerProps> = ({ apiConfig, userSettings, 
     const [scanResults, setScanResults] = useState<ExtendedMarketScannerResult[]>([]);
     const [availableCoins, setAvailableCoins] = useState<FreeCryptoAssetData[]>([]);
     const [selectedCoins, setSelectedCoins] = useState<string[]>([]);
-    const [includeBtcConfluence, setIncludeBtcConfluence] = useState<boolean>(true);
+    const [includeBtcConfluence, setIncludeBtcConfluence] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
     const [assetClass, setAssetClass] = useState<'Crypto' | 'Forex' | 'Indices' | 'Stocks'>('Crypto');
 
@@ -63,11 +63,21 @@ const MarketScanner: React.FC<MarketScannerProps> = ({ apiConfig, userSettings, 
         setError(null);
         try {
             if (assetClass === 'Crypto') {
-                const coins = await listApi.getTopAssets(50);
+                // Fetch more than 50 to allow for filtering
+                const coins = await listApi.getTopAssets(100);
                 if (coins.length > 0) {
-                    setAvailableCoins(coins);
-                    // Default select top 5
-                    setSelectedCoins(coins.slice(0, 5).map(c => c.symbol));
+                    const EXCLUDED_COINS = [
+                        'USDT', 'STETH', 'WSTETH', 'WBETH', 'WBTC', 'BTCUSD', 'USDS',
+                        'WETH', 'WEETH', 'USDE', 'CBBTC', 'USDTO', 'SUSDS', 'PYUSD', 'SUSDE', 'USD1',
+                        'USDC', 'DAI', 'FDUSD', 'TUSD' // Added common stablecoins just in case
+                    ];
+
+                    const filteredCoins = coins.filter(c => !EXCLUDED_COINS.includes(c.symbol.toUpperCase()));
+                    const finalCoins = filteredCoins.slice(0, 50);
+
+                    setAvailableCoins(finalCoins);
+                    // Default select NONE (User request: uncheck top 5 selection by default)
+                    setSelectedCoins([]);
                 } else {
                     setError("Failed to load crypto assets.");
                 }
@@ -85,7 +95,8 @@ const MarketScanner: React.FC<MarketScannerProps> = ({ apiConfig, userSettings, 
                     volume: 0
                 }));
                 setAvailableCoins(mappedAssets);
-                setSelectedCoins(mappedAssets.slice(0, 5).map(c => c.symbol));
+                // Default select NONE
+                setSelectedCoins([]);
             }
         } catch (err) {
             console.error("Failed to fetch assets", err);

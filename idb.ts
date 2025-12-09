@@ -115,6 +115,13 @@ export async function getAllMarketData(): Promise<[string, any[]][]> {
   }));
 }
 
+export async function deleteMarketData(symbol: string, timeframe: string): Promise<void> {
+  const key = `${symbol}_${timeframe}`;
+  return withStore(MARKET_DATA_STORE_NAME, 'readwrite', store => {
+    store.delete(key);
+  });
+}
+
 // --- App-specific helpers ---
 
 /**

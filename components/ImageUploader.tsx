@@ -249,7 +249,7 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
     const [uploadedImagesData, setUploadedImagesData] = useState<UploadedImageKeys>({});
     const [error, setError] = useState<string | null>(null);
 
-    const [useLiveData, setUseLiveData] = useState<boolean>(true);
+    const [useLiveData, setUseLiveData] = useState<boolean>(false);
     const [selectedTimeframe, setSelectedTimeframe] = useState<string>('4h');
     const [selectedProvider, setSelectedProvider] = useState<'twelvedata' | 'freecrypto'>('twelvedata');
     const [progressMessage, setProgressMessage] = useState<string>('');
