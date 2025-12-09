@@ -879,6 +879,8 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
                                     onChange={(e) => setSelectedTimeframe(e.target.value)}
                                     className="bg-gray-700 border border-gray-600 rounded text-xs text-white p-1 outline-none focus:border-yellow-500"
                                 >
+                                    <option value="1m">1m</option>
+                                    <option value="5m">5m</option>
                                     <option value="15m">15m</option>
                                     <option value="1h">1h</option>
                                     <option value="4h">4h</option>

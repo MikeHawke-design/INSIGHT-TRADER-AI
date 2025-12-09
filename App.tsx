@@ -225,7 +225,7 @@ const App: React.FC = () => {
             feedback: { outcome: null, text: '' },
             strategiesUsed,
             uploadedImageKeys: imageKeysForTrade,
-            analysisContext: { realTimeContextWasUsed: false },
+            analysisContext: trade.analysisContext || { realTimeContextWasUsed: false },
             chartMetadata: analysisResults?.chartMetadata
         };
         setSavedTrades(prev => [newSavedTrade, ...prev]);

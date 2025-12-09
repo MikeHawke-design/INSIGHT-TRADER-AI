@@ -190,7 +190,9 @@ export class FreeCryptoApi {
 
             let days = '1';
             if (timeframe === '4h') days = '30';
-            if (timeframe === '1d') days = '90'; // 90 days gives daily candles usually
+            if (timeframe === '1d') days = '90';
+            // 1m/5m/15m/1h will default to '1' (which gives ~30m resolution on CoinGecko Free)
+            // This is a limitation of the free API. TwelveData is recommended for lower timeframes.
 
             const response = await fetch(`https://api.coingecko.com/api/v3/coins/${id}/ohlc?vs_currency=usd&days=${days}`);
             if (response.ok) {

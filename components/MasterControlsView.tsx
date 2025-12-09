@@ -140,6 +140,12 @@ const StrategyListItem = ({ strategy, strategyKey, onEdit, setStrategyToDelete, 
 
 const CheckIcon = (props: { className?: string }) => <svg {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>;
 
+const ChartIcon = (props: { className?: string }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" {...props}>
+        <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zm6-4a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zm6-3a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z" />
+    </svg>
+);
+
 // --- COMPONENT ---
 
 export const MasterControlsView: React.FC<MasterControlsViewProps> = ({
@@ -772,7 +778,8 @@ export const MasterControlsView: React.FC<MasterControlsViewProps> = ({
                                 <tr>
                                     <th className="p-3 rounded-tl-lg">Symbol & Timeframe</th>
                                     <th className="p-3">Data Points</th>
-                                    <th className="p-3 rounded-tr-lg">Date Range</th>
+                                    <th className="p-3">Date Range</th>
+                                    <th className="p-3 rounded-tr-lg text-right">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-700">
@@ -802,6 +809,20 @@ export const MasterControlsView: React.FC<MasterControlsViewProps> = ({
                                             <td className="p-3 font-mono text-yellow-400 font-semibold">{key.replace('_', ' ')}</td>
                                             <td className="p-3 font-mono text-xs">{data.length}</td>
                                             <td className="p-3 text-xs">{rangeStr}</td>
+                                            <td className="p-3 text-right">
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        const [symbol, timeframe] = key.split('_');
+                                                        setSelectedChartData({ symbol, timeframe });
+                                                        setIsChartModalOpen(true);
+                                                    }}
+                                                    className="p-1.5 text-gray-400 hover:text-blue-400 hover:bg-blue-500/10 rounded-md transition-colors"
+                                                    title="View Chart"
+                                                >
+                                                    <ChartIcon className="w-5 h-5" />
+                                                </button>
+                                            </td>
                                         </tr>
                                     );
                                 })}

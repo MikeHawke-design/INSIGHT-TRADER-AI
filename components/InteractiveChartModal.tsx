@@ -18,6 +18,65 @@ const InteractiveChartModal: React.FC<InteractiveChartModalProps> = ({ isOpen, o
   const seriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedTimeframe, setSelectedTimeframe] = useState(timeframe);
+
+  useEffect(() => {
+    setSelectedTimeframe(timeframe);
+  }, [timeframe]);
+
+  // Helper to resample candles
+  const resampleCandles = (candles: CandlestickData[], sourceTf: string, targetTf: string): CandlestickData[] => {
+    // Simple resampling logic (only supports minutes/hours aggregation for now)
+    // This is a basic implementation.
+    const tfToMinutes = (tf: string) => {
+      if (tf.endsWith('m')) return parseInt(tf);
+      if (tf.endsWith('h')) return parseInt(tf) * 60;
+      if (tf.endsWith('d')) return parseInt(tf) * 60 * 24;
+      return 0;
+    };
+
+    const sourceMin = tfToMinutes(sourceTf);
+    const targetMin = tfToMinutes(targetTf);
+
+    if (sourceMin === 0 || targetMin === 0 || sourceMin >= targetMin) return [];
+
+    const resampled: CandlestickData[] = [];
+    let currentCandle: any = null;
+    let bucketStartTime = 0;
+
+    // Sort by time just in case
+    const sorted = [...candles].sort((a, b) => (a.time as number) - (b.time as number));
+
+    for (const candle of sorted) {
+      const time = candle.time as number;
+      // Calculate bucket start
+      // Assuming timestamps are seconds
+      const bucketSizeSeconds = targetMin * 60;
+      const bucketStart = Math.floor(time / bucketSizeSeconds) * bucketSizeSeconds;
+
+      if (currentCandle && bucketStart !== bucketStartTime) {
+        resampled.push(currentCandle);
+        currentCandle = null;
+      }
+
+      if (!currentCandle) {
+        bucketStartTime = bucketStart;
+        currentCandle = {
+          time: bucketStart as any,
+          open: candle.open,
+          high: candle.high,
+          low: candle.low,
+          close: candle.close,
+        };
+      } else {
+        currentCandle.high = Math.max(currentCandle.high, candle.high);
+        currentCandle.low = Math.min(currentCandle.low, candle.low);
+        currentCandle.close = candle.close;
+      }
+    }
+    if (currentCandle) resampled.push(currentCandle);
+    return resampled;
+  };
 
   // Helper to parse price strings safely
   const parsePrice = (priceStr: string | undefined): number | null => {
@@ -139,12 +198,40 @@ const InteractiveChartModal: React.FC<InteractiveChartModalProps> = ({ isOpen, o
         let chartData: CandlestickData[] = [];
 
         // 1. Try to get cached data first
-        const rawData = await getMarketData(symbol, timeframe);
+        // 1. Try to get cached data first for SELECTED timeframe
+        let rawData = await getMarketData(symbol, selectedTimeframe);
 
-        if (rawData && rawData.length > 0) {
+        // If not found, and selected != original, try to resample from original
+        if ((!rawData || rawData.length === 0) && selectedTimeframe !== timeframe) {
+          const originalData = await getMarketData(symbol, timeframe);
+          if (originalData && originalData.length > 0) {
+            // Convert original to CandlestickData first
+            const baseCandles = originalData.map((d: any) => {
+              let time = d[0];
+              if (typeof time === 'string') {
+                if (time.includes(' ') && !time.endsWith('Z') && !time.includes('+')) {
+                  time = time.replace(' ', 'T') + 'Z';
+                }
+                time = new Date(time).getTime() / 1000;
+              }
+              return {
+                time: time as any,
+                open: parseFloat(d[1]),
+                high: parseFloat(d[2]),
+                low: parseFloat(d[3]),
+                close: parseFloat(d[4]),
+              };
+            });
+            // Resample
+            const resampled = resampleCandles(baseCandles, timeframe, selectedTimeframe);
+            if (resampled.length > 0) {
+              chartData = resampled;
+            }
+          }
+        } else if (rawData && rawData.length > 0) {
+          // We found direct data
           chartData = rawData.map((d: any) => {
             let time = d[0];
-            // Ensure we treat string dates as UTC if they don't have timezone info
             if (typeof time === 'string') {
               if (time.includes(' ') && !time.endsWith('Z') && !time.includes('+')) {
                 time = time.replace(' ', 'T') + 'Z';
@@ -161,10 +248,12 @@ const InteractiveChartModal: React.FC<InteractiveChartModalProps> = ({ isOpen, o
           });
         }
 
+
+
         // 2. If data is sparse or missing, try fetching from Binance (for crypto)
         // This adds "more history" as requested
         if (chartData.length < 100) {
-          const binanceData = await fetchBinanceData(symbol, timeframe);
+          const binanceData = await fetchBinanceData(symbol, selectedTimeframe);
           if (binanceData.length > 0) {
             // Merge strategies: 
             // If we have no local data, just use Binance.
@@ -183,7 +272,7 @@ const InteractiveChartModal: React.FC<InteractiveChartModalProps> = ({ isOpen, o
         }
 
         if (chartData.length === 0) {
-          setError(`No data found for ${symbol} (${timeframe}).`);
+          setError(`No data found for ${symbol} (${selectedTimeframe}).`);
           setIsLoading(false);
           return;
         }
@@ -259,7 +348,8 @@ const InteractiveChartModal: React.FC<InteractiveChartModalProps> = ({ isOpen, o
       window.removeEventListener('resize', handleResize);
       chart.remove();
     };
-  }, [isOpen, symbol, timeframe, trade, timezone]);
+
+  }, [isOpen, symbol, selectedTimeframe, trade, timezone]); // Re-run when selectedTimeframe changes
 
   if (!isOpen) return null;
 
@@ -270,7 +360,16 @@ const InteractiveChartModal: React.FC<InteractiveChartModalProps> = ({ isOpen, o
         <div className="flex items-center justify-between p-4 border-b border-gray-700 bg-gray-800">
           <div>
             <h3 className="text-xl font-bold text-white flex items-center gap-2">
-              {symbol} <span className="text-sm text-gray-400 font-normal">({timeframe})</span>
+              {symbol}
+              <select
+                value={selectedTimeframe}
+                onChange={(e) => setSelectedTimeframe(e.target.value)}
+                className="bg-gray-700 border border-gray-600 text-white text-sm rounded px-2 py-1 outline-none focus:ring-1 focus:ring-blue-500"
+              >
+                {['1m', '5m', '15m', '30m', '1h', '4h', '1d', '1w'].map(tf => (
+                  <option key={tf} value={tf}>{tf}</option>
+                ))}
+              </select>
             </h3>
             <p className="text-xs text-gray-500">Interactive Chart • Scroll to Zoom • Drag to Pan • Timezone: {timezone}</p>
           </div>

@@ -181,7 +181,9 @@ const MarketScanner: React.FC<MarketScannerProps> = ({ apiConfig, userSettings, 
                         const currentPrice = newest[4]; // Close
 
                         let candlesBack = 1;
-                        if (selectedTimeframe === '15m') candlesBack = 96;
+                        if (selectedTimeframe === '1m') candlesBack = 1440;
+                        else if (selectedTimeframe === '5m') candlesBack = 288;
+                        else if (selectedTimeframe === '15m') candlesBack = 96;
                         else if (selectedTimeframe === '1h') candlesBack = 24;
                         else if (selectedTimeframe === '4h') candlesBack = 6;
 
@@ -506,7 +508,7 @@ The output MUST be a valid JSON object matching the 'AnalysisResults' structure 
                 <div>
                     <label className="block text-sm font-medium text-gray-400 mb-2">Timeframe</label>
                     <div className="flex bg-[hsl(var(--color-bg-900))] rounded-lg p-1 border border-[hsl(var(--color-border-700))]">
-                        {['15m', '1h', '4h', '1d'].map((tf) => (
+                        {['1m', '5m', '15m', '1h', '4h', '1d'].map((tf) => (
                             <button
                                 key={tf}
                                 onClick={() => setSelectedTimeframe(tf)}
