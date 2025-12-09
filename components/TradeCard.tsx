@@ -215,7 +215,7 @@ const TradeCard: React.FC<TradeCardProps> = ({
     councilDiscussion,
 }) => {
     const isLong = trade.direction === 'Long';
-    const [isExplanationOpen, setIsExplanationOpen] = useState(!onSave || isSaved);
+    const [isExplanationOpen, setIsExplanationOpen] = useState(false);
     const [isEntryExplanationVisible, setIsEntryExplanationVisible] = useState(false);
     const [isCouncilOpen, setIsCouncilOpen] = useState(false);
     const [feedbackText, setFeedbackText] = useState(feedback?.text || '');

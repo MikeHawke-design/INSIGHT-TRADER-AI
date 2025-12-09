@@ -177,6 +177,11 @@ const InteractiveChartModal: React.FC<InteractiveChartModalProps> = ({ isOpen, o
       borderVisible: false,
       wickUpColor: '#22c55e',
       wickDownColor: '#ef4444',
+      priceFormat: {
+        type: 'price',
+        precision: 5,
+        minMove: 0.00001,
+      },
     });
 
     chartRef.current = chart;
