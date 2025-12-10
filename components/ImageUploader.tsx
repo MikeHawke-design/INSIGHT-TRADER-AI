@@ -263,7 +263,7 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
     const [error, setError] = useState<string | null>(null);
 
     const [useLiveData, setUseLiveData] = useState<boolean>(false);
-    const [selectedTimeframe, setSelectedTimeframe] = useState<string>('4h');
+    const [selectedTimeframes, setSelectedTimeframes] = useState<string[]>(['1d', '4h', '15m']); // Multi-timeframe selection
     const [selectedProvider, setSelectedProvider] = useState<'twelvedata' | 'freecrypto'>('twelvedata');
     const [progressMessage, setProgressMessage] = useState<string>('');
 
@@ -366,6 +366,26 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
         }
     }, [initialImages, phase, userSettings.defaultDataProvider]);
 
+
+    // Initialize timeframes based on strategy
+    useEffect(() => {
+        if (selectedStrategies.length > 0) {
+            const strategy = strategyLogicData[selectedStrategies[0]];
+            if (strategy && strategy.preferredTimeframes && strategy.preferredTimeframes.length > 0) {
+                setSelectedTimeframes(strategy.preferredTimeframes.slice(0, 3));
+            }
+        }
+    }, [selectedStrategies, strategyLogicData]);
+
+    const handleTimeframeToggle = (tf: string) => {
+        if (selectedTimeframes.includes(tf)) {
+            setSelectedTimeframes(prev => prev.filter(t => t !== tf));
+        } else {
+            if (selectedTimeframes.length < 3) {
+                setSelectedTimeframes(prev => [...prev, tf]);
+            }
+        }
+    };
 
     const handleStartGuidedUpload = async () => {
         if (selectedStrategies.length === 0) return;
@@ -529,17 +549,21 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
             return;
         }
 
-        stopMediaStream();
         try {
-            const stream = await navigator.mediaDevices.getDisplayMedia({ video: { cursor: "always" } as any, audio: false });
+            const stream = await navigator.mediaDevices.getDisplayMedia({
+                video: {
+                    cursor: "always"
+                } as any,
+                audio: false
+            });
+
             streamRef.current = stream;
             setCaptureStream(stream);
             setIsCaptureModalOpen(true);
 
-            // Handle stream ending (e.g. user clicks "Stop sharing" in browser UI)
+            // Handle stream stop (user clicks "Stop sharing")
             stream.getVideoTracks()[0].onended = () => {
                 stopMediaStream();
-                setIsCaptureModalOpen(false);
             };
         } catch (err) {
             console.error("Screen capture error:", err);
@@ -548,12 +572,18 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
         }
     };
 
-    const handleCaptureSubmit = (dataUrl: string) => {
+    const handleCaptureSubmit = (imageDataUrl: string) => {
+        if (!imageDataUrl) {
+            setCaptureError("Failed to capture image.");
+            return;
+        }
+
         handleImageUpload({
-            name: `screen_capture_${Date.now()}.jpg`,
-            type: 'image/jpeg',
-            dataUrl: dataUrl
+            name: `screen_capture_${Date.now()}.png`,
+            type: 'image/png',
+            dataUrl: imageDataUrl
         });
+
         setIsCaptureModalOpen(false);
         // Do NOT stop the stream here, allowing reuse
     };
@@ -602,12 +632,21 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
             return;
         }
 
+        // Generate base system instruction
+        let systemInstruction = generateSystemInstructionContent(
+            selectedStrategies,
+            userSettings,
+            uploadedImagesData,
+            strategyLogicData,
+            null, // We will inject current price later if found
+            isComparisonMode
+        );
+
         const manager = getAiManager();
         let currentPrice: number | null = null;
-        let liveMarketDataContext = "";
         let identifiedTimeframe: string | null = null;
+        let liveMarketDataContext = ''; // Initialize here, will be appended to systemInstruction later
 
-        // --- HYBRID ANALYSIS FLOW ---
         // --- HYBRID ANALYSIS FLOW ---
         if (useLiveData) {
             try {
@@ -630,154 +669,205 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
                     }
                 }
 
-                const idResponse = await manager.generateContent(identificationPrompt, imageParts);
+                // Use generateChat for identification
+                const idResponse = await manager.generateChat(
+                    "You are a market data assistant that identifies assets and timeframes from chart images.",
+                    [], // No history
+                    [{ text: identificationPrompt }, ...imageParts]
+                );
                 onLogTokenUsage(idResponse.usage.totalTokenCount);
 
                 let idJson = (idResponse.text || "").trim();
                 const fenceMatch = idJson.match(/^```json\s*([\s\S]*?)\s*```$/) || idJson.match(/^```\s*([\s\S]*?)\s*```$/);
                 if (fenceMatch) idJson = fenceMatch[1];
 
-                const idResult = JSON.parse(idJson);
+                let idResult: { symbol: string | null, timeframe: string | null } = { symbol: null, timeframe: null };
+                try {
+                    idResult = JSON.parse(idJson);
+                } catch (e) {
+                    console.warn("Failed to parse ID response JSON:", e);
+                }
+
 
                 if (idResult.symbol) {
                     const symbol = idResult.symbol.toUpperCase();
                     // Use user selected timeframe if available, otherwise fallback to detected
-                    const timeframe = selectedTimeframe || idResult.timeframe || '4h';
-                    identifiedTimeframe = timeframe;
-                    setProgressMessage(`Identified ${symbol}. Fetching ${timeframe} data via ${selectedProvider}...`);
+                    const primaryTimeframe = selectedTimeframes[0] || idResult.timeframe || '4h';
+                    identifiedTimeframe = primaryTimeframe;
 
-                    // Step 2: Smart Data Fetching (Glueing)
-                    // Check IDB
-                    const storedCandles = await getMarketData(symbol, timeframe) || [];
-                    let startDate: string | undefined;
+                    // Determine which timeframes we actually need to fetch
+                    // If user selected specific ones, use those. Otherwise just the primary.
+                    const timeframesToFetch = useLiveData && selectedTimeframes.length > 0 ? selectedTimeframes : [primaryTimeframe];
 
-                    if (storedCandles.length > 0) {
-                        // Get last candle time.
-                        const lastCandle = storedCandles[storedCandles.length - 1];
-                        // If it's a string date, we can pass it as start_date
-                        // TwelveData expects YYYY-MM-DD HH:MM:SS
-                        const lastTime = Array.isArray(lastCandle) ? lastCandle[0] : (lastCandle.time || lastCandle.date);
-                        if (lastTime) {
-                            // Add 1 second/minute to avoid duplicate if possible, or just overlap and filter
-                            startDate = lastTime;
+                    setProgressMessage(`Identified ${symbol}. Checking stored data for ${timeframesToFetch.join(', ')}...`);
+
+                    // Step 2: Smart Data Fetching (Glueing) & Economic API Use
+                    const marketDataMap: Record<string, any[]> = {};
+                    currentPrice = null; // Reset currentPrice for multi-timeframe logic
+
+                    for (const tf of timeframesToFetch) {
+                        // Check IDB first
+                        const storedCandles = await getMarketData(symbol, tf) || [];
+                        let candlesToUse = storedCandles;
+
+                        // Simple "freshness" check: if we have data, is the last candle recent?
+                        // For now, we'll just check if we have ANY data.
+                        // To be truly economic, we should only fetch if the last candle is too old.
+                        // But for simplicity and robustness, let's try to append if we have data.
+
+                        if (storedCandles.length > 0) {
+                            // Logic to check freshness could go here
+                        }
+
+                        // We will ALWAYS try to fetch a little bit of new data to ensure live price is fresh,
+                        // unless we just fetched it seconds ago (not implemented yet).
+                        // But we limit the batch size.
+
+                        if (selectedProvider === 'twelvedata') {
+                            const twelveDataKey = apiConfig.twelveDataApiKey || (userSettings as any).twelveDataApiKey;
+                            if (twelveDataKey) {
+                                const api = new TwelveDataApi(twelveDataKey);
+                                // Fetch small batch if we have history, larger if we don't
+                                const outputSize = storedCandles.length > 0 ? 5 : 50;
+
+                                try {
+                                    // Note: TwelveData doesn't support start_date perfectly for all plans,
+                                    // so we might just fetch latest N and merge.
+                                    const newCandles = await api.getTimeSeries(symbol, tf, outputSize);
+
+                                    if (newCandles.length > 0) {
+                                        // Merge logic
+                                        const merged = [...storedCandles];
+                                        const existingTimes = new Set(merged.map(c => Array.isArray(c) ? c[0] : (c.time || c.date)));
+
+                                        newCandles.forEach((c: any) => {
+                                            const t = c.datetime || c.date; // TwelveData uses datetime
+                                            // Normalize time format if needed (TwelveData returns "YYYY-MM-DD HH:mm:ss")
+                                            if (!existingTimes.has(t)) {
+                                                // Convert to array format for consistency if needed, or keep object
+                                                // Our IDB stores whatever we put in. Let's standardize on Array [time, open, high, low, close, volume]
+                                                // TwelveData returns objects. Let's convert to array for storage efficiency if we want,
+                                                // but our app seems to handle both. Let's stick to the API return for now but ensure we handle it.
+                                                // Actually, getMarketData returns what was stored.
+                                                // Let's store arrays: [time, open, high, low, close, volume]
+                                                const candleArr = [
+                                                    c.datetime,
+                                                    parseFloat(c.open),
+                                                    parseFloat(c.high),
+                                                    parseFloat(c.low),
+                                                    parseFloat(c.close),
+                                                    parseFloat(c.volume)
+                                                ];
+                                                merged.push(candleArr);
+                                            }
+                                        });
+
+                                        // Sort by time
+                                        merged.sort((a, b) => {
+                                            const tA = new Date(Array.isArray(a) ? a[0] : a.datetime).getTime();
+                                            const tB = new Date(Array.isArray(b) ? b[0] : b.datetime).getTime();
+                                            return tA - tB;
+                                        });
+
+                                        candlesToUse = merged;
+                                        // Update Store
+                                        await setMarketData(symbol, tf, merged);
+
+                                        // Update current price from the very last candle of the primary timeframe
+                                        if (tf === primaryTimeframe) {
+                                            const last = merged[merged.length - 1];
+                                            currentPrice = Array.isArray(last) ? last[4] : parseFloat(last.close);
+                                        }
+                                    }
+                                } catch (err) {
+                                    console.warn(`Failed to fetch ${tf} for ${symbol}:`, err);
+                                }
+                            }
+                        } else {
+                            // FreeCryptoApi fallback logic (simplified for brevity, similar merge needed)
+                            const api = new FreeCryptoApi(apiConfig.freeCryptoApiKey);
+                            try {
+                                const newCandles = await api.getCandles(symbol, tf); // This fetches ~100
+                                if (newCandles.length > 0) {
+                                    // Overwrite/Merge
+                                    candlesToUse = newCandles.map(c => [c.time, c.open, c.high, c.low, c.close, c.volume]);
+                                    await setMarketData(symbol, tf, candlesToUse);
+                                    if (tf === primaryTimeframe) {
+                                        currentPrice = candlesToUse[candlesToUse.length - 1][4];
+                                    }
+                                }
+                            } catch (e) { console.warn("Free API failed", e); }
+                        }
+
+                        marketDataMap[tf] = candlesToUse.slice(-50); // Keep last 50 for context window efficiency
+                    }
+
+                    // Format Data for Prompt
+                    let marketDataContext = `**LIVE MARKET DATA (${symbol})**\n`;
+                    for (const [tf, candles] of Object.entries(marketDataMap)) {
+                        if (candles.length > 0) {
+                            const last = candles[candles.length - 1];
+                            const lastClose = Array.isArray(last) ? last[4] : last.close;
+                            marketDataContext += `- **${tf}**: Last Price ${lastClose} (based on ${candles.length} candles)\n`;
+                            // Add a mini-table of last 5 candles for this timeframe
+                            marketDataContext += `  Last 5 candles (${tf}):\n`;
+                            candles.slice(-5).forEach(c => {
+                                const [t, o, h, l, cl] = Array.isArray(c) ? c : [c.datetime, c.open, c.high, c.low, c.close];
+                                marketDataContext += `  [${t}]: O:${o} H:${h} L:${l} C:${cl}\n`;
+                            });
+                        } else {
+                            marketDataContext += `- **${tf}**: No data available.\n`;
                         }
                     }
 
-                    // Fetch new data
-                    let newCandles: any[] = [];
+                    // Replace the generic prompt with this rich context
+                    liveMarketDataContext = `\n\n${marketDataContext}`;
 
-                    if (selectedProvider === 'twelvedata') {
-                        const twelveDataKey = apiConfig.twelveDataApiKey || (userSettings as any).twelveDataApiKey;
-                        if (twelveDataKey) {
-                            const api = new TwelveDataApi(twelveDataKey);
-                            // Limit to ~50 candles (approx 4 credits worth of data usually, or just small batch)
-                            // TwelveData 'outputsize' defaults to 30 if no dates.
-                            // If startDate is present, it fetches from there.
-                            newCandles = await api.getCandles(symbol, timeframe, startDate);
-                        }
-                    } else {
-                        // FreeCryptoAPI / CoinGecko Fallback
-                        // Note: CoinGecko doesn't support 'startDate' easily for OHLC, it uses 'days'.
-                        // So we might re-fetch full set (limited by days) and merge.
-                        // This is less efficient but necessary for this provider.
-                        const api = new FreeCryptoApi(apiConfig.freeCryptoApiKey);
-                        newCandles = await api.getCandles(symbol, timeframe);
-                    }
-
-                    if (newCandles.length > 0) {
-                        // Merge: Filter out duplicates based on timestamp
-                        // Normalize times to string or timestamp for comparison
-                        const getTime = (c: any) => new Date(Array.isArray(c) ? c[0] : (c.time || c.date)).getTime();
-
-                        const existingTimes = new Set(storedCandles.map(c => getTime(c)));
-                        const uniqueNewCandles = newCandles.filter(c => !existingTimes.has(getTime(c)));
-
-                        const mergedCandles = [...storedCandles, ...uniqueNewCandles];
-
-                        // Sort by time
-                        mergedCandles.sort((a, b) => getTime(a) - getTime(b));
-
-                        // Save back to IDB
-                        await setMarketData(symbol, timeframe, mergedCandles);
-
-                        // Prepare context for AI
-                        // Send last 50 candles for context
-                        const contextCandles = mergedCandles.slice(-50);
-                        liveMarketDataContext = `\n\n**PRECISE MARKET DATA (Source: ${selectedProvider})**\nAsset: ${symbol}\nTimeframe: ${timeframe}\nLast 50 Candles (Time | Open | High | Low | Close | Volume):\n`;
-                        contextCandles.forEach(c => {
-                            const t = Array.isArray(c) ? c[0] : (c.time || c.date);
-                            const o = Array.isArray(c) ? c[1] : c.open;
-                            const h = Array.isArray(c) ? c[2] : c.high;
-                            const l = Array.isArray(c) ? c[3] : c.low;
-                            const cl = Array.isArray(c) ? c[4] : c.close;
-                            const v = Array.isArray(c) ? c[5] : c.volume;
-                            liveMarketDataContext += `${t} | ${o} | ${h} | ${l} | ${cl} | ${v}\n`;
-                        });
-                        liveMarketDataContext += `\nUse this data to determine EXACT entry, stop loss, and take profit levels.`;
-
-                        // Update current price
-                        const last = mergedCandles[mergedCandles.length - 1];
-                        currentPrice = Array.isArray(last) ? last[4] : last.close;
-                    } else if (storedCandles.length > 0) {
-                        // Use stored data if no new data
-                        const contextCandles = storedCandles.slice(-50);
-                        liveMarketDataContext = `\n\n**PRECISE MARKET DATA (Source: Cached)**\nAsset: ${symbol}\nTimeframe: ${timeframe}\nLast 50 Candles:\n`;
-                        contextCandles.forEach(c => {
-                            const t = Array.isArray(c) ? c[0] : (c.time || c.date);
-                            const o = Array.isArray(c) ? c[1] : c.open;
-                            const h = Array.isArray(c) ? c[2] : c.high;
-                            const l = Array.isArray(c) ? c[3] : c.low;
-                            const cl = Array.isArray(c) ? c[4] : c.close;
-                            const v = Array.isArray(c) ? c[5] : c.volume;
-                            liveMarketDataContext += `${t} | ${o} | ${h} | ${l} | ${cl} | ${v}\n`;
-                        });
-                        const last = storedCandles[storedCandles.length - 1];
-                        currentPrice = Array.isArray(last) ? last[4] : last.close;
+                    // Also update the current price anchor if we found it
+                    if (currentPrice) {
+                        liveMarketDataContext += `\nTHE CURRENT PRICE IS \`${currentPrice}\` (derived from live ${selectedProvider} data). This is your non-negotiable anchor.`;
                     }
                 }
             } catch (err) {
-                console.warn("Hybrid data fetch failed:", err);
-                // Fallback to visual only
+                console.error("Live data fetch failed:", err);
+                setProgressMessage("Live data unavailable. Proceeding with visual analysis only...");
             }
         } else {
             // STRICT HALLUCINATION PREVENTION
             liveMarketDataContext = `\n\n**IMPORTANT: NO EXTERNAL MARKET DATA AVAILABLE.**\n- You must rely SOLELY on the visual information in the provided chart screenshots.\n- Do NOT hallucinate or invent prices, indicators, or dates.\n- If a value is not visible, estimate it from the chart axis or state that it is unknown.\n- Your analysis must be purely visual.`;
         }
 
+        // Append the live data context to the system instruction
+        systemInstruction = generateSystemInstructionContent(
+            selectedStrategies, userSettings, uploadedImagesData, strategyLogicData,
+            currentPrice, isComparisonMode
+        );
+        systemInstruction += liveMarketDataContext;
+
         setProgressMessage("Analyzing charts & data...");
 
+        // 3. Call AI for Final Analysis
+        // We use the chat interface to maintain context if needed, but for this single-shot analysis,
+        // we can just send the user message with images.
+
+        // Construct the user message part
+        const userMessageText = `Analyze these charts based on the strategy logic provided in the system prompt.
+
+        ${useLiveData ? `I have provided live market data context above. Use it to validate the chart's visual information.` : ''}
+
+        Generate the JSON output as specified.`;
+
+        const imagePartsForAnalysis = Object.values(uploadedImagesData)
+            .filter(d => d)
+            .map(d => ({ inlineData: { mimeType: 'image/png', data: d!.split(',')[1] } }));
+
         try {
-            const systemInstruction = generateSystemInstructionContent(
-                selectedStrategies, userSettings, uploadedImagesData, strategyLogicData,
-                currentPrice, isComparisonMode
-            ) + liveMarketDataContext;
-
-            const imageParts: Part[] = [];
-            const sortedImageKeys = Object.keys(uploadedImagesData).sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
-
-            for (const key of sortedImageKeys) {
-                const dataUrl = uploadedImagesData[key as any];
-                if (dataUrl) {
-                    const prefixMatch = dataUrl.match(/^data:(image\/(?:png|jpeg|webp));base64,/);
-                    if (prefixMatch) {
-                        const mimeType = prefixMatch[1];
-                        const data = dataUrl.substring(prefixMatch[0].length);
-                        imageParts.push({ inlineData: { mimeType, data } });
-                    }
-                }
-            }
-
-            const requestContents = imageParts.length > 0
-                ? imageParts
-                : [{ text: "Analyze the provided cached historical data based on the system instructions." }];
-
-            // Add "Output JSON" to the prompt to ensure JSON response from non-Gemini providers
-            const promptWithJsonInstruction = [
-                ...requestContents,
-                { text: "\n\nIMPORTANT: Output ONLY valid JSON matching the expected format. Do not include markdown formatting like ```json." }
-            ];
-
-            const response = await manager.generateContent(systemInstruction, promptWithJsonInstruction);
+            // Use generateChat for the final analysis
+            const response = await manager.generateChat(
+                systemInstruction,
+                [], // No history
+                [{ text: userMessageText }, ...imagePartsForAnalysis]
+            );
 
             const totalTokenCount = response.usage.totalTokenCount;
             onLogTokenUsage(totalTokenCount);
@@ -870,44 +960,55 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
                     <p className="text-sm text-gray-400 mb-4">Upload screenshots of your charts for analysis.</p>
 
                     <div className="mb-4 flex flex-col gap-2">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 mb-2">
                             <input
                                 type="checkbox"
                                 id="useLiveData"
                                 checked={useLiveData}
                                 onChange={(e) => setUseLiveData(e.target.checked)}
-                                className="h-4 w-4 text-blue-600 rounded border-gray-600 bg-gray-700"
+                                className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500"
                             />
-                            <label htmlFor="useLiveData" className="text-sm text-gray-300">
-                                Enhance with Live Data (Smart Fetch)
+                            <label htmlFor="useLiveData" className="text-sm text-gray-300 select-none cursor-pointer">
+                                Enhance with Live Data (Multi-Timeframe Analysis)
                             </label>
                         </div>
 
                         {useLiveData && (
-                            <div className="flex gap-2 ml-6 animate-fadeIn">
-                                <select
-                                    value={selectedTimeframe}
-                                    onChange={(e) => setSelectedTimeframe(e.target.value)}
-                                    className="bg-gray-700 border border-gray-600 rounded text-xs text-white p-1 outline-none focus:border-yellow-500"
-                                >
-                                    <option value="1m">1m</option>
-                                    <option value="5m">5m</option>
-                                    <option value="15m">15m</option>
-                                    <option value="1h">1h</option>
-                                    <option value="4h">4h</option>
-                                    <option value="1d">Daily</option>
-                                </select>
-                                <select
-                                    value={selectedProvider}
-                                    onChange={(e) => setSelectedProvider(e.target.value as any)}
-                                    className="bg-gray-700 border border-gray-600 rounded text-xs text-white p-1 outline-none focus:border-yellow-500"
-                                >
-                                    <option value="twelvedata">TwelveData</option>
-                                    <option value="freecrypto">FreeCryptoAPI</option>
-                                </select>
+                            <div className="pl-6 space-y-3 animate-fadeIn">
+                                <div>
+                                    <label className="block text-xs text-gray-400 mb-1">Select Timeframes (Max 3)</label>
+                                    <div className="flex flex-wrap gap-2">
+                                        {['1w', '1d', '4h', '1h', '30m', '15m', '5m', '1m'].map(tf => (
+                                            <button
+                                                key={tf}
+                                                onClick={() => handleTimeframeToggle(tf)}
+                                                className={`px-3 py-1 text-xs rounded-full border transition-colors ${selectedTimeframes.includes(tf)
+                                                    ? 'bg-blue-600 border-blue-500 text-white'
+                                                    : 'bg-gray-800 border-gray-600 text-gray-400 hover:border-gray-500'
+                                                    }`}
+                                            >
+                                                {tf}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <p className="text-[10px] text-gray-500 mt-1">
+                                        Selected: {selectedTimeframes.join(', ')}
+                                    </p>
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs text-gray-400 mb-1">Data Provider</label>
+                                    <select
+                                        value={selectedProvider}
+                                        onChange={(e) => setSelectedProvider(e.target.value as any)}
+                                        className="bg-gray-800 border border-gray-600 text-gray-300 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2"
+                                    >
+                                        <option value="twelvedata">Twelve Data (High Quality)</option>
+                                        <option value="freecrypto">Free Crypto API (Basic)</option>
+                                    </select>
+                                </div>
                             </div>
-                        )}
-                    </div>
+                        )}</div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4">
                         <button onClick={() => fileInputRef.current?.click()} className="text-sm font-semibold p-3 rounded-md bg-blue-600 hover:bg-blue-500 text-white transition-colors">

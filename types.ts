@@ -156,6 +156,7 @@ export interface StrategyLogicData {
     tradingStyles?: string[];
     courseModule?: CourseModule; // Linked academy content
     imageLibrary?: { key: string; description: string }[]; // Images for coaching
+    preferredTimeframes?: string[]; // Preferred timeframes for multi-timeframe analysis
 }
 
 export interface TimeFrameStep {

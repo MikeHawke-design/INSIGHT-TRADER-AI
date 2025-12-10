@@ -131,4 +131,33 @@ export class TwelveDataApi {
         }
         return [];
     }
+    async getTimeSeries(symbol: string, interval: string, outputsize: number = 30): Promise<any[]> {
+        if (!this.apiKey) return [];
+
+        let apiInterval = interval;
+        if (interval === '15m') apiInterval = '15min';
+        if (interval === '1d') apiInterval = '1day';
+
+        let url = `${BASE_URL}/time_series?symbol=${symbol}&interval=${apiInterval}&apikey=${this.apiKey}&format=JSON&outputsize=${outputsize}`;
+
+        try {
+            const response = await fetch(url);
+            if (response.ok) {
+                const data = await response.json();
+                if (data.values && Array.isArray(data.values)) {
+                    return data.values.map((c: any) => [
+                        c.datetime,
+                        parseFloat(c.open),
+                        parseFloat(c.high),
+                        parseFloat(c.low),
+                        parseFloat(c.close),
+                        parseFloat(c.volume || 0)
+                    ]).reverse();
+                }
+            }
+        } catch (e) {
+            console.error(`Failed to fetch time series for ${symbol}:`, e);
+        }
+        return [];
+    }
 }
