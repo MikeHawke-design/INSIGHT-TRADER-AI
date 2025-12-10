@@ -288,6 +288,18 @@ ${userSettings.stopLossStrategy === 'Structure-Buffered'
 - **BUFFER:** You MUST add a buffer to this level (e.g., ATR or fixed % distance).`
                     : `- Place the Stop Loss according to the strategy's standard rules.`}
 
+**RISK/REWARD REQUIREMENT:**
+- You MUST respect the user's minimum Risk/Reward Ratio of **${userSettings.minRiskRewardRatio}**.
+- Adjust Take Profit levels to ensure this ratio is met.
+- If a trade cannot logically meet this R:R, DO NOT suggest it.
+
+**HEAT SCORE (0-100):**
+- **BE STRICT.** Do NOT default to 100.
+- 90-100: Perfect setup, all conditions met, high confluence.
+- 70-89: Good setup, minor imperfections.
+- 50-69: Average setup, higher risk.
+- <50: Weak setup (do not suggest unless requested).
+
 **OUTPUT FORMAT:**
 {
   "Top Longs": [

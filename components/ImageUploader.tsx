@@ -844,8 +844,11 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
         );
         systemInstruction += liveMarketDataContext;
 
-        // Force explanation format for UI segmentation
-        systemInstruction += `\n\n**IMPORTANT OUTPUT FORMATTING:**\nFor the "explanation" field in your JSON output, you MUST use the following format with "|||" separators:\n"Strategy Match: [text] ||| Chart Evidence: [text] ||| Execution & Risk: [text]"`;
+        // Force explanation format for UI segmentation and strict scoring
+        systemInstruction += `\n\n**IMPORTANT OUTPUT FORMATTING & RULES:**
+1. **EXPLANATION FORMAT:** For the "explanation" field, you MUST use the "|||" separator format: "Strategy Match: [text] ||| Chart Evidence: [text] ||| Execution & Risk: [text]"
+2. **HEAT SCORE (0-100):** BE STRICT. Do NOT default to 100. 90+ is for perfect setups only. Average is 60-70.
+3. **RISK/REWARD:** You MUST respect the user's minimum R:R of **${userSettings.minRiskRewardRatio}**. Adjust TPs accordingly.`;
 
         setProgressMessage("Analyzing charts & data...");
 

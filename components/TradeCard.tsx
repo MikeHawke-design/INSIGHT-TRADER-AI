@@ -365,7 +365,7 @@ R:R: 1:${rr.toFixed(2)}`;
                                 <p className="text-xs text-gray-500">Generated Just Now</p>
                             )}
                             {trade.tokenUsage && (
-                                <p className="text-[10px] text-gray-600 mt-0.5" title="AI Tokens used to generate this trade">
+                                <p className="text-[10px] text-blue-400 font-medium mt-0.5" title="AI Tokens used to generate this trade">
                                     AI Tokens: {trade.tokenUsage.toLocaleString()}
                                 </p>
                             )}
