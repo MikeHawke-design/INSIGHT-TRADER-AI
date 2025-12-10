@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MarketScannerResult, StrategyLogicData, ApiConfiguration, FreeCryptoAssetData, UserSettings, StrategyKey, AnalysisResults, UploadedImageKeys } from '../types';
+import { StrategyLogicData, ApiConfiguration, FreeCryptoAssetData, UserSettings, StrategyKey, AnalysisResults, UploadedImageKeys } from '../types';
 import { FreeCryptoApi } from '../utils/freeCryptoApi';
 import { TwelveDataApi } from '../utils/twelveDataApi';
 import { AiManager } from '../utils/aiManager';
@@ -13,11 +13,6 @@ interface MarketScannerProps {
     strategies: Record<string, StrategyLogicData>;
     selectedStrategyKey: StrategyKey | null;
     onAnalysisComplete: (results: AnalysisResults, strategies: StrategyKey[], images: UploadedImageKeys, useRealTimeContext: boolean) => void;
-}
-
-interface ExtendedMarketScannerResult extends MarketScannerResult {
-    dataSource?: string;
-    dataStatus?: string;
 }
 
 const FOREX_PAIRS = [
@@ -39,7 +34,6 @@ const MarketScanner: React.FC<MarketScannerProps> = ({ apiConfig, userSettings, 
     const [selectedTimeframes, setSelectedTimeframes] = useState<string[]>(['4h']);
     const [selectedStrategyKey, setSelectedStrategyKey] = useState<string>(initialStrategyKey || Object.keys(strategies)[0] || 'SMC_ICT');
     const [isScanning, setIsScanning] = useState<boolean>(false);
-    const [scanResults, setScanResults] = useState<ExtendedMarketScannerResult[]>([]);
     const [availableCoins, setAvailableCoins] = useState<FreeCryptoAssetData[]>([]);
     const [selectedCoins, setSelectedCoins] = useState<string[]>([]);
     const [includeBtcConfluence, setIncludeBtcConfluence] = useState<boolean>(false);
@@ -132,7 +126,6 @@ const MarketScanner: React.FC<MarketScannerProps> = ({ apiConfig, userSettings, 
     const handleScan = async () => {
         if (selectedCoins.length === 0) return;
         setIsScanning(true);
-        setScanResults([]);
         setError(null);
 
         try {
@@ -236,13 +229,9 @@ const MarketScanner: React.FC<MarketScannerProps> = ({ apiConfig, userSettings, 
             }
             setScanProgress('Analyzing data with AI...');
 
-            // Determine Data Source Status
-            const dataSource = twelveDataKey ? "TwelveData (Official)" : "FreeCryptoAPI (Fallback)";
-
             // 4. Prepare AI Prompt
             const strategy = strategies[selectedStrategyKey];
             let dataContext = `Market Data (Timeframes: ${selectedTimeframes.join(', ')}):\n\n`;
-            let hasCandleData = false;
 
             // Helper to format multi-timeframe data
             const formatMultiTfData = (sym: string) => {
@@ -255,7 +244,6 @@ const MarketScanner: React.FC<MarketScannerProps> = ({ apiConfig, userSettings, 
                 selectedTimeframes.forEach(tf => {
                     const candles = candlesMap.get(`${sym}_${tf}`);
                     if (candles && candles.length > 0) {
-                        hasCandleData = true;
                         output += `\n[Timeframe: ${tf}]\n`;
                         // Last 5 candles
                         const last5 = candles.slice(-5);
@@ -283,39 +271,47 @@ const MarketScanner: React.FC<MarketScannerProps> = ({ apiConfig, userSettings, 
                 dataContext += formatMultiTfData(tdSymbol);
             });
 
-            let systemInstruction = `You are a professional market analyst and strategy evaluator. Your job is to analyze raw market data against a specific strategy and rank the assets based on technical setup quality.
+            const systemInstruction = `You are an expert trading engine. Your task is to analyze the provided market data for multiple assets and generate precise Trade Setups for the best opportunities.
 
 **STRATEGY:**
 Name: ${strategy.name}
 Logic: ${strategy.prompt}
 
 **TASK:**
-1. **Analyze Structure:** Perform a top-down analysis using the provided timeframes (${selectedTimeframes.join(', ')}). Look for alignment across timeframes (e.g., Higher Timeframe trend + Lower Timeframe entry).
-`;
+1. **Scan & Filter:** Analyze the data for ALL provided assets. Filter for those that match the strategy logic across the provided timeframes (${selectedTimeframes.join(', ')}).
+2. **Generate Setups:** For the matching assets, generate detailed trade setups (Long or Short).
+3. **Output:** Return a SINGLE JSON object containing lists of 'Top Longs' and 'Top Shorts'.
 
-            if (hasCandleData) {
-                systemInstruction += `Use the provided "Recent Candle Data (OHLC)" to visualize the price action. Identify Key Levels, Trends, and Patterns based on the Open, High, Low, Close values.`;
-            } else {
-                systemInstruction += `Analyze the available Price, 24h Change, and Volume to infer market momentum.
-   - **WARNING:** OHLC Candle data is currently UNAVAILABLE. Base your analysis on the scalar metrics provided.`;
-            }
-
-            systemInstruction += `
-2. **Confluence:** If Bitcoin data is provided, use it to gauge general market direction.
-3. **Rank:** Rank the assets from BEST setup to WORST based on how well the data matches the strategy criteria.
-4. **Output:** Return ONLY a valid JSON array.
+**CRITICAL: STOP LOSS PLACEMENT PROTOCOL (${userSettings.stopLossStrategy || 'Standard'})**
+${userSettings.stopLossStrategy === 'Structure-Buffered'
+                    ? `- **MANDATORY:** You MUST place the Stop Loss BEYOND a key market structure level.
+- **BUFFER:** You MUST add a buffer to this level (e.g., ATR or fixed % distance).`
+                    : `- Place the Stop Loss according to the strategy's standard rules.`}
 
 **OUTPUT FORMAT:**
-Return ONLY a valid JSON array:
-[
-  {
-    "asset": "SYMBOL",
-    "score": 0-100,
-    "analysis": "Concise technical analysis citing specific price levels or patterns found across timeframes.",
-    "confluenceWithBtc": true/false
-  },
-  ...
-]`;
+{
+  "Top Longs": [
+    {
+      "type": "Setup Name",
+      "direction": "Long",
+      "symbol": "SYMBOL",
+      "entry": "Specific Price",
+      "entryType": "Limit Order",
+      "entryExplanation": "Reason for entry level",
+      "stopLoss": "Specific Price",
+      "takeProfit1": "Specific Price",
+      "takeProfit2": "Specific Price",
+      "heat": 85,
+      "explanation": "Detailed thesis."
+    }
+  ],
+  "Top Shorts": [ ... ],
+  "strategySuggestion": {
+    "suggestedStrategies": ["${selectedStrategyKey}"],
+    "suggestedSettings": {},
+    "reasoning": "Summary of market conditions and why these assets were chosen."
+  }
+}`;
 
             // 5. Call AI
             const manager = new AiManager({
@@ -329,16 +325,7 @@ Return ONLY a valid JSON array:
             let jsonText = (response.text || "").trim();
 
             if (jsonText.startsWith('AI_GENERATION_FAILED:')) {
-                console.error("AI Generation Failed:", jsonText);
-                const fallbackResults: ExtendedMarketScannerResult[] = selectedCoins.map(s => ({
-                    asset: s,
-                    score: 0,
-                    analysis: `AI Analysis Failed: ${jsonText.split(':')[1]} (Safety Filter or Limit Reached)`,
-                    confluenceWithBtc: false,
-                    dataSource: dataSource,
-                    dataStatus: "AI Error"
-                }));
-                setScanResults(fallbackResults);
+                setError(`AI Generation Failed: ${jsonText.split(':')[1]}`);
                 setIsScanning(false);
                 return;
             }
@@ -348,181 +335,43 @@ Return ONLY a valid JSON array:
             if (fenceMatch) {
                 jsonText = fenceMatch[1];
             } else {
-                const firstOpen = jsonText.indexOf('[');
-                const lastClose = jsonText.lastIndexOf(']');
+                const firstOpen = jsonText.indexOf('{');
+                const lastClose = jsonText.lastIndexOf('}');
                 if (firstOpen !== -1 && lastClose !== -1) {
                     jsonText = jsonText.substring(firstOpen, lastClose + 1);
                 }
             }
 
-            if (!jsonText) {
-                console.warn("AI returned empty response. Falling back to basic analysis.");
-                const fallbackResults: ExtendedMarketScannerResult[] = selectedCoins.map(s => ({
-                    asset: s,
-                    score: 50,
-                    analysis: "AI Analysis Unavailable.",
-                    confluenceWithBtc: false,
-                    dataSource: dataSource,
-                    dataStatus: hasCandleData ? "Quotes: OK, Candles: OK" : "Quotes: OK, Candles: Missing"
-                }));
-                setScanResults(fallbackResults);
-                setIsScanning(false);
-                return;
-            }
-
-            let results: ExtendedMarketScannerResult[];
+            let analysisResults: AnalysisResults;
             try {
-                results = JSON.parse(jsonText) as ExtendedMarketScannerResult[];
-                // Enrich results with data source info
-                results = results.map(r => ({
-                    ...r,
-                    dataSource: dataSource,
-                    dataStatus: hasCandleData ? "Full Data (OHLC)" : "Partial Data (Quotes Only)"
-                }));
+                analysisResults = JSON.parse(jsonText) as AnalysisResults;
             } catch (e) {
                 console.error("Failed to parse AI response:", jsonText);
-                const fallbackResults: ExtendedMarketScannerResult[] = selectedCoins.map(s => ({
-                    asset: s,
-                    score: 50,
-                    analysis: "AI Response Error. Raw: " + jsonText.substring(0, 100) + "...",
-                    confluenceWithBtc: false,
-                    dataSource: dataSource,
-                    dataStatus: "AI Parsing Failed"
-                }));
-                setScanResults(fallbackResults);
+                setError("Failed to parse AI response. Please try again.");
                 setIsScanning(false);
                 return;
             }
 
-            setScanResults(results.sort((a, b) => b.score - a.score));
+            // Enrich results with context
+            const enrichTrade = (t: any) => ({
+                ...t,
+                timeframe: selectedTimeframes[0], // Use primary timeframe
+                analysisContext: { realTimeContextWasUsed: true }
+            });
+
+            if (analysisResults['Top Longs']) {
+                analysisResults['Top Longs'] = analysisResults['Top Longs'].map(enrichTrade);
+            }
+            if (analysisResults['Top Shorts']) {
+                analysisResults['Top Shorts'] = analysisResults['Top Shorts'].map(enrichTrade);
+            }
+
+            // Directly complete analysis and show results
+            onAnalysisComplete(analysisResults, [selectedStrategyKey], {}, true);
 
         } catch (err) {
             console.error("Scan failed", err);
             setError("An error occurred during scanning. Please check your API key and try again.");
-        } finally {
-            setIsScanning(false);
-        }
-    };
-
-    const handleGenerateTrade = async (result: ExtendedMarketScannerResult) => {
-        if (!result.asset) return;
-        setIsScanning(true); // Re-use scanning state for loading UI
-        setError(null);
-
-        try {
-            // Use stored data directly since we just updated it in handleScan
-            const symbol = assetClass === 'Crypto' && !result.asset.includes('/') ? `${result.asset}/USD` : result.asset;
-
-            // Retrieve from IDB to be sure we have the full context for ALL timeframes
-            let multiTfContext = `Asset: ${result.asset}\n`;
-
-            for (const tf of selectedTimeframes) {
-                const candles = await getMarketData(symbol, tf) || [];
-                multiTfContext += `\n[Timeframe: ${tf}]\n`;
-                if (candles.length > 0) {
-                    // Last 10 candles for context
-                    const last10 = candles.slice(-10);
-                    last10.forEach((c: any) => {
-                        const [t, o, h, l, cl] = Array.isArray(c) ? c : [c.datetime, c.open, c.high, c.low, c.close];
-                        multiTfContext += `  ${t}: O:${o} H:${h} L:${l} C:${cl}\n`;
-                    });
-                } else {
-                    multiTfContext += "No Data\n";
-                }
-            }
-
-            const strategy = strategies[selectedStrategyKey];
-
-            const systemInstruction = `You are an expert trading engine. Your task is to generate a precise Trade Setup based on the provided market data and strategy.
-
-**STRATEGY:**
-Name: ${strategy.name}
-Logic: ${strategy.prompt}
-
-**CONTEXT:**
-${multiTfContext}
-
-Previous Analysis: ${result.analysis}
-
-**CRITICAL: STOP LOSS PLACEMENT PROTOCOL (${userSettings.stopLossStrategy || 'Standard'})**
-${userSettings.stopLossStrategy === 'Structure-Buffered'
-                    ? `- **MANDATORY:** You MUST place the Stop Loss BEYOND a key market structure level (Swing High for Short, Swing Low for Long).
-- **BUFFER:** You MUST add a buffer to this level (e.g., ATR or fixed % distance) to avoid liquidity sweeps.
-- **INVALIDATION:** If the price hits this level, the trade thesis is proven wrong. Do not place SL arbitrarily.`
-                    : `- Place the Stop Loss according to the strategy's standard rules.
-- Ensure it is logical, protects the trade from normal volatility, and is not placed at a random level.`}
-
-**PRIORITY HIERARCHY:**
-1. **STOP LOSS:** This is the MOST IMPORTANT part of the setup. Determine this FIRST based on structure/invalidation.
-2. **ENTRY:** Determined secondary to the SL to ensure a valid Risk/Reward ratio.
-3. **TAKE PROFIT:** Tertiary targets based on R:R and opposing structure.
-
-**TASK:**
-Generate a detailed Trade Setup (Long or Short) with Entry, Stop Loss, and Take Profit targets.
-The output MUST be a valid JSON object matching the 'AnalysisResults' structure with a single trade in 'Top Longs' or 'Top Shorts'.
-
-**OUTPUT FORMAT:**
-{
-  "Top Longs": [
-    {
-      "type": "Setup Name",
-      "direction": "Long",
-      "symbol": "${result.asset}",
-      "entry": "Specific Price",
-      "entryType": "Limit Order",
-      "entryExplanation": "Reason for entry level",
-      "stopLoss": "Specific Price",
-      "takeProfit1": "Specific Price",
-      "takeProfit2": "Specific Price (MANDATORY: Must be higher than TP1 for Long, lower for Short)",
-      "heat": 85,
-      "explanation": "Detailed thesis matching the previous analysis."
-    }
-  ],
-  "Top Shorts": [],
-  "strategySuggestion": {
-    "suggestedStrategies": ["${selectedStrategyKey}"],
-    "suggestedSettings": {},
-    "reasoning": "Strategy fit reasoning"
-  }
-}
-(If Short, put in Top Shorts and empty Top Longs)`;
-
-            const manager = new AiManager({
-                apiConfig,
-                preferredProvider: userSettings.aiProviderAnalysis
-            });
-
-            const response = await manager.generateContent(systemInstruction, [{ text: "Generate Trade Setup" }]);
-            onLogTokenUsage(response.usage.totalTokenCount);
-
-            let jsonText = (response.text || "").trim();
-            const fenceMatch = jsonText.match(/^```json\s*([\s\S]*?)\s*```$/) || jsonText.match(/^```\s*([\s\S]*?)\s*```$/);
-            if (fenceMatch) jsonText = fenceMatch[1];
-
-            const analysisResults = JSON.parse(jsonText) as AnalysisResults;
-
-            // Pass results to main view
-            // Inject timeframe and analysisContext into the trade
-            if (analysisResults['Top Longs']) {
-                analysisResults['Top Longs'] = analysisResults['Top Longs'].map(t => ({
-                    ...t,
-                    timeframe: selectedTimeframes[0], // Use primary timeframe
-                    analysisContext: { realTimeContextWasUsed: true }
-                }));
-            }
-            if (analysisResults['Top Shorts']) {
-                analysisResults['Top Shorts'] = analysisResults['Top Shorts'].map(t => ({
-                    ...t,
-                    timeframe: selectedTimeframes[0], // Use primary timeframe
-                    analysisContext: { realTimeContextWasUsed: true }
-                }));
-            }
-
-            onAnalysisComplete(analysisResults, [selectedStrategyKey], {}, true);
-
-        } catch (e) {
-            console.error("Failed to generate trade:", e);
-            setError("Failed to generate trade setup. Please try again.");
         } finally {
             setIsScanning(false);
         }
@@ -671,7 +520,7 @@ The output MUST be a valid JSON object matching the 'AnalysisResults' structure 
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                         </svg>
-                        Scan Selected Assets
+                        Scan & Generate Trades
                     </>
                 )}
             </button>
@@ -680,66 +529,6 @@ The output MUST be a valid JSON object matching the 'AnalysisResults' structure 
             {error && (
                 <div className="bg-red-900/20 border border-red-800 text-red-300 px-4 py-3 rounded-lg text-sm">
                     {error}
-                </div>
-            )}
-
-            {/* Results */}
-            {scanResults.length > 0 && (
-                <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                        <span className="w-2 h-6 bg-blue-500 rounded-full"></span>
-                        Scan Results
-                    </h3>
-                    <div className="grid gap-4">
-                        {scanResults.map((result, idx) => (
-                            <div key={idx} className="bg-[hsl(var(--color-bg-800)/0.5)] border border-[hsl(var(--color-border-700))] rounded-lg p-4 hover:border-blue-500/50 transition-colors">
-                                <div className="flex justify-between items-start mb-2">
-                                    <div>
-                                        <h4 className="text-xl font-bold text-white">{result.asset}</h4>
-                                        <div className="flex items-center gap-2 mt-1">
-                                            <span className={`px-2 py-0.5 rounded text-xs font-bold ${result.score >= 80 ? 'bg-green-900/50 text-green-400' :
-                                                result.score >= 50 ? 'bg-yellow-900/50 text-yellow-400' :
-                                                    'bg-red-900/50 text-red-400'
-                                                }`}>
-                                                Score: {result.score}
-                                            </span>
-                                            {result.confluenceWithBtc && (
-                                                <span className="px-2 py-0.5 rounded text-xs font-bold bg-blue-900/50 text-blue-400">
-                                                    BTC Confluence
-                                                </span>
-                                            )}
-                                        </div>
-                                    </div>
-                                    <button
-                                        onClick={() => handleGenerateTrade(result)}
-                                        className="bg-green-600 hover:bg-green-500 text-white px-3 py-1.5 rounded-md text-sm font-bold shadow-lg shadow-green-900/20 transition-all flex items-center gap-1"
-                                    >
-                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-                                            <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clipRule="evenodd" />
-                                        </svg>
-                                        Generate Trade
-                                    </button>
-                                </div>
-                                <p className="text-gray-300 text-sm leading-relaxed mb-3">{result.analysis}</p>
-
-                                {/* Data Source Status Footer */}
-                                <div className="flex items-center gap-3 pt-3 border-t border-[hsl(var(--color-border-700))] text-xs text-gray-500">
-                                    <div className="flex items-center gap-1">
-                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3">
-                                            <path fillRule="evenodd" d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-5.5-2.5a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0ZM10 12a5.99 5.99 0 0 0-4.793 2.39A9.948 9.948 0 0 1 10 15c1.126 0 2.2.184 3.207.519A5.99 5.99 0 0 0 10 12Z" clipRule="evenodd" />
-                                        </svg>
-                                        Source: <span className="text-gray-400">{result.dataSource || 'Unknown'}</span>
-                                    </div>
-                                    <div className="flex items-center gap-1">
-                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3">
-                                            <path fillRule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm.75-13a.75.75 0 0 0-1.5 0v5c0 .414.336.75.75.75h4a.75.75 0 0 0 0-1.5h-3.25V5Z" clipRule="evenodd" />
-                                        </svg>
-                                        Status: <span className={`font-medium ${result.dataStatus?.includes('Missing') ? 'text-red-400' : 'text-green-400'}`}>{result.dataStatus || 'Unknown'}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
                 </div>
             )}
         </div>
