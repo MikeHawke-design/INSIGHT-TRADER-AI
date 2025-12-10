@@ -72,69 +72,38 @@ export class AiManager {
         const promises: Promise<{ provider: string, response: StandardizedResponse | null, error?: any }>[] = [];
 
         // 1. Launch Parallel Requests
-        // We use a helper to catch errors individually so Promise.all doesn't fail immediately
-        const safeGenerate = async (provider: string, generator: () => Promise<StandardizedResponse>) => {
-            try {
-                const res = await generator();
-                return { provider, response: res };
-            } catch (err: any) {
-                console.warn(`Council Member ${provider} failed:`, err);
-                return { provider, response: null, error: err };
-            }
-        };
-
         if (this.apiConfig.geminiApiKey || import.meta.env.VITE_API_KEY) {
-            promises.push(safeGenerate('Gemini', () => this.generateGemini(systemInstruction, userPrompt)));
+            promises.push(this.generateGemini(systemInstruction, userPrompt).then(res => ({ provider: 'Gemini', response: res })).catch(err => ({ provider: 'Gemini', response: null, error: err })));
         }
         if (this.apiConfig.openaiApiKey) {
-            promises.push(safeGenerate('OpenAI', () => this.generateOpenAI(systemInstruction, userPrompt)));
+            promises.push(this.generateOpenAI(systemInstruction, userPrompt).then(res => ({ provider: 'OpenAI', response: res })).catch(err => ({ provider: 'OpenAI', response: null, error: err })));
         }
         if (this.apiConfig.groqApiKey) {
-            promises.push(safeGenerate('Groq', () => this.generateGroq(systemInstruction, userPrompt)));
+            promises.push(this.generateGroq(systemInstruction, userPrompt).then(res => ({ provider: 'Groq', response: res })).catch(err => ({ provider: 'Groq', response: null, error: err })));
         }
 
         const results = await Promise.all(promises);
         const successfulResponses = results.filter(r => r.response !== null);
 
         if (successfulResponses.length === 0) {
-            // Log the specific errors for debugging
-            const errors = results.map(r => `${r.provider}: ${r.error?.message || 'Unknown Error'}`).join(', ');
-            throw new Error(`Council Mode Failed: All providers failed. Details: ${errors}`);
+            throw new Error("Council Mode Failed: All providers failed to generate a response.");
         }
 
         // 2. Synthesize Results
         // We need a "Judge" to synthesize. We prefer Gemini or OpenAI for this reasoning task.
-        // ROBUSTNESS IMPROVEMENT: Try primary judge, then fallback to secondary.
+        let judgeProvider: 'gemini' | 'openai' = 'gemini';
 
-        const tryJudge = async (provider: 'gemini' | 'openai'): Promise<StandardizedResponse> => {
-            try {
-                if (provider === 'openai') {
-                    if (!this.apiConfig.openaiApiKey) throw new Error("OpenAI key missing for Judge");
-                    return await this.generateOpenAI(systemInstruction, synthesisPrompt);
-                } else {
-                    return await this.generateGemini(systemInstruction, synthesisPrompt);
-                }
-            } catch (err) {
-                console.warn(`Judge ${provider} failed:`, err);
-                throw err;
-            }
-        };
+        if (this.apiConfig.openaiApiKey) {
+            judgeProvider = 'openai';
+        } else {
+            judgeProvider = 'gemini'; // Default to Gemini (usually free/available)
+        }
 
-        const councilTranscript = results.map(r => {
-            if (r.response) {
-                return `
+        const councilTranscript = successfulResponses.map(r => `
 --- OPINION FROM ${r.provider.toUpperCase()} ---
-${r.response.text}
+${r.response?.text}
 ------------------------------------------------
-`;
-            } else {
-                return `
---- OPINION FROM ${r.provider.toUpperCase()} ---
-[FAILED TO GENERATE OPINION: ${r.error?.message || 'Unknown Error'}]
-------------------------------------------------
-`;
-            }
-        }).join('\n\n');
+`).join('\n\n');
 
         const synthesisPrompt = `
 You are the High Council Judge.
@@ -150,7 +119,6 @@ Your job is to SYNTHESIZE these opinions into a SINGLE, FINAL VERDICT.
 2.  **SYNERGY & CONSENSUS:**
     - **Combine Strengths:** If Model A identifies the correct Asset/Timeframe but misses the Setup, and Model B finds a valid Setup but misses the Asset, **COMBINE THEM**. Use Model B's Setup with Model A's Asset.
     - **Filter Hallucinations:** If one model sees a pattern that others explicitly contradict or miss, be skeptical. However, if the reasoning is sound and evidence is cited (e.g., specific candle times), give it weight.
-    - **Handle Failures:** Some council members may have failed to report. Ignore their missing input and focus solely on the successful opinions.
 
 3.  **STRICT STRATEGY ADHERENCE:**
     - The user's strategy is law. If a model proposes a trade that violates the strategy rules, REJECT IT.
@@ -165,31 +133,12 @@ Your job is to SYNTHESIZE these opinions into a SINGLE, FINAL VERDICT.
 ${councilTranscript}
 `;
 
-        // Attempt Judgment with Fallback
-        let finalResponse: StandardizedResponse | null = null;
-        let judgeError: any = null;
-
-        // Priority 1: OpenAI (if available)
-        if (this.apiConfig.openaiApiKey) {
-            try {
-                finalResponse = await tryJudge('openai');
-            } catch (e) {
-                judgeError = e;
-                console.warn("Primary Judge (OpenAI) failed, attempting fallback to Gemini...");
-            }
-        }
-
-        // Priority 2: Gemini (Fallback or Primary if OpenAI missing)
-        if (!finalResponse) {
-            try {
-                finalResponse = await tryJudge('gemini');
-            } catch (e) {
-                judgeError = e; // Overwrite or set error
-            }
-        }
-
-        if (!finalResponse) {
-            throw new Error(`Council Judgment Failed: All Judge providers failed. Last error: ${judgeError?.message}`);
+        // Call the Judge
+        let finalResponse: StandardizedResponse;
+        if (judgeProvider === 'openai') {
+            finalResponse = await this.generateOpenAI(systemInstruction, synthesisPrompt); // Pass system instruction again to keep context
+        } else {
+            finalResponse = await this.generateGemini(systemInstruction, synthesisPrompt);
         }
 
         // Sum up tokens for billing/tracking
@@ -226,66 +175,40 @@ ${councilTranscript}
 
     private async generateGemini(systemInstruction: string, userPrompt: string | Part[], modelOverride?: string): Promise<StandardizedResponse> {
         const client = this.getGeminiClient();
-        // Use specific version to avoid alias resolution issues
-        const primaryModel = modelOverride || 'gemini-1.5-flash-001';
+        const model = modelOverride || 'gemini-2.5-flash';
 
         const contents = typeof userPrompt === 'string'
             ? [{ role: 'user', parts: [{ text: userPrompt }] }]
             : [{ role: 'user', parts: userPrompt }];
 
-        try {
-            const response = await client.models.generateContent({
-                model: primaryModel,
-                contents: contents,
-                config: {
-                    systemInstruction: systemInstruction,
-                    maxOutputTokens: 65536,
-                }
-            });
-
-            let text = response.text || "";
-            if (!text && response.candidates && response.candidates.length > 0) {
-                const candidate = response.candidates[0];
-                if (candidate.finishReason && candidate.finishReason !== 'STOP') {
-                    text = `AI_GENERATION_FAILED: ${candidate.finishReason}`;
-                }
+        const response = await client.models.generateContent({
+            model: model,
+            contents: contents,
+            config: {
+                systemInstruction: systemInstruction,
+                maxOutputTokens: 65536,
             }
+        });
 
-            return {
-                text: text,
-                usage: {
-                    totalTokenCount: response.usageMetadata?.totalTokenCount || 0
-                }
-            };
-        } catch (error: any) {
-            // Fallback for 404 (Model Not Found) or other errors
-            if (primaryModel.includes('flash') && (error.message?.includes('404') || error.message?.includes('not found'))) {
-                console.warn(`Gemini model ${primaryModel} not found. Falling back to gemini-pro...`);
-                try {
-                    const fallbackResponse = await client.models.generateContent({
-                        model: 'gemini-pro',
-                        contents: contents,
-                        config: {
-                            systemInstruction: systemInstruction,
-                        }
-                    });
-                    return {
-                        text: fallbackResponse.text || "",
-                        usage: {
-                            totalTokenCount: fallbackResponse.usageMetadata?.totalTokenCount || 0
-                        }
-                    };
-                } catch (fallbackError) {
-                    throw fallbackError; // Throw the fallback error if that fails too
-                }
+        let text = response.text || "";
+        if (!text && response.candidates && response.candidates.length > 0) {
+            const candidate = response.candidates[0];
+            if (candidate.finishReason && candidate.finishReason !== 'STOP') {
+                text = `AI_GENERATION_FAILED: ${candidate.finishReason}`;
             }
-            throw error;
         }
+
+        return {
+            text: text,
+            usage: {
+                totalTokenCount: response.usageMetadata?.totalTokenCount || 0
+            }
+        };
     }
 
     private async generateOpenAI(systemInstruction: string, userPrompt: string | Part[], modelOverride?: string): Promise<StandardizedResponse> {
         const client = this.getOpenAIClient();
-        let model = modelOverride || 'gpt-4o'; // Default to GPT-4o
+        const model = modelOverride || 'gpt-4o'; // Default to GPT-4o for OpenAI
 
         const messages: any[] = [
             { role: "system", content: systemInstruction }
@@ -299,37 +222,18 @@ ${councilTranscript}
             messages.push({ role: "user", content: contentParts });
         }
 
-        try {
-            const response = await client.chat.completions.create({
-                model: model,
-                messages: messages,
-                max_tokens: 4096,
-            });
+        const response = await client.chat.completions.create({
+            model: model,
+            messages: messages,
+            max_tokens: 4096,
+        });
 
-            return {
-                text: response.choices[0].message.content || "",
-                usage: {
-                    totalTokenCount: response.usage?.total_tokens || 0
-                }
-            };
-        } catch (error: any) {
-            // Fallback to gpt-4o-mini if gpt-4o fails (e.g. rate limit or quota)
-            if (model === 'gpt-4o' && (error.status === 429 || error.status === 402 || error.status === 400)) {
-                console.warn("GPT-4o failed, falling back to GPT-4o-mini...", error);
-                const fallbackResponse = await client.chat.completions.create({
-                    model: 'gpt-4o-mini',
-                    messages: messages,
-                    max_tokens: 4096,
-                });
-                return {
-                    text: fallbackResponse.choices[0].message.content || "",
-                    usage: {
-                        totalTokenCount: fallbackResponse.usage?.total_tokens || 0
-                    }
-                };
+        return {
+            text: response.choices[0].message.content || "",
+            usage: {
+                totalTokenCount: response.usage?.total_tokens || 0
             }
-            throw error;
-        }
+        };
     }
 
     private async generateGroq(systemInstruction: string, userPrompt: string | Part[], modelOverride?: string): Promise<StandardizedResponse> {
@@ -378,8 +282,7 @@ ${councilTranscript}
         modelOverride?: string
     ): Promise<StandardizedResponse> {
         const client = this.getGeminiClient();
-        // Use specific version to avoid alias resolution issues
-        const primaryModel = modelOverride || 'gemini-1.5-flash-001';
+        const model = modelOverride || 'gemini-2.5-flash';
 
         // Convert history to Gemini format
         const geminiHistory = history.map(msg => ({
@@ -389,46 +292,20 @@ ${councilTranscript}
 
         const newParts = typeof newMessage === 'string' ? [{ text: newMessage }] : newMessage;
 
-        try {
-            const chat = client.chats.create({
-                model: primaryModel,
-                config: { systemInstruction, maxOutputTokens: 8192 },
-                history: geminiHistory
-            });
+        const chat = client.chats.create({
+            model: model,
+            config: { systemInstruction, maxOutputTokens: 8192 },
+            history: geminiHistory
+        });
 
-            const response = await chat.sendMessage({ message: newParts });
+        const response = await chat.sendMessage({ message: newParts });
 
-            return {
-                text: response.text || "",
-                usage: {
-                    totalTokenCount: response.usageMetadata?.totalTokenCount || 0
-                }
-            };
-        } catch (error: any) {
-            // Fallback for 404 (Model Not Found) or other errors
-            if (primaryModel.includes('flash') && (error.message?.includes('404') || error.message?.includes('not found'))) {
-                console.warn(`Gemini Chat model ${primaryModel} not found. Falling back to gemini-pro...`);
-                try {
-                    const chat = client.chats.create({
-                        model: 'gemini-pro',
-                        config: { systemInstruction, maxOutputTokens: 8192 },
-                        history: geminiHistory
-                    });
-
-                    const response = await chat.sendMessage({ message: newParts });
-
-                    return {
-                        text: response.text || "",
-                        usage: {
-                            totalTokenCount: response.usageMetadata?.totalTokenCount || 0
-                        }
-                    };
-                } catch (fallbackError) {
-                    throw fallbackError;
-                }
+        return {
+            text: response.text || "",
+            usage: {
+                totalTokenCount: response.usageMetadata?.totalTokenCount || 0
             }
-            throw error;
-        }
+        };
     }
 
     private async chatOpenAI(
@@ -438,7 +315,7 @@ ${councilTranscript}
         modelOverride?: string
     ): Promise<StandardizedResponse> {
         const client = this.getOpenAIClient();
-        let model = modelOverride || 'gpt-4o';
+        const model = modelOverride || 'gpt-4o';
 
         const messages: any[] = [
             { role: "system", content: systemInstruction }
@@ -462,37 +339,18 @@ ${councilTranscript}
             messages.push({ role: "user", content: contentParts });
         }
 
-        try {
-            const response = await client.chat.completions.create({
-                model: model,
-                messages: messages,
-                max_tokens: 4096,
-            });
+        const response = await client.chat.completions.create({
+            model: model,
+            messages: messages,
+            max_tokens: 4096,
+        });
 
-            return {
-                text: response.choices[0].message.content || "",
-                usage: {
-                    totalTokenCount: response.usage?.total_tokens || 0
-                }
-            };
-        } catch (error: any) {
-            // Fallback to gpt-4o-mini if gpt-4o fails
-            if (model === 'gpt-4o' && (error.status === 429 || error.status === 402 || error.status === 400)) {
-                console.warn("GPT-4o Chat failed, falling back to GPT-4o-mini...", error);
-                const fallbackResponse = await client.chat.completions.create({
-                    model: 'gpt-4o-mini',
-                    messages: messages,
-                    max_tokens: 4096,
-                });
-                return {
-                    text: fallbackResponse.choices[0].message.content || "",
-                    usage: {
-                        totalTokenCount: fallbackResponse.usage?.total_tokens || 0
-                    }
-                };
+        return {
+            text: response.choices[0].message.content || "",
+            usage: {
+                totalTokenCount: response.usage?.total_tokens || 0
             }
-            throw error;
-        }
+        };
     }
 
     private async chatGroq(

@@ -56,26 +56,157 @@ ${strategiesText}
 };
 
 
-import { generateConstitutionalPrompt } from '../utils/aiConstitution';
-
 // System prompt for the final analysis
 const generateSystemInstructionContent = (
     selectedStrategies: StrategyKey[],
     userSettings: UserSettings,
+    uploadedImagesData: UploadedImageKeys,
     strategyLogicData: Record<StrategyKey, StrategyLogicData>,
     currentPrice: number | null,
     isComparisonMode: boolean
 ): string => {
-    const strategies = selectedStrategies.map(key => strategyLogicData[key]).filter(Boolean);
+    const strategyDetails = selectedStrategies.map(key => {
+        const logic = strategyLogicData[key];
+        if (!logic) return `// Invalid Strategy Key: ${key}`;
+        return `
+--- STRATEGY: ${logic.name} ---
+${logic.prompt}
+--- END STRATEGY ---
+    `;
+    }).join('\n\n');
 
-    return generateConstitutionalPrompt(
-        userSettings,
-        strategies,
-        {
-            currentPrice: currentPrice,
-            isComparisonMode: isComparisonMode
-        }
-    );
+    const imageReferencesExplanation = Object.keys(uploadedImagesData).length > 0 ?
+        `The user has provided screenshots. These are your PRIMARY source for market conditions.` :
+        "No screenshots were provided. Rely solely on the cached historical data.";
+
+
+
+    const currentPriceAnchorPrompt = currentPrice ?
+        `THE CURRENT PRICE IS \`${currentPrice.toFixed(4)}\`. This is your non-negotiable anchor point.` :
+        `Your first step is to identify the 'current price' from the user's screenshots (the closing price of the most recent candle).`;
+
+    const basePrompt = `You are The Oracle, a specialist AI that transforms user-defined trading strategies into concrete, actionable trade setups.
+
+**PRIMARY DIRECTIVE: ALWAYS GENERATE A TRADE SETUP WITH FULL DATA**
+You must ALWAYS generate a trade setup for every input, even if conditions are not fully met.
+- If conditions are met: Set 'entryType' to "Limit Order".
+- If conditions are NOT met: Set 'entryType' to "Confirmation Entry" and explain what needs to happen.
+- **CRITICAL:** You MUST provide specific numeric values for 'entry', 'stopLoss', 'takeProfit1', and 'takeProfit2' for EVERY trade, even if it is a "Confirmation Entry".
+  - For Confirmation Entries, use the key level (e.g., breakout point, support level) as the 'entry'.
+  - NEVER return 'N/A', 'Pending', or empty strings for these fields.
+  - NEVER return an empty trade list due to "market conditions".
+
+**== INPUT DATA ==**
+1.  **USER STRATEGY LOGIC:**\n${strategyDetails}
+2.  **USER PREFERENCES:**
+    - Risk Appetite: ${userSettings.riskAppetite}
+    - Minimum R:R: ${userSettings.minRiskRewardRatio}:1
+    - Stop Loss Logic: ${userSettings.stopLossStrategy}
+3.  **MARKET DATA:**
+    - **Current Price Anchor:** ${currentPriceAnchorPrompt}
+    - **Chart Screenshots:** ${imageReferencesExplanation}
+`;
+
+    if (isComparisonMode) {
+        return `${basePrompt}
+
+**== STRICT STRATEGY ADHERENCE (CRITICAL) ==**
+You are a disciplined Risk Manager. Your job is to strictly audit potential trades against the user's strategy.
+- **DO NOT HALLUCINATE SETUPS:** If the chart does not show the specific conditions required by the strategy, do NOT invent them.
+- **STRICT RULE FOLLOWING:** If the strategy requires a "Break of Structure" and there is none, the trade is INVALID (Heat 1).
+- **NO "CLOSE ENOUGH":** A setup must meet the core criteria. If it's a "maybe", mark it as a "Confirmation Entry" with low heat (1-2).
+- **EXPLAIN YOUR REASONING:** In the 'explanation' field, explicitly state WHICH rule was met and WHICH was missed.
+
+**== ASSET COMPARISON PROTOCOL (ENABLED) ==**
+The user has uploaded charts for MULTIPLE DIFFERENT ASSETS to compare them against the strategy criteria.
+**YOUR GOAL:** Analyze the STRENGTH and POTENTIAL of a setup for EACH asset. Do NOT generate specific trade execution details (Entry/SL/TP).
+
+1.  **IDENTIFY ASSETS:** Treat each image (or set of images) as a distinct asset. Identify the asset symbol/name.
+2.  **EVALUATE EACH:** Apply the strategy logic to EACH asset independently.
+3.  **RANKING:** Rank the assets from best fit to worst fit based on the strategy requirements.
+4.  **OUTPUT:** Your response MUST be valid JSON.
+    - **CRITICAL:** \`Top Longs\` and \`Top Shorts\` MUST BE EMPTY ARRAYS \`[]\`. Do not generate trades here.
+    - **CRITICAL:** You MUST populate the \`assetComparisonResults\` array with an entry for EVERY analyzed asset.
+    
+    **Output JSON Structure for Comparison:**
+    {
+      "Top Longs": [],
+      "Top Shorts": [],
+      "strategySuggestion": { ... },
+      "assetComparisonResults": [
+         {
+            "asset": "Asset Name (e.g., BTC/USD)",
+            "sentiment": "Bullish" | "Bearish" | "Neutral",
+            "heat": 1-5 (integer, 5 = Ready/Perfect, 1 = Bad/Wait),
+            "brief": "Detailed explanation of the analysis. Why is it good? What are we waiting for? Use ||| to separate sections if needed, but keep it readable."
+         },
+         ...
+      ]
+    }
+`;
+    }
+
+    return `${basePrompt}
+
+**== EXECUTION PROTOCOL (NON-NEGOTIABLE) ==**
+
+**== STRICT STRATEGY ADHERENCE (CRITICAL) ==**
+You are a disciplined Risk Manager. Your job is to strictly audit potential trades against the user's strategy.
+- **DO NOT HALLUCINATE SETUPS:** If the chart does not show the specific conditions required by the strategy, do NOT invent them.
+- **STRICT RULE FOLLOWING:** If the strategy requires a "Break of Structure" and there is none, the trade is INVALID (Heat 1).
+- **NO "CLOSE ENOUGH":** A setup must meet the core criteria. If it's a "maybe", mark it as a "Confirmation Entry" with low heat (1-2).
+- **EXPLAIN YOUR REASONING:** In the 'explanation' field, explicitly state WHICH rule was met and WHICH was missed.
+
+1.  **MANDATORY PRE-FLIGHT INDICATOR CHECK:**
+    - Analyze the STRATEGY LOGIC for required indicators (e.g., ADX, RSI).
+    - If indicators are missing, DO NOT ABORT. Instead, proceed with price action analysis but lower the 'heat' score and mention the missing confirmation in the explanation.
+
+2.  **MANDATORY DATA COMPLETENESS (CRITICAL):**
+    - **Symbol Extraction:** You MUST identify the asset symbol (e.g., "BTC/USD", "EUR/USD", "NVDA").
+        - **LOOK EVERYWHERE:** Check top-left, top-right, watermarks in the background, and axis labels.
+        - **PRICE HEURISTIC:** If the symbol is not explicitly clear, USE THE PRICE to guess. (e.g., Price ~90,000 = BTC; Price ~3,000 = ETH; Price ~1.05 = EUR/USD).
+        - **DO NOT RETURN "ASSET" or "UNKNOWN":** Make your best educated guess based on the visual evidence.
+    - **Timeframe Extraction:** You MUST identify the chart timeframe (e.g., "15m", "4H", "Daily"). Look next to the symbol.
+    - **Entry/Exit Prices:** MUST be valid numeric strings. Do not use ranges (e.g., "1.05-1.06"). Pick a specific level.
+    - **Take Profit 2 (TP2):** MANDATORY. You MUST provide a second take profit level. If the strategy doesn't specify one, calculate it as a logical extension (e.g., 2R or next resistance).
+    - **Consistency:** Ensure the values in the JSON match the values mentioned in your explanation text.
+
+3.  **APPLY LOGIC & JUSTIFY:**
+    - For EACH trade, you MUST write an 'explanation' string that is strictly segmented into three parts using the delimiter "|||".
+    - **Format:** "Strategy Match: [Why it fits] ||| Evidence: [Chart observations] ||| Execution & Risk: [Plan]"
+    - **CRITICAL:** Do NOT use HTML tags in the explanation. Use plain text. The UI will handle formatting.
+    - Keep it concise, professional, and direct. No fluff.
+
+4.  **HEAT MAP (CONFIDENCE):**
+    - Assign a 'heat' score (1-5) to every trade.
+    - 5 = Perfect setup, all conditions met.
+    - 1 = Weak setup, waiting for major confirmation.
+
+5.  **MANDATORY CHART METADATA IDENTIFICATION:**
+    - For each uploaded image, identify its timeframe (e.g., "Daily", "4H", "15m") and any other relevant labels (e.g., "BTCUSD"). Populate the \`chartMetadata\` field in the JSON output with this information, mapping the image index to its detected label.
+
+6.  **DATA SYNERGY EXPLANATION (MANDATORY):**
+    - For EACH trade, you MUST populate the \`dataSynergy\` field.
+    - **Goal:** Explain specifically how the live numeric data (price, volume, indicators) confirmed or contradicted the visual patterns in the chart.
+    - **Format:** "Live Data Confirmation: [Specific data point e.g., 'RSI at 65'] confirms [Visual pattern e.g., 'Bullish Divergence']. Volume [value] supports the move."
+    - This is your "behind the curtain" explanation to the user.
+
+**== OUTPUT FORMAT (NON-NEGOTIABLE) ==**
+Your response MUST be a single, valid JSON object.
+{
+  "Top Longs": [/* Array of Trade objects with 'heat' property */],
+  "Top Shorts": [/* Array of Trade objects with 'heat' property */],
+  "strategySuggestion": {
+    "suggestedStrategies": [],
+    "suggestedSettings": {},
+    "reasoning": "Mandatory explanation string using HTML formatting."
+  },
+  "chartMetadata": {
+    "0": "Detected Label for Image 0 (e.g., '4H Chart')",
+    "1": "Detected Label for Image 1 (e.g., '15m Chart')"
+  }
+}
+`;
 };
 
 type Phase = 'idle' | 'gathering' | 'validating' | 'ready' | 'analyzing';
@@ -604,7 +735,7 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
 
         try {
             const systemInstruction = generateSystemInstructionContent(
-                selectedStrategies, userSettings, strategyLogicData,
+                selectedStrategies, userSettings, uploadedImagesData, strategyLogicData,
                 currentPrice, isComparisonMode
             ) + liveMarketDataContext;
 
