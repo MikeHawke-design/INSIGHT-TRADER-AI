@@ -815,8 +815,6 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
             results['Top Shorts'] = fillMissingEntry(results['Top Shorts'] ?? [], 'Short');
 
             if (identifiedTimeframe) {
-                results['Top Longs'] = results['Top Longs'].map(t => ({ ...t, timeframe: identifiedTimeframe }));
-                results['Top Shorts'] = results['Top Shorts'].map(t => ({ ...t, timeframe: identifiedTimeframe }));
                 // Inject analysis context and timeframe into trades
                 const enrichTrade = (t: any) => ({
                     ...t,

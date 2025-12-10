@@ -207,7 +207,7 @@ export class FreeCryptoApi {
 
 export const formatAssetDataForPrompt = (data: FreeCryptoAssetData, candles?: any[]): string => {
     let output = `Symbol: ${data.symbol}\n`;
-    output += `Price: $${data.price}\n`;
+    output += `Price: $${typeof data.price === 'number' ? data.price.toFixed(5) : data.price}\n`;
     output += `24h Change: ${data.change_24h}%\n`;
     output += `Volume: $${data.volume}\n`;
     output += `Market Cap: $${data.market_cap}\n`;
