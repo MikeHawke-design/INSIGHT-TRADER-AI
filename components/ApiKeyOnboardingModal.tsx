@@ -40,7 +40,7 @@ const ApiKeyOnboardingModal: React.FC<ApiKeyOnboardingModalProps> = ({ isOpen, o
         if (geminiApiKey.trim()) {
             try {
                 const ai = new GoogleGenAI({ apiKey: geminiApiKey });
-                await ai.models.generateContent({ model: 'gemini-1.5-flash', contents: 'test' });
+                await ai.models.generateContent({ model: 'gemini-1.5-flash-001', contents: 'test' });
             } catch (e) {
                 const errorMessage = e instanceof Error ? e.message : 'An unknown error occurred.';
                 if (errorMessage.toLowerCase().includes('api key not valid')) {

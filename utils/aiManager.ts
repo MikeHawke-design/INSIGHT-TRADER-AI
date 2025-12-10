@@ -226,36 +226,61 @@ ${councilTranscript}
 
     private async generateGemini(systemInstruction: string, userPrompt: string | Part[], modelOverride?: string): Promise<StandardizedResponse> {
         const client = this.getGeminiClient();
-        // FIX: gemini-2.5-flash does not exist. Using gemini-1.5-flash as stable default.
-        const model = modelOverride || 'gemini-1.5-flash';
+        // Use specific version to avoid alias resolution issues
+        const primaryModel = modelOverride || 'gemini-1.5-flash-001';
 
         const contents = typeof userPrompt === 'string'
             ? [{ role: 'user', parts: [{ text: userPrompt }] }]
             : [{ role: 'user', parts: userPrompt }];
 
-        const response = await client.models.generateContent({
-            model: model,
-            contents: contents,
-            config: {
-                systemInstruction: systemInstruction,
-                maxOutputTokens: 65536,
-            }
-        });
+        try {
+            const response = await client.models.generateContent({
+                model: primaryModel,
+                contents: contents,
+                config: {
+                    systemInstruction: systemInstruction,
+                    maxOutputTokens: 65536,
+                }
+            });
 
-        let text = response.text || "";
-        if (!text && response.candidates && response.candidates.length > 0) {
-            const candidate = response.candidates[0];
-            if (candidate.finishReason && candidate.finishReason !== 'STOP') {
-                text = `AI_GENERATION_FAILED: ${candidate.finishReason}`;
+            let text = response.text || "";
+            if (!text && response.candidates && response.candidates.length > 0) {
+                const candidate = response.candidates[0];
+                if (candidate.finishReason && candidate.finishReason !== 'STOP') {
+                    text = `AI_GENERATION_FAILED: ${candidate.finishReason}`;
+                }
             }
+
+            return {
+                text: text,
+                usage: {
+                    totalTokenCount: response.usageMetadata?.totalTokenCount || 0
+                }
+            };
+        } catch (error: any) {
+            // Fallback for 404 (Model Not Found) or other errors
+            if (primaryModel.includes('flash') && (error.message?.includes('404') || error.message?.includes('not found'))) {
+                console.warn(`Gemini model ${primaryModel} not found. Falling back to gemini-pro...`);
+                try {
+                    const fallbackResponse = await client.models.generateContent({
+                        model: 'gemini-pro',
+                        contents: contents,
+                        config: {
+                            systemInstruction: systemInstruction,
+                        }
+                    });
+                    return {
+                        text: fallbackResponse.text || "",
+                        usage: {
+                            totalTokenCount: fallbackResponse.usageMetadata?.totalTokenCount || 0
+                        }
+                    };
+                } catch (fallbackError) {
+                    throw fallbackError; // Throw the fallback error if that fails too
+                }
+            }
+            throw error;
         }
-
-        return {
-            text: text,
-            usage: {
-                totalTokenCount: response.usageMetadata?.totalTokenCount || 0
-            }
-        };
     }
 
     private async generateOpenAI(systemInstruction: string, userPrompt: string | Part[], modelOverride?: string): Promise<StandardizedResponse> {
@@ -353,8 +378,8 @@ ${councilTranscript}
         modelOverride?: string
     ): Promise<StandardizedResponse> {
         const client = this.getGeminiClient();
-        // FIX: gemini-2.5-flash does not exist. Using gemini-1.5-flash as stable default.
-        const model = modelOverride || 'gemini-1.5-flash';
+        // Use specific version to avoid alias resolution issues
+        const primaryModel = modelOverride || 'gemini-1.5-flash-001';
 
         // Convert history to Gemini format
         const geminiHistory = history.map(msg => ({
@@ -364,20 +389,46 @@ ${councilTranscript}
 
         const newParts = typeof newMessage === 'string' ? [{ text: newMessage }] : newMessage;
 
-        const chat = client.chats.create({
-            model: model,
-            config: { systemInstruction, maxOutputTokens: 8192 },
-            history: geminiHistory
-        });
+        try {
+            const chat = client.chats.create({
+                model: primaryModel,
+                config: { systemInstruction, maxOutputTokens: 8192 },
+                history: geminiHistory
+            });
 
-        const response = await chat.sendMessage({ message: newParts });
+            const response = await chat.sendMessage({ message: newParts });
 
-        return {
-            text: response.text || "",
-            usage: {
-                totalTokenCount: response.usageMetadata?.totalTokenCount || 0
+            return {
+                text: response.text || "",
+                usage: {
+                    totalTokenCount: response.usageMetadata?.totalTokenCount || 0
+                }
+            };
+        } catch (error: any) {
+            // Fallback for 404 (Model Not Found) or other errors
+            if (primaryModel.includes('flash') && (error.message?.includes('404') || error.message?.includes('not found'))) {
+                console.warn(`Gemini Chat model ${primaryModel} not found. Falling back to gemini-pro...`);
+                try {
+                    const chat = client.chats.create({
+                        model: 'gemini-pro',
+                        config: { systemInstruction, maxOutputTokens: 8192 },
+                        history: geminiHistory
+                    });
+
+                    const response = await chat.sendMessage({ message: newParts });
+
+                    return {
+                        text: response.text || "",
+                        usage: {
+                            totalTokenCount: response.usageMetadata?.totalTokenCount || 0
+                        }
+                    };
+                } catch (fallbackError) {
+                    throw fallbackError;
+                }
             }
-        };
+            throw error;
+        }
     }
 
     private async chatOpenAI(
