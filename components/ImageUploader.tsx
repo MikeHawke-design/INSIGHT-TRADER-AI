@@ -848,7 +848,8 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
         systemInstruction += `\n\n**IMPORTANT OUTPUT FORMATTING & RULES:**
 1. **EXPLANATION FORMAT:** For the "explanation" field, you MUST use the "|||" separator format: "Strategy Match: [text] ||| Chart Evidence: [text] ||| Execution & Risk: [text]"
 2. **HEAT SCORE (0-100):** BE STRICT. Do NOT default to 100. 90+ is for perfect setups only. Average is 60-70.
-3. **RISK/REWARD:** You MUST respect the user's minimum R:R of **${userSettings.minRiskRewardRatio}**. Adjust TPs accordingly.`;
+3. **RISK/REWARD:** You MUST respect the user's minimum R:R of **${userSettings.minRiskRewardRatio}**. Adjust TPs accordingly.
+4. **ASSET SYMBOL:** If the asset symbol was not identified in the context, you MUST EXTRACT IT VISUALLY from the chart image (e.g., look for "BTCUSD", "EURUSD", "NVDA" in the top left corner). Do NOT return "ASSET" or "UNKNOWN" if it is visible.`;
 
         setProgressMessage("Analyzing charts & data...");
 
