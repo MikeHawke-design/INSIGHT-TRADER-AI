@@ -148,6 +148,19 @@ The user has uploaded charts for MULTIPLE DIFFERENT ASSETS to compare them again
 
     return `${basePrompt}
 
+**CRITICAL: STOP LOSS PLACEMENT PROTOCOL (${userSettings.stopLossStrategy || 'Standard'})**
+${userSettings.stopLossStrategy === 'Structure-Buffered'
+            ? `- **MANDATORY:** You MUST place the Stop Loss BEYOND a key market structure level (Swing High for Short, Swing Low for Long).
+- **BUFFER:** You MUST add a buffer to this level (e.g., ATR or fixed % distance) to avoid liquidity sweeps.
+- **INVALIDATION:** If the price hits this level, the trade thesis is proven wrong. Do not place SL arbitrarily.`
+            : `- Place the Stop Loss according to the strategy's standard rules.
+- Ensure it is logical, protects the trade from normal volatility, and is not placed at a random level.`}
+
+**PRIORITY HIERARCHY:**
+1. **STOP LOSS:** This is the MOST IMPORTANT part of the setup. Determine this FIRST based on structure/invalidation.
+2. **ENTRY:** Determined secondary to the SL to ensure a valid Risk/Reward ratio.
+3. **TAKE PROFIT:** Tertiary targets based on R:R and opposing structure.
+
 **== EXECUTION PROTOCOL (NON-NEGOTIABLE) ==**
 
 **== STRICT STRATEGY ADHERENCE (CRITICAL) ==**
