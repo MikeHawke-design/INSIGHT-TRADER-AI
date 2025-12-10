@@ -302,7 +302,7 @@ ${userSettings.stopLossStrategy === 'Structure-Buffered'
       "takeProfit1": "Specific Price",
       "takeProfit2": "Specific Price",
       "heat": 85,
-      "explanation": "Detailed thesis."
+      "explanation": "Strategy Match: [Detailed explanation of how the strategy logic applies] ||| Chart Evidence: [Specific price action, indicators, or patterns observed] ||| Execution & Risk: [Plan for entry, stop loss placement, and risk management]"
     }
   ],
   "Top Shorts": [ ... ],

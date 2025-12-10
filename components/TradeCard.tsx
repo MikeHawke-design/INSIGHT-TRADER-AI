@@ -95,11 +95,7 @@ const extractPrice = (priceString: string | number): number => {
 
 const formatStrategyName = (name: string = ''): string => name.replace(/^\d+-/, '').replace(/-/g, ' ');
 
-const InfoIcon = (props: { className?: string }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" {...props}>
-        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-    </svg>
-);
+
 
 const AddResultImageIcon = (props: { className?: string }) => (
     <svg {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
@@ -216,7 +212,6 @@ const TradeCard: React.FC<TradeCardProps> = ({
 }) => {
     const isLong = trade.direction === 'Long';
     const [isExplanationOpen, setIsExplanationOpen] = useState(false);
-    const [isEntryExplanationVisible, setIsEntryExplanationVisible] = useState(false);
     const [isCouncilOpen, setIsCouncilOpen] = useState(false);
     const [feedbackText, setFeedbackText] = useState(feedback?.text || '');
     const isCoachingTrade = 'isFromCoaching' in trade && trade.isFromCoaching;
@@ -320,9 +315,6 @@ R:R: 1:${rr.toFixed(2)}`;
         return 'text-red-400';
     }, [rr]);
 
-    const isEntryDescriptive = useMemo(() => String(trade.entry || '').includes(' '), [trade.entry]);
-    const isSlDescriptive = useMemo(() => String(trade.stopLoss || '').includes(' '), [trade.stopLoss]);
-
     useEffect(() => { ensureAnimationStyles(); }, []);
     useEffect(() => { setFeedbackText(feedback?.text || ''); }, [feedback?.text]);
 
@@ -404,48 +396,69 @@ R:R: 1:${rr.toFixed(2)}`;
                         </div>
                     )}
 
-                    <div className="grid grid-cols-2 gap-x-4 gap-y-3">
-                        <div className="col-span-2 text-left">
-                            <p className="text-gray-400 uppercase font-semibold" style={{ fontSize: `${userSettings.uiFontSize - 2}px` }}>Entry</p>
-                            <div className="flex items-center justify-center gap-2 mt-1">
-                                <div className={`${isEntryDescriptive ? '' : 'font-mono text-center'} font-bold text-white`} style={{ fontSize: `${isEntryDescriptive ? userSettings.dataFontSize - 2 : userSettings.dataFontSize}px`, lineHeight: isEntryDescriptive ? '1.5' : '1' }} dangerouslySetInnerHTML={{ __html: trade.entry || '-' }} />
-                                <CopyButton text={trade.entry} />
-                            </div>
-                            <div className={`mt-1 flex items-center ${isEntryDescriptive ? 'justify-start' : 'justify-center'} space-x-2`}>
-                                <span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${trade.entryType === 'Limit Order' ? 'bg-blue-600 text-blue-100' : 'bg-orange-600 text-orange-100'}`}>{trade.entryType}</span>
-                                {trade.entryType === 'Confirmation Entry' && trade.entryExplanation && (
-                                    <div className="relative">
-                                        <button onMouseEnter={() => setIsEntryExplanationVisible(true)} onMouseLeave={() => setIsEntryExplanationVisible(false)} className="text-gray-400 hover:text-yellow-300"><InfoIcon className="w-4 h-4" /></button>
-                                        {isEntryExplanationVisible && (
-                                            <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-max max-w-[240px] bg-[hsl(var(--color-bg-900))] text-white rounded-lg py-2 px-3 z-10 border border-[hsl(var(--color-border-600))] shadow-lg text-left animate-fadeIn whitespace-normal" style={{ fontSize: `${userSettings.uiFontSize - 1}px` }}>{trade.entryExplanation}</div>
-                                        )}
+                    <div className="space-y-4">
+                        {/* Entry Section */}
+                        <div>
+                            <p className="text-gray-500 text-xs font-bold uppercase mb-1">ENTRY</p>
+                            <div className="flex flex-col items-center justify-center">
+                                <div className="flex items-center gap-2">
+                                    <div className="text-2xl font-bold text-white tracking-wider font-mono">
+                                        {trade.entry}
                                     </div>
-                                )}
+                                    <CopyButton text={trade.entry} />
+                                </div>
+                                <span className={`mt-1 px-3 py-0.5 text-xs font-bold rounded-full ${trade.entryType === 'Limit Order' ? 'bg-blue-600 text-white' : 'bg-orange-600 text-white'}`}>
+                                    {trade.entryType}
+                                </span>
                             </div>
                         </div>
-                        <div className="col-span-2 text-left">
-                            <p className="text-red-400 uppercase font-semibold" style={{ fontSize: `${userSettings.uiFontSize - 2}px` }}>Stop Loss</p>
-                            <div className="flex items-center justify-center gap-2 mt-1">
-                                <div className={`${isSlDescriptive ? '' : 'font-mono text-center'} font-bold text-white`} style={{ fontSize: `${isSlDescriptive ? userSettings.dataFontSize - 2 : userSettings.dataFontSize}px`, lineHeight: isSlDescriptive ? '1.5' : '1' }} dangerouslySetInnerHTML={{ __html: trade.stopLoss || '-' }} />
-                                <CopyButton text={trade.stopLoss} />
+
+                        {/* Stop Loss Section */}
+                        <div>
+                            <p className="text-red-400 text-xs font-bold uppercase mb-1">STOP LOSS</p>
+                            <div className="flex flex-col items-center justify-center">
+                                <div className="flex items-center gap-2">
+                                    <div className="text-2xl font-bold text-white tracking-wider font-mono">
+                                        {trade.stopLoss}
+                                    </div>
+                                    <CopyButton text={trade.stopLoss} />
+                                </div>
                             </div>
                         </div>
-                        <div className="col-span-2 text-center py-2 my-1 border-y-2 border-[hsl(var(--color-border-700)/0.5)]">
-                            <p className={`font-mono font-bold ${rrColor}`} style={{ fontSize: `${userSettings.dataFontSize + 8}px` }}>{rr.toFixed(2)} : 1</p>
-                            <p className="text-gray-400 uppercase font-semibold" style={{ fontSize: `${userSettings.uiFontSize - 2}px` }}>Risk / Reward Ratio <span className="normal-case">(to TP1)</span></p>
-                        </div>
+
+                        {/* Divider */}
+                        <div className="border-t-2 border-[hsl(var(--color-border-700)/0.5)] w-full"></div>
+
+                        {/* Risk / Reward Section */}
                         <div className="text-center">
-                            <p className="text-green-400 uppercase font-semibold" style={{ fontSize: `${userSettings.uiFontSize - 2}px` }}>TP 1</p>
-                            <div className="flex items-center justify-center gap-2">
-                                <p className="font-mono font-bold text-white" style={{ fontSize: `${userSettings.dataFontSize}px` }} dangerouslySetInnerHTML={{ __html: trade.takeProfit1 }} />
-                                <CopyButton text={trade.takeProfit1} />
+                            <div className={`text-3xl font-bold font-mono ${rrColor}`}>
+                                {rr.toFixed(2)} <span className="text-gray-500 text-xl">:</span> 1
                             </div>
+                            <p className="text-gray-500 text-[10px] font-bold uppercase mt-1">RISK / REWARD RATIO (to TP1)</p>
                         </div>
-                        <div className="text-center">
-                            <p className="text-green-400 uppercase font-semibold" style={{ fontSize: `${userSettings.uiFontSize - 2}px` }}>TP 2</p>
-                            <div className="flex items-center justify-center gap-2">
-                                <p className="font-mono font-bold text-white" style={{ fontSize: `${userSettings.dataFontSize}px` }} dangerouslySetInnerHTML={{ __html: trade.takeProfit2 }} />
-                                <CopyButton text={trade.takeProfit2} />
+
+                        {/* Divider */}
+                        <div className="border-t-2 border-[hsl(var(--color-border-700)/0.5)] w-full"></div>
+
+                        {/* Take Profits Section */}
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="text-center">
+                                <p className="text-green-400 text-xs font-bold uppercase mb-1">TP 1</p>
+                                <div className="flex items-center justify-center gap-2">
+                                    <div className="text-xl font-bold text-white font-mono">
+                                        {trade.takeProfit1}
+                                    </div>
+                                    <CopyButton text={trade.takeProfit1} />
+                                </div>
+                            </div>
+                            <div className="text-center">
+                                <p className="text-green-400 text-xs font-bold uppercase mb-1">TP 2</p>
+                                <div className="flex items-center justify-center gap-2">
+                                    <div className="text-xl font-bold text-white font-mono">
+                                        {trade.takeProfit2}
+                                    </div>
+                                    <CopyButton text={trade.takeProfit2} />
+                                </div>
                             </div>
                         </div>
                     </div>

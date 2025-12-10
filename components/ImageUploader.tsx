@@ -844,6 +844,9 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
         );
         systemInstruction += liveMarketDataContext;
 
+        // Force explanation format for UI segmentation
+        systemInstruction += `\n\n**IMPORTANT OUTPUT FORMATTING:**\nFor the "explanation" field in your JSON output, you MUST use the following format with "|||" separators:\n"Strategy Match: [text] ||| Chart Evidence: [text] ||| Execution & Risk: [text]"`;
+
         setProgressMessage("Analyzing charts & data...");
 
         // 3. Call AI for Final Analysis
