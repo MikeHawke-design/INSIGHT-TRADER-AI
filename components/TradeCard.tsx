@@ -372,6 +372,11 @@ R:R: 1:${rr.toFixed(2)}`;
                             ) : (
                                 <p className="text-xs text-gray-500">Generated Just Now</p>
                             )}
+                            {trade.tokenUsage && (
+                                <p className="text-[10px] text-gray-600 mt-0.5" title="AI Tokens used to generate this trade">
+                                    AI Tokens: {trade.tokenUsage.toLocaleString()}
+                                </p>
+                            )}
                         </div>
                         {onSave && (
                             <button onClick={() => onSave(trade)} disabled={isSaved} className={`px-3 py-1 text-sm font-semibold rounded-md transition-colors ${isSaved ? 'bg-green-600 text-white cursor-default' : 'bg-blue-600 text-white hover:bg-blue-500'}`}>

@@ -908,6 +908,7 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
                     ...trade,
                     direction: direction,
                     entry: (trade.entry && String(trade.entry).trim()) ? String(trade.entry) : 'N/A',
+                    tokenUsage: totalTokenCount,
                     // Inject timeframe if we identified it during hybrid analysis
                     timeframe: undefined
                 }));

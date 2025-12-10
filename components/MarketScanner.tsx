@@ -320,7 +320,8 @@ ${userSettings.stopLossStrategy === 'Structure-Buffered'
             });
 
             const response = await manager.generateContent(systemInstruction, [{ text: dataContext }]);
-            onLogTokenUsage(response.usage.totalTokenCount);
+            const tokenUsage = response.usage.totalTokenCount;
+            onLogTokenUsage(tokenUsage);
 
             let jsonText = (response.text || "").trim();
 
@@ -352,11 +353,12 @@ ${userSettings.stopLossStrategy === 'Structure-Buffered'
                 return;
             }
 
-            // Enrich results with context
+            // Enrich results with context and token usage
             const enrichTrade = (t: any) => ({
                 ...t,
                 timeframe: selectedTimeframes[0], // Use primary timeframe
-                analysisContext: { realTimeContextWasUsed: true }
+                analysisContext: { realTimeContextWasUsed: true },
+                tokenUsage: tokenUsage
             });
 
             if (analysisResults['Top Longs']) {

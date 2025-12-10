@@ -36,6 +36,7 @@ export interface Trade {
     analysisContext?: {
         realTimeContextWasUsed: boolean;
     };
+    tokenUsage?: number;
 }
 
 export type TradeOutcome = 'TP1 & TP2' | 'TP1 -> B/E' | 'TP1' | 'B/E' | 'SL' | null;
