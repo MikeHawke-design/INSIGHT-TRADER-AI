@@ -385,7 +385,7 @@ export const MasterControlsView: React.FC<MasterControlsViewProps> = ({
 - The entire response must be ONLY the JSON object, without any markdown formatting.`;
 
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-1.5-flash',
             contents: `Generate a course for the provided strategy.`,
             config: { systemInstruction, responseMimeType: 'application/json' }
         });
@@ -443,7 +443,7 @@ export const MasterControlsView: React.FC<MasterControlsViewProps> = ({
 
             const fn = async () => {
                 const response = await ai.models.generateContent({
-                    model: 'gemini-2.5-flash',
+                    model: 'gemini-1.5-flash',
                     contents: `Here is the user's trading strategy document:\n\n---\n\n${content}`,
                     config: config
                 });

@@ -226,7 +226,8 @@ ${councilTranscript}
 
     private async generateGemini(systemInstruction: string, userPrompt: string | Part[], modelOverride?: string): Promise<StandardizedResponse> {
         const client = this.getGeminiClient();
-        const model = modelOverride || 'gemini-2.5-flash';
+        // FIX: gemini-2.5-flash does not exist. Using gemini-1.5-flash as stable default.
+        const model = modelOverride || 'gemini-1.5-flash';
 
         const contents = typeof userPrompt === 'string'
             ? [{ role: 'user', parts: [{ text: userPrompt }] }]
@@ -259,7 +260,7 @@ ${councilTranscript}
 
     private async generateOpenAI(systemInstruction: string, userPrompt: string | Part[], modelOverride?: string): Promise<StandardizedResponse> {
         const client = this.getOpenAIClient();
-        const model = modelOverride || 'gpt-4o'; // Default to GPT-4o for OpenAI
+        let model = modelOverride || 'gpt-4o'; // Default to GPT-4o
 
         const messages: any[] = [
             { role: "system", content: systemInstruction }
@@ -273,18 +274,37 @@ ${councilTranscript}
             messages.push({ role: "user", content: contentParts });
         }
 
-        const response = await client.chat.completions.create({
-            model: model,
-            messages: messages,
-            max_tokens: 4096,
-        });
+        try {
+            const response = await client.chat.completions.create({
+                model: model,
+                messages: messages,
+                max_tokens: 4096,
+            });
 
-        return {
-            text: response.choices[0].message.content || "",
-            usage: {
-                totalTokenCount: response.usage?.total_tokens || 0
+            return {
+                text: response.choices[0].message.content || "",
+                usage: {
+                    totalTokenCount: response.usage?.total_tokens || 0
+                }
+            };
+        } catch (error: any) {
+            // Fallback to gpt-4o-mini if gpt-4o fails (e.g. rate limit or quota)
+            if (model === 'gpt-4o' && (error.status === 429 || error.status === 402 || error.status === 400)) {
+                console.warn("GPT-4o failed, falling back to GPT-4o-mini...", error);
+                const fallbackResponse = await client.chat.completions.create({
+                    model: 'gpt-4o-mini',
+                    messages: messages,
+                    max_tokens: 4096,
+                });
+                return {
+                    text: fallbackResponse.choices[0].message.content || "",
+                    usage: {
+                        totalTokenCount: fallbackResponse.usage?.total_tokens || 0
+                    }
+                };
             }
-        };
+            throw error;
+        }
     }
 
     private async generateGroq(systemInstruction: string, userPrompt: string | Part[], modelOverride?: string): Promise<StandardizedResponse> {
@@ -333,7 +353,8 @@ ${councilTranscript}
         modelOverride?: string
     ): Promise<StandardizedResponse> {
         const client = this.getGeminiClient();
-        const model = modelOverride || 'gemini-2.5-flash';
+        // FIX: gemini-2.5-flash does not exist. Using gemini-1.5-flash as stable default.
+        const model = modelOverride || 'gemini-1.5-flash';
 
         // Convert history to Gemini format
         const geminiHistory = history.map(msg => ({
@@ -366,7 +387,7 @@ ${councilTranscript}
         modelOverride?: string
     ): Promise<StandardizedResponse> {
         const client = this.getOpenAIClient();
-        const model = modelOverride || 'gpt-4o';
+        let model = modelOverride || 'gpt-4o';
 
         const messages: any[] = [
             { role: "system", content: systemInstruction }
@@ -390,18 +411,37 @@ ${councilTranscript}
             messages.push({ role: "user", content: contentParts });
         }
 
-        const response = await client.chat.completions.create({
-            model: model,
-            messages: messages,
-            max_tokens: 4096,
-        });
+        try {
+            const response = await client.chat.completions.create({
+                model: model,
+                messages: messages,
+                max_tokens: 4096,
+            });
 
-        return {
-            text: response.choices[0].message.content || "",
-            usage: {
-                totalTokenCount: response.usage?.total_tokens || 0
+            return {
+                text: response.choices[0].message.content || "",
+                usage: {
+                    totalTokenCount: response.usage?.total_tokens || 0
+                }
+            };
+        } catch (error: any) {
+            // Fallback to gpt-4o-mini if gpt-4o fails
+            if (model === 'gpt-4o' && (error.status === 429 || error.status === 402 || error.status === 400)) {
+                console.warn("GPT-4o Chat failed, falling back to GPT-4o-mini...", error);
+                const fallbackResponse = await client.chat.completions.create({
+                    model: 'gpt-4o-mini',
+                    messages: messages,
+                    max_tokens: 4096,
+                });
+                return {
+                    text: fallbackResponse.choices[0].message.content || "",
+                    usage: {
+                        totalTokenCount: fallbackResponse.usage?.total_tokens || 0
+                    }
+                };
             }
-        };
+            throw error;
+        }
     }
 
     private async chatGroq(
