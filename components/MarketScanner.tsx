@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { MarketScannerResult, StrategyLogicData, ApiConfiguration, FreeCryptoAssetData, UserSettings, StrategyKey, AnalysisResults, UploadedImageKeys } from '../types';
-import { FreeCryptoApi, formatAssetDataForPrompt } from '../utils/freeCryptoApi';
+import { FreeCryptoApi } from '../utils/freeCryptoApi';
 import { TwelveDataApi } from '../utils/twelveDataApi';
 import { AiManager } from '../utils/aiManager';
 import { getMarketData, setMarketData } from '../idb';
@@ -36,7 +36,7 @@ const STOCKS = [
 ];
 
 const MarketScanner: React.FC<MarketScannerProps> = ({ apiConfig, userSettings, onLogTokenUsage, strategies, selectedStrategyKey: initialStrategyKey, onAnalysisComplete }) => {
-    const [selectedTimeframe, setSelectedTimeframe] = useState<string>('4h');
+    const [selectedTimeframes, setSelectedTimeframes] = useState<string[]>(['4h']);
     const [selectedStrategyKey, setSelectedStrategyKey] = useState<string>(initialStrategyKey || Object.keys(strategies)[0] || 'SMC_ICT');
     const [isScanning, setIsScanning] = useState<boolean>(false);
     const [scanResults, setScanResults] = useState<ExtendedMarketScannerResult[]>([]);
@@ -116,6 +116,19 @@ const MarketScanner: React.FC<MarketScannerProps> = ({ apiConfig, userSettings, 
         }
     };
 
+    const toggleTimeframe = (tf: string) => {
+        if (selectedTimeframes.includes(tf)) {
+            // Prevent deselecting the last one
+            if (selectedTimeframes.length > 1) {
+                setSelectedTimeframes(selectedTimeframes.filter(t => t !== tf));
+            }
+        } else {
+            if (selectedTimeframes.length < 3) {
+                setSelectedTimeframes([...selectedTimeframes, tf]);
+            }
+        }
+    };
+
     const handleScan = async () => {
         if (selectedCoins.length === 0) return;
         setIsScanning(true);
@@ -124,8 +137,6 @@ const MarketScanner: React.FC<MarketScannerProps> = ({ apiConfig, userSettings, 
 
         try {
             // 1. Prepare Symbols for TwelveData
-            // Crypto needs /USD appended if not present (CoinGecko symbols are usually just BTC, ETH)
-            // Forex pairs are already formatted (EUR/USD)
             const targetSymbols = selectedCoins.map(s => {
                 if (assetClass === 'Crypto' && !s.includes('/')) return `${s}/USD`;
                 return s;
@@ -137,89 +148,88 @@ const MarketScanner: React.FC<MarketScannerProps> = ({ apiConfig, userSettings, 
             }
 
             // 2. Fetch Data (Sequential with Delay to respect API limits)
-            // We skip the separate 'Quote' call to save API credits. We will derive price/change from candles.
-
-            const quotesMap = new Map<string, FreeCryptoAssetData>();
+            // Map key: "SYMBOL_TIMEFRAME" -> candles[]
             const candlesMap = new Map<string, any[]>();
+            const quotesMap = new Map<string, FreeCryptoAssetData>();
             const totalAssets = targetSymbols.length;
 
             for (let i = 0; i < totalAssets; i++) {
                 const symbol = targetSymbols[i];
                 setScanProgress(`Fetching data for ${symbol} (${i + 1}/${totalAssets})...`);
 
-                try {
-                    // --- SMART FETCH LOGIC ---
-                    // 1. Check IDB for existing data
-                    const storedCandles = await getMarketData(symbol, selectedTimeframe) || [];
-                    let startDate: string | undefined;
+                // Fetch for ALL selected timeframes
+                for (const tf of selectedTimeframes) {
+                    try {
+                        // --- SMART FETCH LOGIC ---
+                        // 1. Check IDB for existing data
+                        const storedCandles = await getMarketData(symbol, tf) || [];
+                        let startDate: string | undefined;
 
-                    if (storedCandles.length > 0) {
-                        const lastCandle = storedCandles[storedCandles.length - 1];
-                        // TwelveData/Candle format: [time, open, high, low, close, volume]
-                        const lastTime = Array.isArray(lastCandle) ? lastCandle[0] : (lastCandle.time || lastCandle.date);
-                        if (lastTime) startDate = lastTime;
+                        if (storedCandles.length > 0) {
+                            const lastCandle = storedCandles[storedCandles.length - 1];
+                            const lastTime = Array.isArray(lastCandle) ? lastCandle[0] : (lastCandle.time || lastCandle.date);
+                            if (lastTime) startDate = lastTime;
+                        }
+
+                        // 2. Fetch New Data
+                        let newCandles: any[] = [];
+                        if (twelveDataKey) {
+                            // TwelveData supports start_date
+                            newCandles = await dataApi.getCandles(symbol, tf, startDate);
+                        } else {
+                            // FreeCryptoAPI fallback (fetch all/limit and merge)
+                            newCandles = await dataApi.getCandles(symbol, tf);
+                        }
+
+                        // 3. Merge & Save
+                        let mergedCandles = [...storedCandles];
+                        if (newCandles.length > 0) {
+                            const getTime = (c: any) => new Date(Array.isArray(c) ? c[0] : (c.time || c.date)).getTime();
+                            const existingTimes = new Set(storedCandles.map(c => getTime(c)));
+                            const uniqueNew = newCandles.filter(c => !existingTimes.has(getTime(c)));
+                            mergedCandles = [...storedCandles, ...uniqueNew];
+                            mergedCandles.sort((a, b) => getTime(a) - getTime(b));
+
+                            // Save to IDB
+                            await setMarketData(symbol, tf, mergedCandles);
+                        }
+
+                        // Use merged candles for analysis
+                        candlesMap.set(`${symbol}_${tf}`, mergedCandles);
+
+                        // Derive "Quote" data from the PRIMARY timeframe (first selected)
+                        if (tf === selectedTimeframes[0] && mergedCandles.length > 0) {
+                            const newest = mergedCandles[mergedCandles.length - 1];
+                            const currentPrice = newest[4]; // Close
+
+                            let candlesBack = 1;
+                            if (tf === '1m') candlesBack = 1440;
+                            else if (tf === '5m') candlesBack = 288;
+                            else if (tf === '15m') candlesBack = 96;
+                            else if (tf === '1h') candlesBack = 24;
+                            else if (tf === '4h') candlesBack = 6;
+
+                            const pastIndex = Math.max(0, mergedCandles.length - 1 - candlesBack);
+                            const pastCandle = mergedCandles[pastIndex];
+                            const pastPrice = pastCandle ? pastCandle[4] : currentPrice;
+
+                            const change24h = ((currentPrice - pastPrice) / pastPrice) * 100;
+
+                            quotesMap.set(symbol, {
+                                symbol: symbol,
+                                price: currentPrice,
+                                change_24h: change24h,
+                                market_cap: 0,
+                                volume: newest[5] || 0
+                            });
+                        }
+
+                    } catch (e) {
+                        console.warn(`Failed to fetch/process candles for ${symbol} ${tf}`, e);
                     }
-
-                    // 2. Fetch New Data
-                    let newCandles: any[] = [];
-                    if (twelveDataKey) {
-                        // TwelveData supports start_date
-                        newCandles = await dataApi.getCandles(symbol, selectedTimeframe, startDate);
-                    } else {
-                        // FreeCryptoAPI fallback (fetch all/limit and merge)
-                        newCandles = await dataApi.getCandles(symbol, selectedTimeframe);
-                    }
-
-                    // 3. Merge & Save
-                    let mergedCandles = [...storedCandles];
-                    if (newCandles.length > 0) {
-                        const getTime = (c: any) => new Date(Array.isArray(c) ? c[0] : (c.time || c.date)).getTime();
-                        const existingTimes = new Set(storedCandles.map(c => getTime(c)));
-                        const uniqueNew = newCandles.filter(c => !existingTimes.has(getTime(c)));
-                        mergedCandles = [...storedCandles, ...uniqueNew];
-                        mergedCandles.sort((a, b) => getTime(a) - getTime(b));
-
-                        // Save to IDB
-                        await setMarketData(symbol, selectedTimeframe, mergedCandles);
-                    }
-
-                    // Use merged candles for analysis
-                    candlesMap.set(symbol, mergedCandles);
-
-                    // Derive "Quote" data from candles to save an API call
-                    if (mergedCandles.length > 0) {
-                        const newest = mergedCandles[mergedCandles.length - 1];
-                        const currentPrice = newest[4]; // Close
-
-                        let candlesBack = 1;
-                        if (selectedTimeframe === '1m') candlesBack = 1440;
-                        else if (selectedTimeframe === '5m') candlesBack = 288;
-                        else if (selectedTimeframe === '15m') candlesBack = 96;
-                        else if (selectedTimeframe === '1h') candlesBack = 24;
-                        else if (selectedTimeframe === '4h') candlesBack = 6;
-
-                        const pastIndex = Math.max(0, mergedCandles.length - 1 - candlesBack);
-                        const pastCandle = mergedCandles[pastIndex];
-                        const pastPrice = pastCandle ? pastCandle[4] : currentPrice;
-
-                        const change24h = ((currentPrice - pastPrice) / pastPrice) * 100;
-
-                        quotesMap.set(symbol, {
-                            symbol: symbol,
-                            price: currentPrice,
-                            change_24h: change24h,
-                            market_cap: 0,
-                            volume: newest[5] || 0
-                        });
-                    }
-
-                } catch (e) {
-                    console.warn(`Failed to fetch/process candles for ${symbol}`, e);
                 }
 
-                // Add delay between requests to avoid rate limits (only if we actually hit the API)
-                // If we have a lot of stored data and only fetch small updates, we might still hit limits if we blast requests.
-                // Safer to keep the delay.
+                // Add delay between assets
                 if (i < totalAssets - 1) {
                     await new Promise(resolve => setTimeout(resolve, 1500));
                 }
@@ -231,34 +241,46 @@ const MarketScanner: React.FC<MarketScannerProps> = ({ apiConfig, userSettings, 
 
             // 4. Prepare AI Prompt
             const strategy = strategies[selectedStrategyKey];
-            let dataContext = `Market Data (Timeframe: ${selectedTimeframe}):\n\n`;
+            let dataContext = `Market Data (Timeframes: ${selectedTimeframes.join(', ')}):\n\n`;
             let hasCandleData = false;
+
+            // Helper to format multi-timeframe data
+            const formatMultiTfData = (sym: string) => {
+                let output = `--- ASSET: ${sym} ---\n`;
+                const quote = quotesMap.get(sym);
+                if (quote) {
+                    output += `Price: ${quote.price} | 24h Change: ${quote.change_24h.toFixed(2)}% | Volume: ${quote.volume}\n`;
+                }
+
+                selectedTimeframes.forEach(tf => {
+                    const candles = candlesMap.get(`${sym}_${tf}`);
+                    if (candles && candles.length > 0) {
+                        hasCandleData = true;
+                        output += `\n[Timeframe: ${tf}]\n`;
+                        // Last 5 candles
+                        const last5 = candles.slice(-5);
+                        last5.forEach(c => {
+                            const [t, o, h, l, cl] = Array.isArray(c) ? c : [c.datetime, c.open, c.high, c.low, c.close];
+                            output += `  ${t}: O:${o} H:${h} L:${l} C:${cl}\n`;
+                        });
+                    } else {
+                        output += `\n[Timeframe: ${tf}]: No Data\n`;
+                    }
+                });
+                return output + "\n";
+            };
 
             // Handle BTC Confluence Data
             if (includeBtcConfluence && assetClass === 'Crypto') {
-                const btcSymbol = 'BTC/USD';
-                const btcQuote = quotesMap.get(btcSymbol);
-                const btcCandles = candlesMap.get(btcSymbol);
-
-                if (btcQuote) {
-                    if (btcCandles && btcCandles.length > 0) hasCandleData = true;
-                    dataContext += `--- BITCOIN (MARKET LEADER / CONFLUENCE) ---\n${formatAssetDataForPrompt(btcQuote, btcCandles)}\n----------------------------------\n\n`;
-                }
+                dataContext += `--- BITCOIN (MARKET LEADER / CONFLUENCE) ---\n`;
+                dataContext += formatMultiTfData('BTC/USD');
+                dataContext += `----------------------------------\n\n`;
             }
 
             // Handle Target Assets
-            // We iterate over selectedCoins but need to map to the TwelveData symbol format we used
             selectedCoins.forEach(coinSymbol => {
                 const tdSymbol = (assetClass === 'Crypto' && !coinSymbol.includes('/')) ? `${coinSymbol}/USD` : coinSymbol;
-                const quote = quotesMap.get(tdSymbol);
-                const candles = candlesMap.get(tdSymbol);
-
-                if (quote) {
-                    if (candles && candles.length > 0) hasCandleData = true;
-                    dataContext += `--- ASSET: ${coinSymbol} ---\n${formatAssetDataForPrompt(quote, candles)}\n\n`;
-                } else {
-                    dataContext += `--- ASSET: ${coinSymbol} ---\nData Unavailable\n\n`;
-                }
+                dataContext += formatMultiTfData(tdSymbol);
             });
 
             let systemInstruction = `You are a professional market analyst and strategy evaluator. Your job is to analyze raw market data against a specific strategy and rank the assets based on technical setup quality.
@@ -268,7 +290,8 @@ Name: ${strategy.name}
 Logic: ${strategy.prompt}
 
 **TASK:**
-1. **Analyze Structure:** `;
+1. **Analyze Structure:** Perform a top-down analysis using the provided timeframes (${selectedTimeframes.join(', ')}). Look for alignment across timeframes (e.g., Higher Timeframe trend + Lower Timeframe entry).
+`;
 
             if (hasCandleData) {
                 systemInstruction += `Use the provided "Recent Candle Data (OHLC)" to visualize the price action. Identify Key Levels, Trends, and Patterns based on the Open, High, Low, Close values.`;
@@ -288,7 +311,7 @@ Return ONLY a valid JSON array:
   {
     "asset": "SYMBOL",
     "score": 0-100,
-    "analysis": "Concise technical analysis citing specific price levels or patterns found.",
+    "analysis": "Concise technical analysis citing specific price levels or patterns found across timeframes.",
     "confluenceWithBtc": true/false
   },
   ...
@@ -337,7 +360,7 @@ Return ONLY a valid JSON array:
                 const fallbackResults: ExtendedMarketScannerResult[] = selectedCoins.map(s => ({
                     asset: s,
                     score: 50,
-                    analysis: "AI Analysis Unavailable. Market data: " + (quotesMap.get(s + (assetClass === 'Crypto' ? '/USD' : ''))?.price ? `Price $${quotesMap.get(s + (assetClass === 'Crypto' ? '/USD' : ''))?.price}` : "No Data"),
+                    analysis: "AI Analysis Unavailable.",
                     confluenceWithBtc: false,
                     dataSource: dataSource,
                     dataStatus: hasCandleData ? "Quotes: OK, Candles: OK" : "Quotes: OK, Candles: Missing"
@@ -390,18 +413,24 @@ Return ONLY a valid JSON array:
             // Use stored data directly since we just updated it in handleScan
             const symbol = assetClass === 'Crypto' && !result.asset.includes('/') ? `${result.asset}/USD` : result.asset;
 
-            // Retrieve from IDB to be sure we have the full context
-            const candles = await getMarketData(symbol, selectedTimeframe) || [];
+            // Retrieve from IDB to be sure we have the full context for ALL timeframes
+            let multiTfContext = `Asset: ${result.asset}\n`;
 
-            // Construct a quote object from the last candle
-            let quote: FreeCryptoAssetData = { symbol, price: 0, change_24h: 0, market_cap: 0, volume: 0 };
-            if (candles.length > 0) {
-                const last = candles[candles.length - 1];
-                quote.price = last[4];
-                quote.volume = last[5];
+            for (const tf of selectedTimeframes) {
+                const candles = await getMarketData(symbol, tf) || [];
+                multiTfContext += `\n[Timeframe: ${tf}]\n`;
+                if (candles.length > 0) {
+                    // Last 10 candles for context
+                    const last10 = candles.slice(-10);
+                    last10.forEach((c: any) => {
+                        const [t, o, h, l, cl] = Array.isArray(c) ? c : [c.datetime, c.open, c.high, c.low, c.close];
+                        multiTfContext += `  ${t}: O:${o} H:${h} L:${l} C:${cl}\n`;
+                    });
+                } else {
+                    multiTfContext += "No Data\n";
+                }
             }
 
-            const dataContext = formatAssetDataForPrompt(quote, candles);
             const strategy = strategies[selectedStrategyKey];
 
             const systemInstruction = `You are an expert trading engine. Your task is to generate a precise Trade Setup based on the provided market data and strategy.
@@ -411,8 +440,8 @@ Name: ${strategy.name}
 Logic: ${strategy.prompt}
 
 **CONTEXT:**
-Asset: ${result.asset}
-Timeframe: ${selectedTimeframe}
+${multiTfContext}
+
 Previous Analysis: ${result.analysis}
 
 **CRITICAL: STOP LOSS PLACEMENT PROTOCOL (${userSettings.stopLossStrategy || 'Standard'})**
@@ -463,7 +492,7 @@ The output MUST be a valid JSON object matching the 'AnalysisResults' structure 
                 preferredProvider: userSettings.aiProviderAnalysis
             });
 
-            const response = await manager.generateContent(systemInstruction, [{ text: dataContext }]);
+            const response = await manager.generateContent(systemInstruction, [{ text: "Generate Trade Setup" }]);
             onLogTokenUsage(response.usage.totalTokenCount);
 
             let jsonText = (response.text || "").trim();
@@ -477,14 +506,14 @@ The output MUST be a valid JSON object matching the 'AnalysisResults' structure 
             if (analysisResults['Top Longs']) {
                 analysisResults['Top Longs'] = analysisResults['Top Longs'].map(t => ({
                     ...t,
-                    timeframe: selectedTimeframe,
+                    timeframe: selectedTimeframes[0], // Use primary timeframe
                     analysisContext: { realTimeContextWasUsed: true }
                 }));
             }
             if (analysisResults['Top Shorts']) {
                 analysisResults['Top Shorts'] = analysisResults['Top Shorts'].map(t => ({
                     ...t,
-                    timeframe: selectedTimeframe,
+                    timeframe: selectedTimeframes[0], // Use primary timeframe
                     analysisContext: { realTimeContextWasUsed: true }
                 }));
             }
@@ -530,15 +559,15 @@ The output MUST be a valid JSON object matching the 'AnalysisResults' structure 
                 </div>
 
                 <div>
-                    <label className="block text-sm font-medium text-gray-400 mb-2">Timeframe</label>
-                    <div className="flex bg-[hsl(var(--color-bg-900))] rounded-lg p-1 border border-[hsl(var(--color-border-700))]">
+                    <label className="block text-sm font-medium text-gray-400 mb-2">Timeframes (Max 3)</label>
+                    <div className="flex flex-wrap gap-1 bg-[hsl(var(--color-bg-900))] rounded-lg p-1 border border-[hsl(var(--color-border-700))]">
                         {['1m', '5m', '15m', '1h', '4h', '1d'].map((tf) => (
                             <button
                                 key={tf}
-                                onClick={() => setSelectedTimeframe(tf)}
-                                className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-colors ${selectedTimeframe === tf
-                                    ? 'bg-[hsl(var(--color-bg-700))] text-white shadow-sm'
-                                    : 'text-gray-400 hover:text-white'
+                                onClick={() => toggleTimeframe(tf)}
+                                className={`px-2 py-1.5 text-xs font-medium rounded-md transition-colors ${selectedTimeframes.includes(tf)
+                                    ? 'bg-blue-600 text-white shadow-sm'
+                                    : 'text-gray-400 hover:text-white hover:bg-[hsl(var(--color-bg-800))]'
                                     }`}
                             >
                                 {tf}
