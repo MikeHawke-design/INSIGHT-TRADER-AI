@@ -24,12 +24,21 @@ export class AiManager {
     }
 
     private getGeminiClient() {
-        const key = this.apiConfig.geminiApiKey || import.meta.env.VITE_API_KEY;
+        const userKey = this.apiConfig.geminiApiKey;
+        const systemKey = import.meta.env.VITE_API_KEY;
+        const key = userKey || systemKey;
+
         if (!key) {
             console.error("Gemini API Key is MISSING in getGeminiClient");
             throw new Error("Gemini API Key not found");
         }
-        // console.log("Gemini Client initialized with key ending in:", key.slice(-4));
+
+        // Log which key is being used (masked)
+        const isUserKey = !!userKey;
+        const keyType = isUserKey ? "USER_KEY" : "SYSTEM_KEY (Free Tier)";
+        const maskedKey = key.slice(-4);
+        console.log(`[AiManager] Initializing Gemini Client with ${keyType} ending in ...${maskedKey}`);
+
         return new GoogleGenAI({ apiKey: key });
     }
 
@@ -71,6 +80,12 @@ export class AiManager {
 
             const errorMsg = error.message || JSON.stringify(error);
             if (errorMsg.includes('429') || errorMsg.toLowerCase().includes('quota') || errorMsg.toLowerCase().includes('exhausted') || errorMsg.toLowerCase().includes('limit')) {
+                const isUserKey = !!this.apiConfig.geminiApiKey;
+                if (this.provider === 'gemini' && !isUserKey) {
+                    throw new Error(`System Free Tier Limit Reached. Please add your own Gemini API Key in Settings > Master Controls to continue.`);
+                } else if (this.provider === 'gemini' && isUserKey) {
+                    throw new Error(`Your Gemini API Key Quota Exceeded. Please check your Google Cloud Billing settings to ensure you are not on the free tier.`);
+                }
                 throw new Error(`Rate Limit Exceeded for ${this.provider.toUpperCase()}. Please wait or switch providers.`);
             }
             throw error;
@@ -181,6 +196,12 @@ ${councilTranscript}
 
             const errorMsg = error.message || JSON.stringify(error);
             if (errorMsg.includes('429') || errorMsg.toLowerCase().includes('quota') || errorMsg.toLowerCase().includes('exhausted') || errorMsg.toLowerCase().includes('limit')) {
+                const isUserKey = !!this.apiConfig.geminiApiKey;
+                if (this.provider === 'gemini' && !isUserKey) {
+                    throw new Error(`System Free Tier Limit Reached. Please add your own Gemini API Key in Settings > Master Controls to continue.`);
+                } else if (this.provider === 'gemini' && isUserKey) {
+                    throw new Error(`Your Gemini API Key Quota Exceeded. Please check your Google Cloud Billing settings to ensure you are not on the free tier.`);
+                }
                 throw new Error(`Rate Limit Exceeded for ${this.provider.toUpperCase()}. Please wait or switch providers.`);
             }
             throw error;
