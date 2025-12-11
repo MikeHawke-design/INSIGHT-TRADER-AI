@@ -189,49 +189,7 @@ ${councilTranscript}
 
     // ... (keep other methods)
 
-    private async generateGemini(systemInstruction: string, userPrompt: string | Part[], modelOverride?: string): Promise<StandardizedResponse> {
-        const client = this.getGeminiClient();
-        const model = modelOverride || 'gemini-2.5-flash';
 
-        console.log(`[AiManager] Generating content with model: ${model}`);
-
-        const contents = typeof userPrompt === 'string'
-            ? [{ role: 'user', parts: [{ text: userPrompt }] }]
-            : [{ role: 'user', parts: userPrompt }];
-
-        try {
-            const response = await client.models.generateContent({
-                model: model,
-                contents: contents,
-                config: {
-                    systemInstruction: systemInstruction,
-                    maxOutputTokens: 65536,
-                }
-            });
-
-            let text = response.text || "";
-            if (!text && response.candidates && response.candidates.length > 0) {
-                const candidate = response.candidates[0];
-                if (candidate.finishReason && candidate.finishReason !== 'STOP') {
-                    text = `AI_GENERATION_FAILED: ${candidate.finishReason}`;
-                }
-            }
-
-            return {
-                text: text,
-                usage: {
-                    totalTokenCount: response.usageMetadata?.totalTokenCount || 0
-                }
-            };
-        } catch (error: any) {
-            console.error("[AiManager] Gemini Generation Failed. Full Error:", error);
-            if (error.response) {
-                console.error("Error Response Status:", error.response.status);
-                console.error("Error Response Data:", error.response.data);
-            }
-            throw error;
-        }
-    }
 
     private async generateOpenAI(systemInstruction: string, userPrompt: string | Part[], modelOverride?: string): Promise<StandardizedResponse> {
         const client = this.getOpenAIClient();
@@ -302,6 +260,92 @@ ${councilTranscript}
         };
     }
 
+    private async retryWithBackoff<T>(
+        operation: () => Promise<T>,
+        retries: number = 3,
+        baseDelay: number = 1000,
+        fallbackOperation?: () => Promise<T>
+    ): Promise<T> {
+        let attempt = 0;
+        while (attempt < retries) {
+            try {
+                return await operation();
+            } catch (error: any) {
+                const isOverloaded = error.message?.includes('503') || error.message?.includes('overloaded') || error.status === 503;
+                if (!isOverloaded || attempt === retries - 1) {
+                    if (fallbackOperation && isOverloaded) {
+                        console.warn(`[AiManager] Primary operation failed with 503. Attempting fallback...`);
+                        return await fallbackOperation();
+                    }
+                    throw error;
+                }
+
+                const delay = baseDelay * Math.pow(2, attempt);
+                console.warn(`[AiManager] Operation failed (503). Retrying in ${delay}ms... (Attempt ${attempt + 1}/${retries})`);
+                await new Promise(resolve => setTimeout(resolve, delay));
+                attempt++;
+            }
+        }
+        throw new Error("Max retries exceeded");
+    }
+
+    private async generateGemini(systemInstruction: string, userPrompt: string | Part[], modelOverride?: string): Promise<StandardizedResponse> {
+        const client = this.getGeminiClient();
+        const primaryModel = modelOverride || 'gemini-2.5-flash';
+        const fallbackModel = 'gemini-1.5-flash';
+
+        console.log(`[AiManager] Generating content with model: ${primaryModel}`);
+
+        const contents = typeof userPrompt === 'string'
+            ? [{ role: 'user', parts: [{ text: userPrompt }] }]
+            : [{ role: 'user', parts: userPrompt }];
+
+        const performGeneration = async (model: string) => {
+            const response = await client.models.generateContent({
+                model: model,
+                contents: contents,
+                config: {
+                    systemInstruction: systemInstruction,
+                    maxOutputTokens: 65536,
+                }
+            });
+
+            let text = response.text || "";
+            if (!text && response.candidates && response.candidates.length > 0) {
+                const candidate = response.candidates[0];
+                if (candidate.finishReason && candidate.finishReason !== 'STOP') {
+                    text = `AI_GENERATION_FAILED: ${candidate.finishReason}`;
+                }
+            }
+
+            return {
+                text: text,
+                usage: {
+                    totalTokenCount: response.usageMetadata?.totalTokenCount || 0
+                }
+            };
+        };
+
+        try {
+            return await this.retryWithBackoff(
+                () => performGeneration(primaryModel),
+                3,
+                2000,
+                () => {
+                    console.log(`[AiManager] Falling back to ${fallbackModel}`);
+                    return performGeneration(fallbackModel);
+                }
+            );
+        } catch (error: any) {
+            console.error("[AiManager] Gemini Generation Failed. Full Error:", error);
+            if (error.response) {
+                console.error("Error Response Status:", error.response.status);
+                console.error("Error Response Data:", error.response.data);
+            }
+            throw error;
+        }
+    }
+
     private async chatGemini(
         systemInstruction: string,
         history: { role: 'user' | 'assistant', content: string | Part[] }[],
@@ -309,9 +353,10 @@ ${councilTranscript}
         modelOverride?: string
     ): Promise<StandardizedResponse> {
         const client = this.getGeminiClient();
-        const model = modelOverride || 'gemini-2.5-flash';
+        const primaryModel = modelOverride || 'gemini-2.5-flash';
+        const fallbackModel = 'gemini-1.5-flash';
 
-        console.log(`[AiManager] Starting chat with model: ${model}`);
+        console.log(`[AiManager] Starting chat with model: ${primaryModel}`);
 
         // Convert history to Gemini format
         const geminiHistory = history.map(msg => ({
@@ -321,21 +366,31 @@ ${councilTranscript}
 
         const newParts = typeof newMessage === 'string' ? [{ text: newMessage }] : newMessage;
 
-        try {
+        const performChat = async (model: string) => {
             const chat = client.chats.create({
                 model: model,
                 config: { systemInstruction, maxOutputTokens: 8192 },
                 history: geminiHistory
             });
-
             const response = await chat.sendMessage({ message: newParts });
-
             return {
                 text: response.text || "",
                 usage: {
                     totalTokenCount: response.usageMetadata?.totalTokenCount || 0
                 }
             };
+        };
+
+        try {
+            return await this.retryWithBackoff(
+                () => performChat(primaryModel),
+                3,
+                2000,
+                () => {
+                    console.log(`[AiManager] Falling back to ${fallbackModel}`);
+                    return performChat(fallbackModel);
+                }
+            );
         } catch (error: any) {
             console.error("[AiManager] Gemini Chat Failed. Full Error:", error);
             if (error.response) {
