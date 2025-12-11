@@ -292,7 +292,17 @@ ${councilTranscript}
             try {
                 return await operation();
             } catch (error: any) {
-                const isOverloaded = error.message?.includes('503') || error.message?.includes('overloaded') || error.status === 503;
+                const errorMsg = error.message || JSON.stringify(error);
+                const isOverloaded = errorMsg.includes('503') || errorMsg.toLowerCase().includes('overloaded') || error.status === 503;
+                const isRateLimit = errorMsg.includes('429') || errorMsg.toLowerCase().includes('quota') || error.status === 429;
+
+                // Immediate fallback for Rate Limits (429) if fallback is available
+                // This handles the case where one model (e.g. 2.5-flash) is quota-limited but another (1.5-flash) might not be.
+                if (isRateLimit && fallbackOperation) {
+                    console.warn(`[AiManager] Primary model rate limited (429). Switching to fallback model immediately.`);
+                    return await fallbackOperation();
+                }
+
                 if (!isOverloaded || attempt === retries - 1) {
                     if (fallbackOperation && isOverloaded) {
                         console.warn(`[AiManager] Primary operation failed with 503. Attempting fallback...`);
