@@ -297,12 +297,13 @@ ${userSettings.stopLossStrategy === 'Structure-Buffered'
 - Adjust Take Profit levels to ensure this ratio is met.
 - If a trade cannot logically meet this R:R, DO NOT suggest it.
 
-**HEAT SCORE (0-100):**
-- **BE STRICT.** Do NOT default to 100.
-- 90-100: Perfect setup, all conditions met, high confluence.
-- 70-89: Good setup, minor imperfections.
-- 50-69: Average setup, higher risk.
-- <50: Weak setup (do not suggest unless requested).
+**HEAT SCORE (0-100) - SKEPTICISM PROTOCOL:**
+- **100:** IMPOSSIBLE. Do not use.
+- **90-99:** Legendary. Perfect alignment of all indicators, timeframes, and market structure. Rare.
+- **80-89:** Strong. Textbook setup with high probability.
+- **60-79:** Valid. Good setup but carries standard market risk or minor conflicting signals.
+- **<60:** Weak. Do not suggest.
+- **CRITICAL:** Be a harsh critic. Do not inflate scores. A score of 95+ requires extraordinary evidence.
 
 **OUTPUT FORMAT:**
 {
