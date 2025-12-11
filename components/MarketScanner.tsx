@@ -171,7 +171,7 @@ const MarketScanner: React.FC<MarketScannerProps> = ({ apiConfig, userSettings, 
                             newCandles = await dataApi.getCandles(symbol, tf, startDate);
                         } else {
                             // FreeCryptoAPI fallback (fetch all/limit and merge)
-                            newCandles = await dataApi.getCandles(symbol, tf);
+                            newCandles = await listApi.getCandles(symbol, tf);
                         }
 
                         // 3. Merge & Save

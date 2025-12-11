@@ -91,8 +91,14 @@ export class TwelveDataApi {
         // 4h -> 4h
         // 1d -> 1day
         let apiInterval = interval;
+        if (interval === '1m') apiInterval = '1min';
+        if (interval === '5m') apiInterval = '5min';
         if (interval === '15m') apiInterval = '15min';
+        if (interval === '30m') apiInterval = '30min';
+        if (interval === '1h') apiInterval = '1h';
+        if (interval === '4h') apiInterval = '4h';
         if (interval === '1d') apiInterval = '1day';
+        if (interval === '1w') apiInterval = '1week';
 
         let url = `${BASE_URL}/time_series?symbol=${symbol}&interval=${apiInterval}&apikey=${this.apiKey}&format=JSON`;
 
@@ -135,8 +141,14 @@ export class TwelveDataApi {
         if (!this.apiKey) return [];
 
         let apiInterval = interval;
+        if (interval === '1m') apiInterval = '1min';
+        if (interval === '5m') apiInterval = '5min';
         if (interval === '15m') apiInterval = '15min';
+        if (interval === '30m') apiInterval = '30min';
+        if (interval === '1h') apiInterval = '1h';
+        if (interval === '4h') apiInterval = '4h';
         if (interval === '1d') apiInterval = '1day';
+        if (interval === '1w') apiInterval = '1week';
 
         let url = `${BASE_URL}/time_series?symbol=${symbol}&interval=${apiInterval}&apikey=${this.apiKey}&format=JSON&outputsize=${outputsize}`;
 
