@@ -383,9 +383,10 @@ ${userSettings.stopLossStrategy === 'Structure-Buffered'
             // Directly complete analysis and show results
             onAnalysisComplete(analysisResults, [selectedStrategyKey], {}, true);
 
-        } catch (err) {
+        } catch (err: any) {
             console.error("Scan failed", err);
-            setError("An error occurred during scanning. Please check your API key and try again.");
+            const msg = err.message || "An error occurred during scanning.";
+            setError(`${msg} (Please check your API key/limits)`);
         } finally {
             setIsScanning(false);
         }

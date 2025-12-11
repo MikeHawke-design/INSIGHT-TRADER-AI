@@ -62,8 +62,13 @@ export class AiManager {
                 return this.generateGroq(systemInstruction, userPrompt, model);
             }
             throw new Error(`Unknown provider: ${this.provider}`);
-        } catch (error) {
+        } catch (error: any) {
             console.error(`AI Generation Error (${this.provider}):`, error);
+
+            const errorMsg = error.message || JSON.stringify(error);
+            if (errorMsg.includes('429') || errorMsg.toLowerCase().includes('quota') || errorMsg.toLowerCase().includes('exhausted') || errorMsg.toLowerCase().includes('limit')) {
+                throw new Error(`Rate Limit Exceeded for ${this.provider.toUpperCase()}. Please wait or switch providers.`);
+            }
             throw error;
         }
     }
@@ -167,8 +172,13 @@ ${councilTranscript}
                 return this.chatGroq(systemInstruction, history, newMessage, model);
             }
             throw new Error(`Unknown provider: ${this.provider}`);
-        } catch (error) {
+        } catch (error: any) {
             console.error(`AI Chat Error (${this.provider}):`, error);
+
+            const errorMsg = error.message || JSON.stringify(error);
+            if (errorMsg.includes('429') || errorMsg.toLowerCase().includes('quota') || errorMsg.toLowerCase().includes('exhausted') || errorMsg.toLowerCase().includes('limit')) {
+                throw new Error(`Rate Limit Exceeded for ${this.provider.toUpperCase()}. Please wait or switch providers.`);
+            }
             throw error;
         }
     }
