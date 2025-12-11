@@ -25,7 +25,11 @@ export class AiManager {
 
     private getGeminiClient() {
         const key = this.apiConfig.geminiApiKey || import.meta.env.VITE_API_KEY;
-        if (!key) throw new Error("Gemini API Key not found");
+        if (!key) {
+            console.error("Gemini API Key is MISSING in getGeminiClient");
+            throw new Error("Gemini API Key not found");
+        }
+        // console.log("Gemini Client initialized with key ending in:", key.slice(-4));
         return new GoogleGenAI({ apiKey: key });
     }
 
@@ -183,37 +187,50 @@ ${councilTranscript}
         }
     }
 
+    // ... (keep other methods)
+
     private async generateGemini(systemInstruction: string, userPrompt: string | Part[], modelOverride?: string): Promise<StandardizedResponse> {
         const client = this.getGeminiClient();
-        const model = modelOverride || 'gemini-1.5-flash';
+        const model = modelOverride || 'gemini-2.5-flash';
+
+        console.log(`[AiManager] Generating content with model: ${model}`);
 
         const contents = typeof userPrompt === 'string'
             ? [{ role: 'user', parts: [{ text: userPrompt }] }]
             : [{ role: 'user', parts: userPrompt }];
 
-        const response = await client.models.generateContent({
-            model: model,
-            contents: contents,
-            config: {
-                systemInstruction: systemInstruction,
-                maxOutputTokens: 65536,
-            }
-        });
+        try {
+            const response = await client.models.generateContent({
+                model: model,
+                contents: contents,
+                config: {
+                    systemInstruction: systemInstruction,
+                    maxOutputTokens: 65536,
+                }
+            });
 
-        let text = response.text || "";
-        if (!text && response.candidates && response.candidates.length > 0) {
-            const candidate = response.candidates[0];
-            if (candidate.finishReason && candidate.finishReason !== 'STOP') {
-                text = `AI_GENERATION_FAILED: ${candidate.finishReason}`;
+            let text = response.text || "";
+            if (!text && response.candidates && response.candidates.length > 0) {
+                const candidate = response.candidates[0];
+                if (candidate.finishReason && candidate.finishReason !== 'STOP') {
+                    text = `AI_GENERATION_FAILED: ${candidate.finishReason}`;
+                }
             }
+
+            return {
+                text: text,
+                usage: {
+                    totalTokenCount: response.usageMetadata?.totalTokenCount || 0
+                }
+            };
+        } catch (error: any) {
+            console.error("[AiManager] Gemini Generation Failed. Full Error:", error);
+            if (error.response) {
+                console.error("Error Response Status:", error.response.status);
+                console.error("Error Response Data:", error.response.data);
+            }
+            throw error;
         }
-
-        return {
-            text: text,
-            usage: {
-                totalTokenCount: response.usageMetadata?.totalTokenCount || 0
-            }
-        };
     }
 
     private async generateOpenAI(systemInstruction: string, userPrompt: string | Part[], modelOverride?: string): Promise<StandardizedResponse> {
@@ -292,7 +309,9 @@ ${councilTranscript}
         modelOverride?: string
     ): Promise<StandardizedResponse> {
         const client = this.getGeminiClient();
-        const model = modelOverride || 'gemini-1.5-flash';
+        const model = modelOverride || 'gemini-2.5-flash';
+
+        console.log(`[AiManager] Starting chat with model: ${model}`);
 
         // Convert history to Gemini format
         const geminiHistory = history.map(msg => ({
@@ -302,20 +321,29 @@ ${councilTranscript}
 
         const newParts = typeof newMessage === 'string' ? [{ text: newMessage }] : newMessage;
 
-        const chat = client.chats.create({
-            model: model,
-            config: { systemInstruction, maxOutputTokens: 8192 },
-            history: geminiHistory
-        });
+        try {
+            const chat = client.chats.create({
+                model: model,
+                config: { systemInstruction, maxOutputTokens: 8192 },
+                history: geminiHistory
+            });
 
-        const response = await chat.sendMessage({ message: newParts });
+            const response = await chat.sendMessage({ message: newParts });
 
-        return {
-            text: response.text || "",
-            usage: {
-                totalTokenCount: response.usageMetadata?.totalTokenCount || 0
+            return {
+                text: response.text || "",
+                usage: {
+                    totalTokenCount: response.usageMetadata?.totalTokenCount || 0
+                }
+            };
+        } catch (error: any) {
+            console.error("[AiManager] Gemini Chat Failed. Full Error:", error);
+            if (error.response) {
+                console.error("Error Response Status:", error.response.status);
+                console.error("Error Response Data:", error.response.data);
             }
-        };
+            throw error;
+        }
     }
 
     private async chatOpenAI(
