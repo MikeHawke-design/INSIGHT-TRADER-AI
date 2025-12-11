@@ -21,6 +21,7 @@ export class AiManager {
     constructor(config: AiManagerConfig) {
         this.apiConfig = config.apiConfig;
         this.provider = config.preferredProvider;
+        console.log(`[AiManager] Initialized with provider: ${this.provider}`);
     }
 
     private getGeminiClient() {

@@ -284,6 +284,8 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
     const getAiManager = useCallback(() => {
         let provider: 'gemini' | 'openai' | 'groq' | 'council';
 
+        console.log("[ImageUploader] getAiManager called. UserSettings:", userSettings);
+
         if (userSettings.aiSystemMode === 'council') {
             provider = 'council';
         } else if (userSettings.aiSystemMode === 'hybrid') {
@@ -291,6 +293,8 @@ const ImageUploader = forwardRef<ImageUploaderHandles, ImageUploaderProps>(({
         } else {
             provider = userSettings.aiProvider;
         }
+
+        console.log(`[ImageUploader] Selected provider: ${provider}`);
 
         return new AiManager({
             apiConfig,
