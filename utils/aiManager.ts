@@ -185,7 +185,7 @@ ${councilTranscript}
 
     private async generateGemini(systemInstruction: string, userPrompt: string | Part[], modelOverride?: string): Promise<StandardizedResponse> {
         const client = this.getGeminiClient();
-        const model = modelOverride || 'gemini-2.5-flash';
+        const model = modelOverride || 'gemini-1.5-flash';
 
         const contents = typeof userPrompt === 'string'
             ? [{ role: 'user', parts: [{ text: userPrompt }] }]
@@ -292,7 +292,7 @@ ${councilTranscript}
         modelOverride?: string
     ): Promise<StandardizedResponse> {
         const client = this.getGeminiClient();
-        const model = modelOverride || 'gemini-2.5-flash';
+        const model = modelOverride || 'gemini-1.5-flash';
 
         // Convert history to Gemini format
         const geminiHistory = history.map(msg => ({
