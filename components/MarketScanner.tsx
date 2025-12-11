@@ -331,9 +331,18 @@ ${userSettings.stopLossStrategy === 'Structure-Buffered'
 }`;
 
             // 5. Call AI
+            let provider: 'gemini' | 'openai' | 'groq' | 'council';
+            if (userSettings.aiSystemMode === 'council') {
+                provider = 'council';
+            } else if (userSettings.aiSystemMode === 'hybrid') {
+                provider = userSettings.aiProviderAnalysis;
+            } else {
+                provider = userSettings.aiProvider;
+            }
+
             const manager = new AiManager({
                 apiConfig,
-                preferredProvider: userSettings.aiProviderAnalysis
+                preferredProvider: provider
             });
 
             const response = await manager.generateContent(systemInstruction, [{ text: dataContext }]);
